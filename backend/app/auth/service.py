@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,7 +97,7 @@ class AuthService:
         """
         try:
             payload = decode_token(refresh_token)
-        except JWTError:
+        except InvalidTokenError:
             raise UnauthorizedError("Invalid or expired refresh token")
 
         if payload.get("type") != "refresh":

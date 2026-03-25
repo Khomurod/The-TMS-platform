@@ -11,7 +11,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, Header
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -36,7 +36,7 @@ async def get_current_user_id(authorization: str = Header(default=None)) -> str:
     token = authorization.replace("Bearer ", "")
     try:
         payload = decode_token(token)
-    except JWTError:
+    except InvalidTokenError:
         raise UnauthorizedError("Invalid or expired token")
 
     if payload.get("type") != "access":
@@ -60,7 +60,7 @@ async def get_current_company_id(authorization: str = Header(default=None)) -> U
     token = authorization.replace("Bearer ", "")
     try:
         payload = decode_token(token)
-    except JWTError:
+    except InvalidTokenError:
         raise UnauthorizedError("Invalid or expired token")
 
     company_id = payload.get("company_id")
@@ -75,7 +75,7 @@ async def get_current_role(authorization: str = Header(default=None)) -> str:
     token = authorization.replace("Bearer ", "")
     try:
         payload = decode_token(token)
-    except JWTError:
+    except InvalidTokenError:
         raise UnauthorizedError("Invalid or expired token")
 
     role = payload.get("role")

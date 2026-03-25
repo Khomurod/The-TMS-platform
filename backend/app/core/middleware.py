@@ -6,7 +6,7 @@ The Golden Rule: It must be programmatically impossible for Company A to see Com
 import contextvars
 from uuid import UUID
 
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -60,7 +60,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         token = auth_header.replace("Bearer ", "")
         try:
             payload = decode_token(token)
-        except JWTError:
+        except InvalidTokenError:
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid or expired token"},
