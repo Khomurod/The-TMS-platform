@@ -111,8 +111,8 @@ async def toggle_company_status(
     await db.flush()
     status = "activated" if company.is_active else "suspended"
     logger.info(
-        "Company %s has been %s", company_id, status,
-        extra={"company_id": str(company_id), "action": f"company_{status}"},
+        "Company %s has been %s",
+        company_id, status,
     )
     return {"message": f"Company '{company.name}' has been {status}", "is_active": company.is_active}
 
@@ -140,11 +140,6 @@ async def impersonate_company(
     logger.warning(
         "Super Admin %s impersonating company %s (%s)",
         user_id, company_id, company.name,
-        extra={
-            "admin_id": user_id,
-            "target_company_id": str(company_id),
-            "action": "impersonate",
-        },
     )
 
     # Create a short-lived token with target company_id

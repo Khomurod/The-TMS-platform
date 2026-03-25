@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
+from app.core.exceptions import BadRequestError
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,6 @@ async def get_db() -> AsyncSession:
         except IntegrityError as e:
             await session.rollback()
             logger.warning("Database integrity error: %s", e)
-            from app.core.exceptions import BadRequestError
             raise BadRequestError("A record with this identifier already exists")
         except Exception:
             await session.rollback()
