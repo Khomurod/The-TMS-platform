@@ -2,6 +2,7 @@
 
 from typing import List
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,26 @@ class Settings(BaseSettings):
     # ── Google Cloud Storage (Phase 3) ───────────────────────────
     gcs_bucket_name: str = ""
     gcs_credentials_path: str = ""
+
+    @model_validator(mode='after')
+    def validate_production_secrets(self):
+        if self.environment == "production":
+            if self.jwt_secret_key == "dev-secret-key-change-in-production":
+                raise ValueError(
+                    "FATAL: JWT_SECRET_KEY must be changed from the default in production! "
+                    "Set the JWT_SECRET_KEY environment variable."
+                )
+            if "kinetic_dev_2024" in self.database_url:
+                raise ValueError(
+                    "FATAL: DATABASE_URL contains development credentials. "
+                    "Set the DATABASE_URL environment variable for production."
+                )
+            if not self.cors_origins or self.cors_origins == ["http://localhost:3000"]:
+                raise ValueError(
+                    "FATAL: CORS_ORIGINS must be configured for production. "
+                    "Set the CORS_ORIGINS environment variable."
+                )
+        return self
 
 
 settings = Settings()

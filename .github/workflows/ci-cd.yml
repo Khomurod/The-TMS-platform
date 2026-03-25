@@ -101,7 +101,9 @@ jobs:
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \
-            --set-env-vars "ENVIRONMENT=production"
+            --set-env-vars "ENVIRONMENT=production" \
+            --set-secrets "JWT_SECRET_KEY=jwt-secret-key:latest,DATABASE_URL=database-url:latest" \
+            --set-env-vars "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}"
 
       - name: Build & push frontend image
         run: |
@@ -114,4 +116,5 @@ jobs:
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-web:${{ github.sha }} \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars "NEXT_PUBLIC_API_URL=${{ secrets.API_URL }}"

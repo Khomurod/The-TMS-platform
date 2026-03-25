@@ -126,7 +126,7 @@ async def impersonate_company(
 
     # Create a short-lived token with target company_id
     from datetime import datetime, timedelta, timezone
-    from jose import jwt
+    import jwt
     from app.config import settings
 
     expire = datetime.now(timezone.utc) + timedelta(minutes=30)

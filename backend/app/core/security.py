@@ -10,7 +10,8 @@ Implements:
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
 from app.config import settings
@@ -65,6 +66,6 @@ def decode_token(token: str) -> dict:
     """Decode and validate a JWT token.
 
     Returns the payload dict.
-    Raises JWTError if token is invalid, expired, or malformed.
+    Raises InvalidTokenError if token is invalid, expired, or malformed.
     """
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
