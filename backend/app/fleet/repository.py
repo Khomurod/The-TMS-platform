@@ -1,5 +1,7 @@
 """Fleet repository — async database queries for Trucks & Trailers."""
 
+from __future__ import annotations
+
 from datetime import date
 from typing import Optional
 from uuid import UUID

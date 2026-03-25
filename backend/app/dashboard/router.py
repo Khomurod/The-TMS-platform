@@ -7,7 +7,7 @@ Phase 5.6 Endpoints:
   GET /dashboard/recent-events    — Latest load status changes
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -116,7 +116,7 @@ async def get_compliance_alerts(
     company_id: UUID = Depends(get_current_company_id),
 ):
     """Expiring documents within 30 days."""
-    threshold = datetime.utcnow().date() + timedelta(days=30)
+    threshold = datetime.now(timezone.utc).date() + timedelta(days=30)
 
     # Driver CDL expiry
     cdl_query = (
@@ -149,7 +149,7 @@ async def get_compliance_alerts(
     dot_results = (await db.execute(dot_query)).scalars().all()
 
     alerts = []
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
 
     for d in cdl_results:
         is_expired = d.cdl_expiry_date <= today

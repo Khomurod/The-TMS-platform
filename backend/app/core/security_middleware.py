@@ -13,7 +13,7 @@ from typing import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 
 
 # ── Rate Limiter ─────────────────────────────────────────────────
@@ -67,29 +67,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 # ── Security Headers ─────────────────────────────────────────────
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses.
-    
-    NOTE: Skip /api/ routes — CORS middleware handles those.
-    CSP is excluded for API responses (JSON, not HTML).
-    """
+    """Add security headers to all responses."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
 
-        # Skip security headers for API routes — CORS middleware handles those
-        if request.url.path.startswith("/api/"):
-            return response
-
-        # Prevent MIME type sniffing
+        # Apply core security headers to ALL responses (including /api/)
         response.headers["X-Content-Type-Options"] = "nosniff"
-
-        # Prevent clickjacking
         response.headers["X-Frame-Options"] = "DENY"
-
-        # XSS Protection (legacy browsers)
         response.headers["X-XSS-Protection"] = "1; mode=block"
-
-        # Referrer policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # HSTS (only in production)
@@ -113,10 +99,6 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
         # Check X-Forwarded-Proto (Cloud Run sets this)
         if request.headers.get("x-forwarded-proto") == "http":
             url = request.url.replace(scheme="https")
-            return JSONResponse(
-                status_code=301,
-                headers={"Location": str(url)},
-                content={"detail": "Redirecting to HTTPS"},
-            )
+            return RedirectResponse(url=str(url), status_code=307)
 
         return await call_next(request)

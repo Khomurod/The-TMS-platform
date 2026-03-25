@@ -3,19 +3,25 @@
 Only accessible by users with role 'super_admin'.
 """
 
+import logging
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import jwt
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id, require_roles
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.core.security import create_access_token, hash_password
 from app.models.company import Company
 from app.models.user import User, UserRole
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/admin",
@@ -32,7 +38,7 @@ class CreateTenantRequest(BaseModel):
     mc_number: str | None = None
     dot_number: str | None = None
     admin_email: EmailStr
-    admin_password: str = Field(..., min_length=8)
+    admin_password: str = Field(..., min_length=8, max_length=128)
     admin_first_name: str = Field(..., min_length=1, max_length=100)
     admin_last_name: str = Field(..., min_length=1, max_length=100)
 
@@ -86,6 +92,7 @@ async def create_tenant(data: CreateTenantRequest, db: AsyncSession = Depends(ge
         role=UserRole.company_admin,
     )
     db.add(admin_user)
+    await db.flush()
     return company
 
 
@@ -101,7 +108,12 @@ async def toggle_company_status(
         raise NotFoundError("Company not found")
 
     company.is_active = not company.is_active
+    await db.flush()
     status = "activated" if company.is_active else "suspended"
+    logger.info(
+        "Company %s has been %s", company_id, status,
+        extra={"company_id": str(company_id), "action": f"company_{status}"},
+    )
     return {"message": f"Company '{company.name}' has been {status}", "is_active": company.is_active}
 
 
@@ -124,11 +136,18 @@ async def impersonate_company(
     if not company.is_active:
         raise BadRequestError("Cannot impersonate a suspended company")
 
-    # Create a short-lived token with target company_id
-    from datetime import datetime, timedelta, timezone
-    import jwt
-    from app.config import settings
+    # Log impersonation for audit trail
+    logger.warning(
+        "Super Admin %s impersonating company %s (%s)",
+        user_id, company_id, company.name,
+        extra={
+            "admin_id": user_id,
+            "target_company_id": str(company_id),
+            "action": "impersonate",
+        },
+    )
 
+    # Create a short-lived token with target company_id
     expire = datetime.now(timezone.utc) + timedelta(minutes=30)
     payload = {
         "sub": user_id,

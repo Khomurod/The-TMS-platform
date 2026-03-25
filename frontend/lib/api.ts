@@ -26,6 +26,22 @@ api.interceptors.request.use((config) => {
 });
 
 // ── Response Interceptor — Handle 401 & Auto-Refresh ────────────
+// Singleton refresh promise to prevent concurrent token refreshes
+let refreshPromise: Promise<void> | null = null;
+
+async function performTokenRefresh(): Promise<void> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) {
+    throw new Error("No refresh token");
+  }
+  const res = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    refresh_token: refreshToken,
+  });
+  const { access_token, refresh_token: newRefresh } = res.data;
+  localStorage.setItem("access_token", access_token);
+  localStorage.setItem("refresh_token", newRefresh);
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -35,36 +51,26 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("refresh_token")
-          : null;
+      if (typeof window === "undefined") {
+        return Promise.reject(error);
+      }
 
-      if (refreshToken) {
-        try {
-          const res = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-          const { access_token, refresh_token: newRefresh } = res.data;
+      // Use a single refresh promise to avoid concurrent refreshes
+      if (!refreshPromise) {
+        refreshPromise = performTokenRefresh();
+      }
 
-          localStorage.setItem("access_token", access_token);
-          localStorage.setItem("refresh_token", newRefresh);
-
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
-          return api(originalRequest);
-        } catch {
-          // Refresh failed — clear tokens and redirect to login
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          if (typeof window !== "undefined") {
-            window.location.href = "/login";
-          }
-        }
-      } else {
-        // No refresh token — redirect to login
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
+      try {
+        await refreshPromise;
+        originalRequest.headers.Authorization = `Bearer ${localStorage.getItem("access_token")}`;
+        return api(originalRequest);
+      } catch {
+        // Refresh failed — clear tokens and redirect to login
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = "/login";
+      } finally {
+        refreshPromise = null;
       }
     }
 

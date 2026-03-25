@@ -8,7 +8,7 @@ Phase 5 tasks covered:
 """
 
 import io
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 from uuid import UUID
@@ -224,10 +224,13 @@ class AccountingService:
         settlement = await self.repo.get_by_id(settlement_id)
         if not settlement:
             raise NotFoundError("Settlement not found")
+        # Idempotent: if already paid, return current state
+        if settlement.status == SettlementStatus.paid:
+            return self._to_response(settlement)
         if settlement.status != SettlementStatus.ready:
             raise HTTPException(status_code=400, detail="Only 'ready' settlements can be marked as paid")
         settlement.status = SettlementStatus.paid
-        settlement.paid_at = datetime.utcnow()
+        settlement.paid_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(settlement)
         return self._to_response(settlement)
@@ -250,7 +253,7 @@ class AccountingService:
         except ImportError:
             raise HTTPException(
                 status_code=500,
-                detail="reportlab is not installed. Run: pip install reportlab",
+                detail="PDF generation is currently unavailable",
             )
 
         buffer = io.BytesIO()

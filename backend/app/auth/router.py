@@ -1,6 +1,10 @@
 """Auth router — registration, login, token refresh, logout, profile."""
 
+import logging
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -14,6 +18,9 @@ from app.auth.schemas import (
     UserResponse,
 )
 from app.auth.service import AuthService
+from app.models.company import Company
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -79,15 +86,12 @@ async def get_me(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current authenticated user's profile."""
-    from uuid import UUID
     service = AuthService(db)
     user = await service.get_current_user(UUID(user_id))
 
     # Get company name if user has a company
     company_name = None
     if user.company_id:
-        from app.models.company import Company
-        from sqlalchemy import select
         result = await db.execute(select(Company.name).where(Company.id == user.company_id))
         company_name = result.scalar_one_or_none()
 

@@ -1,5 +1,6 @@
 """Auth service — business logic for registration, login, token refresh."""
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from jwt.exceptions import InvalidTokenError
@@ -84,7 +85,6 @@ class AuthService:
             raise UnauthorizedError("Account is deactivated")
 
         # Update last login
-        from datetime import datetime, timezone
         user.last_login_at = datetime.now(timezone.utc)
 
         tokens = self._generate_tokens(user)

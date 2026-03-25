@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Invalid email or password");
+      setError("Invalid email or password");
     } finally {
       setIsLoading(false);
     }

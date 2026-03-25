@@ -1,5 +1,7 @@
 """Loads repository — async database queries for loads, stops, and accessorials."""
 
+from __future__ import annotations
+
 from datetime import date
 from typing import Optional
 from uuid import UUID

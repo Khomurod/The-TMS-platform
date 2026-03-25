@@ -1,5 +1,7 @@
 """Accounting repository — async DB queries for settlements, deductions, and invoices."""
 
+from __future__ import annotations
+
 from datetime import date
 from decimal import Decimal
 from typing import Optional

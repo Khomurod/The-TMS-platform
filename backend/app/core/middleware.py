@@ -74,12 +74,21 @@ class TenantMiddleware(BaseHTTPMiddleware):
             )
 
         # Set context vars for the duration of this request
-        user_id = payload.get("sub")
-        company_id = payload.get("company_id")
+        user_id_str = payload.get("sub")
+        company_id_str = payload.get("company_id")
         role = payload.get("role")
 
-        user_id_token = current_user_id.set(UUID(user_id) if user_id else None)
-        company_id_token = current_company_id.set(UUID(company_id) if company_id else None)
+        try:
+            user_id = UUID(user_id_str) if user_id_str else None
+            company_id = UUID(company_id_str) if company_id_str else None
+        except (ValueError, AttributeError):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid token — malformed identifiers"},
+            )
+
+        user_id_token = current_user_id.set(user_id)
+        company_id_token = current_company_id.set(company_id)
         role_token = current_user_role.set(role)
 
         try:

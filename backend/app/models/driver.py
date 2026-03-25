@@ -3,6 +3,7 @@
 import enum
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, DateTime, Enum, Integer, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -72,7 +73,7 @@ class Driver(Base, TenantMixin):
         Enum(PayRateType, name="pay_rate_type_enum", create_constraint=True),
         nullable=True,
     )
-    pay_rate_value: Mapped[float | None] = mapped_column(
+    pay_rate_value: Mapped[Decimal | None] = mapped_column(
         Numeric(10, 4), nullable=True  # e.g., 0.65 CPM or 80%
     )
     use_company_defaults: Mapped[bool] = mapped_column(

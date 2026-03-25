@@ -3,6 +3,7 @@
 import enum
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from sqlalchemy import (
     Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, Time, func,
@@ -80,9 +81,9 @@ class Load(Base, TenantMixin):
     )
 
     # ── Financials (NUMERIC — never float) ───────────────────────
-    base_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)  # Linehaul rate
-    total_miles: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
-    total_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)  # base_rate + accessorials
+    base_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)  # Linehaul rate
+    total_miles: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    total_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)  # base_rate + accessorials
 
     # ── Other ────────────────────────────────────────────────────
     contact_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Broker agent name
