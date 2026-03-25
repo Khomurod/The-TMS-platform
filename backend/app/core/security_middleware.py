@@ -67,10 +67,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 # ── Security Headers ─────────────────────────────────────────────
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses."""
+    """Add security headers to all responses.
+    
+    NOTE: Skip /api/ routes — CORS middleware handles those.
+    CSP is excluded for API responses (JSON, not HTML).
+    """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
+
+        # Skip security headers for API routes — CORS middleware handles those
+        if request.url.path.startswith("/api/"):
+            return response
 
         # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -83,9 +91,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Referrer policy
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-        # Content Security Policy
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
 
         # HSTS (only in production)
         if not request.url.hostname or request.url.hostname not in ("localhost", "127.0.0.1"):
