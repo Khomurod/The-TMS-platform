@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Login Page — matching the Kinetic Precision Framework aesthetic.
+ * Login Page — Kinetic Precision Framework aesthetic.
+ * Uses correct design tokens from globals.css.
  */
 
 import { useState } from "react";
@@ -35,8 +36,8 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--surface-lowest)",
-        padding: "var(--space-400)",
+        background: "var(--surface)",
+        padding: "var(--spacing-8)",
       }}
     >
       <div
@@ -44,30 +45,32 @@ export default function LoginPage() {
           width: "100%",
           maxWidth: "440px",
           background: "var(--surface-low)",
-          borderRadius: "var(--radius-300)",
-          padding: "var(--space-600)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+          borderRadius: "var(--radius-xl)",
+          padding: "var(--spacing-10)",
+          boxShadow: "0 8px 32px var(--shadow-ambient)",
         }}
+        className="ghost-border"
       >
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "var(--space-500)" }}>
+        <div style={{ textAlign: "center", marginBottom: "var(--spacing-8)" }}>
           <div
             style={{
+              fontFamily: "var(--font-display)",
               fontSize: "2rem",
               fontWeight: 800,
               letterSpacing: "-0.03em",
-              background: "linear-gradient(135deg, var(--primary), var(--primary-light))",
+              background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
-              marginBottom: "var(--space-100)",
+              marginBottom: "4px",
             }}
           >
             KINETIC
           </div>
           <p
             style={{
-              fontSize: "var(--text-sm)",
-              color: "var(--text-muted)",
+              fontSize: "0.75rem",
+              color: "var(--on-surface-variant)",
               letterSpacing: "0.05em",
               textTransform: "uppercase",
             }}
@@ -80,10 +83,11 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <h2
             style={{
-              fontSize: "var(--text-xl)",
+              fontFamily: "var(--font-display)",
+              fontSize: "1.25rem",
               fontWeight: 700,
-              color: "var(--text-primary)",
-              marginBottom: "var(--space-400)",
+              color: "var(--on-surface)",
+              marginBottom: "var(--spacing-6)",
             }}
           >
             Sign in to your account
@@ -92,13 +96,13 @@ export default function LoginPage() {
           {error && (
             <div
               style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                borderRadius: "var(--radius-200)",
-                padding: "var(--space-200) var(--space-300)",
-                color: "#ef4444",
-                fontSize: "var(--text-sm)",
-                marginBottom: "var(--space-300)",
+                background: "var(--error-container)",
+                border: "1px solid var(--error)",
+                borderRadius: "var(--radius-md)",
+                padding: "var(--spacing-2) var(--spacing-3)",
+                color: "var(--error)",
+                fontSize: "0.85rem",
+                marginBottom: "var(--spacing-4)",
               }}
             >
               {error}
@@ -106,15 +110,15 @@ export default function LoginPage() {
           )}
 
           {/* Email */}
-          <div style={{ marginBottom: "var(--space-300)" }}>
+          <div style={{ marginBottom: "var(--spacing-4)" }}>
             <label
               htmlFor="login-email"
               style={{
                 display: "block",
-                fontSize: "var(--text-sm)",
+                fontSize: "0.8rem",
                 fontWeight: 500,
-                color: "var(--text-secondary)",
-                marginBottom: "var(--space-100)",
+                color: "var(--on-surface-variant)",
+                marginBottom: "6px",
               }}
             >
               Email Address
@@ -126,38 +130,42 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               required
+              autoComplete="email"
               style={{
                 width: "100%",
-                padding: "var(--space-200) var(--space-300)",
+                padding: "var(--spacing-3) var(--spacing-4)",
                 background: "var(--surface-container-high)",
-                border: "1px solid transparent",
-                borderRadius: "var(--radius-200)",
-                color: "var(--text-primary)",
-                fontSize: "var(--text-base)",
+                border: "1px solid var(--outline-variant)",
+                borderRadius: "var(--radius-lg)",
+                color: "var(--on-surface)",
+                fontSize: "0.9rem",
                 outline: "none",
                 transition: "all 0.2s ease",
+                fontFamily: "var(--font-body)",
               }}
               onFocus={(e) => {
                 e.target.style.background = "var(--surface-lowest)";
                 e.target.style.borderColor = "var(--primary)";
+                e.target.style.boxShadow = "0 0 0 3px var(--primary-fixed)";
               }}
               onBlur={(e) => {
                 e.target.style.background = "var(--surface-container-high)";
-                e.target.style.borderColor = "transparent";
+                e.target.style.borderColor = "var(--outline-variant)";
+                e.target.style.boxShadow = "none";
               }}
             />
           </div>
 
           {/* Password */}
-          <div style={{ marginBottom: "var(--space-400)" }}>
+          <div style={{ marginBottom: "var(--spacing-6)" }}>
             <label
               htmlFor="login-password"
               style={{
                 display: "block",
-                fontSize: "var(--text-sm)",
+                fontSize: "0.8rem",
                 fontWeight: 500,
-                color: "var(--text-secondary)",
-                marginBottom: "var(--space-100)",
+                color: "var(--on-surface-variant)",
+                marginBottom: "6px",
               }}
             >
               Password
@@ -170,24 +178,28 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               minLength={8}
+              autoComplete="current-password"
               style={{
                 width: "100%",
-                padding: "var(--space-200) var(--space-300)",
+                padding: "var(--spacing-3) var(--spacing-4)",
                 background: "var(--surface-container-high)",
-                border: "1px solid transparent",
-                borderRadius: "var(--radius-200)",
-                color: "var(--text-primary)",
-                fontSize: "var(--text-base)",
+                border: "1px solid var(--outline-variant)",
+                borderRadius: "var(--radius-lg)",
+                color: "var(--on-surface)",
+                fontSize: "0.9rem",
                 outline: "none",
                 transition: "all 0.2s ease",
+                fontFamily: "var(--font-body)",
               }}
               onFocus={(e) => {
                 e.target.style.background = "var(--surface-lowest)";
                 e.target.style.borderColor = "var(--primary)";
+                e.target.style.boxShadow = "0 0 0 3px var(--primary-fixed)";
               }}
               onBlur={(e) => {
                 e.target.style.background = "var(--surface-container-high)";
-                e.target.style.borderColor = "transparent";
+                e.target.style.borderColor = "var(--outline-variant)";
+                e.target.style.boxShadow = "none";
               }}
             />
           </div>
@@ -197,19 +209,19 @@ export default function LoginPage() {
             id="login-submit"
             type="submit"
             disabled={isLoading}
+            className="gradient-primary"
             style={{
               width: "100%",
-              padding: "var(--space-200) var(--space-300)",
-              background: "linear-gradient(135deg, var(--primary), var(--primary-light))",
+              padding: "var(--spacing-3) var(--spacing-4)",
               border: "none",
-              borderRadius: "var(--radius-200)",
-              color: "#fff",
-              fontSize: "var(--text-base)",
+              borderRadius: "var(--radius-lg)",
+              fontSize: "0.9rem",
               fontWeight: 600,
               cursor: isLoading ? "not-allowed" : "pointer",
               opacity: isLoading ? 0.7 : 1,
               transition: "all 0.2s ease",
               letterSpacing: "0.02em",
+              fontFamily: "var(--font-body)",
             }}
           >
             {isLoading ? "Signing in..." : "Sign In"}
@@ -220,9 +232,9 @@ export default function LoginPage() {
         <p
           style={{
             textAlign: "center",
-            marginTop: "var(--space-400)",
-            fontSize: "var(--text-sm)",
-            color: "var(--text-muted)",
+            marginTop: "var(--spacing-6)",
+            fontSize: "0.85rem",
+            color: "var(--on-surface-variant)",
           }}
         >
           Don&apos;t have an account?{" "}
