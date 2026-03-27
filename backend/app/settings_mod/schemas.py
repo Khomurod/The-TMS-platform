@@ -3,12 +3,13 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from uuid import UUID
 
 
 # ── Company Profile ──────────────────────────────────────────────
 
 class CompanyProfileResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     mc_number: Optional[str] = None
     dot_number: Optional[str] = None
@@ -16,7 +17,7 @@ class CompanyProfileResponse(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -50,14 +51,14 @@ class UserUpdateRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: str
+    id: UUID
     email: str
     first_name: str
     last_name: str
     role: str
     is_active: bool
     last_login_at: Optional[datetime] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

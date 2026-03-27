@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel
 from typing import Optional
+from uuid import UUID
 
 
 # ── Settlement Schemas ───────────────────────────────────────────
@@ -16,19 +17,19 @@ class SettlementGenerateRequest(BaseModel):
 
 
 class SettlementLineItemResponse(BaseModel):
-    id: str
+    id: UUID
     type: str  # load_pay | accessorial | deduction
     description: Optional[str] = None
     amount: Decimal
-    load_id: Optional[str] = None
+    load_id: Optional[UUID] = None
 
     model_config = {"from_attributes": True}
 
 
 class SettlementResponse(BaseModel):
     """Full settlement detail."""
-    id: str
-    driver_id: str
+    id: UUID
+    driver_id: UUID
     settlement_number: str
     period_start: date
     period_end: date
@@ -38,8 +39,8 @@ class SettlementResponse(BaseModel):
     net_pay: Decimal
     status: str
     paid_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     line_items: list[SettlementLineItemResponse] = []
     # Populated by service
     driver_name: Optional[str] = None
@@ -50,8 +51,8 @@ class SettlementResponse(BaseModel):
 
 class SettlementListItem(BaseModel):
     """Lightweight settlement for list views."""
-    id: str
-    driver_id: str
+    id: UUID
+    driver_id: UUID
     settlement_number: str
     period_start: date
     period_end: date
@@ -75,8 +76,8 @@ class SettlementListResponse(BaseModel):
 
 class InvoiceResponse(BaseModel):
     """Broker invoice detail."""
-    id: str
-    load_id: str
+    id: UUID
+    load_id: UUID
     load_number: str
     broker_name: Optional[str] = None
     base_rate: Decimal

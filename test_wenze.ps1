@@ -2,10 +2,10 @@ $ErrorActionPreference = "Stop"
 
 $API_URL = "https://kinetic-api-1065403267999.us-central1.run.app/api/v1"
 
-Write-Host "1. Logging in as Test Company (Wenze)..."
+Write-Host "1. Logging in as Admin (testcompany.com)..."
 $loginBody = @{
-    email = "admin@wenze.com"
-    password = "SuperSecretPassword123!"
+    email = "admin@testcompany.com"
+    password = "SecurePass123!"
 } | ConvertTo-Json -Depth 1
 
 Write-Host "Sending login request..."

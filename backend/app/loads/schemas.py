@@ -75,13 +75,16 @@ class LoadCreate(BaseModel):
 
 
 class LoadUpdate(BaseModel):
-    """PUT /loads/{id} — update load info."""
+    """PUT /loads/{id} -- update load info."""
     broker_id: Optional[str] = None
     broker_load_id: Optional[str] = None
     contact_agent: Optional[str] = None
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
     notes: Optional[str] = None
+    driver_id: Optional[str] = None
+    truck_id: Optional[str] = None
+    trailer_id: Optional[str] = None
 
 
 class StatusUpdateRequest(BaseModel):
@@ -103,10 +106,10 @@ class LoadResponse(BaseModel):
     id: UUID
     load_number: str
     broker_load_id: Optional[str] = None
-    broker_id: Optional[str] = None
-    driver_id: Optional[str] = None
-    truck_id: Optional[str] = None
-    trailer_id: Optional[str] = None
+    broker_id: Optional[UUID] = None
+    driver_id: Optional[UUID] = None
+    truck_id: Optional[UUID] = None
+    trailer_id: Optional[UUID] = None
     status: str
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
@@ -130,8 +133,8 @@ class LoadListItem(BaseModel):
     status: str
     base_rate: Optional[Decimal] = None
     total_rate: Optional[Decimal] = None
-    driver_id: Optional[str] = None
-    truck_id: Optional[str] = None
+    driver_id: Optional[UUID] = None
+    truck_id: Optional[UUID] = None
     created_at: Optional[datetime] = None
     # Populated from stops
     pickup_city: Optional[str] = None
