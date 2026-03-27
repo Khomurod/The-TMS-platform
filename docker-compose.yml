@@ -32,6 +32,9 @@ services:
       JWT_SECRET_KEY: dev-secret-key-change-in-production
       ENVIRONMENT: development
       CORS_ORIGINS: '["http://localhost:3000"]'
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
+      GCS_CREDENTIALS_JSON: ${GCS_CREDENTIALS_JSON:-}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
     depends_on:
       db:
         condition: service_healthy
