@@ -33,7 +33,12 @@ class Settings(BaseSettings):
 
     # ── Google Cloud Storage (Phase 3) ───────────────────────────
     gcs_bucket_name: str = ""
-    gcs_credentials_path: str = ""
+    gcs_credentials_path: str = ""  # legacy — prefer gcs_credentials_json
+    gcs_credentials_json: str = ""  # service account key as JSON string
+    google_application_credentials: str = ""  # file path alternative
+
+    # ── GCP Project ──────────────────────────────────────────────
+    gcp_project_id: str = ""
 
     @model_validator(mode='after')
     def validate_production_secrets(self):
