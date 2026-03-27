@@ -28,7 +28,11 @@ async def get_db() -> AsyncSession:
     
     NOTE: Uses autocommit=False. Routes/services must call
     `await db.commit()` explicitly after successful writes.
-    Session is closed automatically when the context exits.
+    Session is rolled back automatically on exception, then closed.
     """
     async with async_session_factory() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise

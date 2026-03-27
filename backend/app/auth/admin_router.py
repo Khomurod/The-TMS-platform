@@ -86,6 +86,7 @@ async def create_tenant(data: CreateTenantRequest, db: AsyncSession = Depends(ge
         role=UserRole.company_admin,
     )
     db.add(admin_user)
+    await db.commit()
     return company
 
 
