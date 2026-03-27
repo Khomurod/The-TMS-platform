@@ -1,19 +1,18 @@
-"""Security middleware — rate limiting, input sanitization, and HTTPS enforcement.
+"""Security middleware — rate limiting and HTTPS enforcement.
 
 Phase 6.3 — Security Hardening:
   - Rate limiting on auth endpoints (login, register, refresh)
-  - Request size limiting
-  - Security headers (HSTS, X-Content-Type-Options, X-Frame-Options)
   - HTTPS redirect in production
+
+NOTE: Uses pure ASGI middleware (not BaseHTTPMiddleware) to avoid streaming deadlocks
+when combined with yield-based FastAPI dependencies like get_db().
 """
 
+import json
 import time
 from collections import defaultdict
-from typing import Callable
 
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 # ── Rate Limiter ─────────────────────────────────────────────────
@@ -46,77 +45,88 @@ AUTH_RATE_LIMIT = 10  # max requests per window
 AUTH_WINDOW = 60  # seconds
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate limiting for auth endpoints — 10 requests per minute per IP."""
-
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if request.url.path in AUTH_PATHS and request.method == "POST":
-            client_ip = request.client.host if request.client else "unknown"
-            key = f"rate:{client_ip}:{request.url.path}"
-
-            if rate_limit_store.is_rate_limited(key, AUTH_RATE_LIMIT, AUTH_WINDOW):
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Too many requests. Please try again later."},
-                    headers={"Retry-After": str(AUTH_WINDOW)},
-                )
-
-        return await call_next(request)
-
-
-# ── Security Headers ─────────────────────────────────────────────
-
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses.
+class RateLimitMiddleware:
+    """Rate limiting for auth endpoints — 10 requests per minute per IP.
     
-    NOTE: Skip /api/ routes — CORS middleware handles those.
-    CSP is excluded for API responses (JSON, not HTML).
+    Pure ASGI implementation to avoid BaseHTTPMiddleware deadlocks.
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        response = await call_next(request)
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-        # Skip security headers for API routes — CORS middleware handles those
-        if request.url.path.startswith("/api/"):
-            return response
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-        # Prevent MIME type sniffing
-        response.headers["X-Content-Type-Options"] = "nosniff"
+        path = scope.get("path", "")
+        method = scope.get("method", "GET")
 
-        # Prevent clickjacking
-        response.headers["X-Frame-Options"] = "DENY"
+        if path in AUTH_PATHS and method == "POST":
+            # Get client IP from scope
+            client = scope.get("client")
+            client_ip = client[0] if client else "unknown"
+            key = f"rate:{client_ip}:{path}"
 
-        # XSS Protection (legacy browsers)
-        response.headers["X-XSS-Protection"] = "1; mode=block"
+            if rate_limit_store.is_rate_limited(key, AUTH_RATE_LIMIT, AUTH_WINDOW):
+                body = json.dumps({"detail": "Too many requests. Please try again later."}).encode()
+                await send({
+                    "type": "http.response.start",
+                    "status": 429,
+                    "headers": [
+                        [b"content-type", b"application/json"],
+                        [b"content-length", str(len(body)).encode()],
+                        [b"retry-after", str(AUTH_WINDOW).encode()],
+                    ],
+                })
+                await send({"type": "http.response.body", "body": body})
+                return
 
-        # Referrer policy
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-        # HSTS (only in production)
-        if not request.url.hostname or request.url.hostname not in ("localhost", "127.0.0.1"):
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-
-        return response
+        await self.app(scope, receive, send)
 
 
 # ── HTTPS Redirect ───────────────────────────────────────────────
 
-class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
-    """Redirect HTTP → HTTPS in production."""
+class HTTPSRedirectMiddleware:
+    """Redirect HTTP → HTTPS in production. Pure ASGI implementation."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         # Skip for localhost development
-        host = request.url.hostname or "localhost"
-        if host in ("localhost", "127.0.0.1"):
-            return await call_next(request)
+        headers = dict(scope.get("headers", []))
+        host = headers.get(b"host", b"localhost").decode()
+
+        if host.startswith("localhost") or host.startswith("127.0.0.1"):
+            await self.app(scope, receive, send)
+            return
 
         # Check X-Forwarded-Proto (Cloud Run sets this)
-        if request.headers.get("x-forwarded-proto") == "http":
-            url = request.url.replace(scheme="https")
-            return JSONResponse(
-                status_code=301,
-                headers={"Location": str(url)},
-                content={"detail": "Redirecting to HTTPS"},
-            )
+        proto = headers.get(b"x-forwarded-proto", b"https").decode()
+        if proto == "http":
+            # Build HTTPS URL
+            path = scope.get("path", "/")
+            qs = scope.get("query_string", b"").decode()
+            url = f"https://{host}{path}"
+            if qs:
+                url += f"?{qs}"
 
-        return await call_next(request)
+            body = json.dumps({"detail": "Redirecting to HTTPS"}).encode()
+            await send({
+                "type": "http.response.start",
+                "status": 301,
+                "headers": [
+                    [b"content-type", b"application/json"],
+                    [b"location", url.encode()],
+                    [b"content-length", str(len(body)).encode()],
+                ],
+            })
+            await send({"type": "http.response.body", "body": body})
+            return
+
+        await self.app(scope, receive, send)

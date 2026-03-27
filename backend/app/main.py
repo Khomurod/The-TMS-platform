@@ -7,7 +7,6 @@ from app.config import settings
 from app.core.middleware import TenantMiddleware
 from app.core.security_middleware import (
     RateLimitMiddleware,
-    SecurityHeadersMiddleware,
     HTTPSRedirectMiddleware,
 )
 
@@ -40,9 +39,8 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
-# ── Security Middleware ──────────────────────────────────────────
+# ── Security Middleware (pure ASGI) ──────────────────────────────
 app.add_middleware(RateLimitMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
 if settings.environment == "production":
     app.add_middleware(HTTPSRedirectMiddleware)
 

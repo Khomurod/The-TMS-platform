@@ -18,17 +18,17 @@ async_session_factory = async_sessionmaker(
     engine,
     class_=AsyncSession,
     expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
 )
 
 
 async def get_db() -> AsyncSession:
-    """Yield a database session for dependency injection."""
+    """Yield a database session for dependency injection.
+    
+    NOTE: Uses autocommit=False. Routes/services must call
+    `await db.commit()` explicitly after successful writes.
+    Session is closed automatically when the context exits.
+    """
     async with async_session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+        yield session

@@ -67,6 +67,7 @@ class AuthService:
         # Generate tokens
         tokens = self._generate_tokens(user)
 
+        await self.db.commit()
         return user, company, tokens
 
     async def login(self, email: str, password: str) -> tuple[User, dict]:
@@ -86,6 +87,7 @@ class AuthService:
         # Update last login
         from datetime import datetime, timezone
         user.last_login_at = datetime.now(timezone.utc)
+        await self.db.commit()
 
         tokens = self._generate_tokens(user)
         return user, tokens
