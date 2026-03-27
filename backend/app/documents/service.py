@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from datetime import timedelta
 from typing import Optional
@@ -132,15 +133,12 @@ class DocumentService:
     ) -> str:
         """Build the GCS object path: {company_id}/{entity_type}/{entity_id}/{uuid}_{filename}.
 
-        Sanitizes the filename to prevent path traversal attacks.
+        Sanitizes the filename to prevent path traversal attacks using os.path.basename().
         """
-        import os
-        # Strip any directory components and sanitize the filename
-        safe_filename = os.path.basename(filename).replace(" ", "_")
-        # Remove any remaining path-traversal characters
-        safe_filename = safe_filename.replace("..", "").strip("/\\").strip()
+        # Strip any directory components — prevents path traversal (e.g. ../../etc/passwd)
+        safe_filename = os.path.basename(filename).replace(" ", "_").strip()
         if not safe_filename:
-            safe_filename = "upload"
+            safe_filename = "upload.bin"
         unique_prefix = uuid.uuid4().hex
         return (
             f"{self.company_id}/{entity_type.value}/{entity_id}/{unique_prefix}_{safe_filename}"
