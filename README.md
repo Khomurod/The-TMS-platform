@@ -38,4 +38,15 @@ docker-compose up
 docker-compose.yml
 ```
 
+## How to Deploy
+
+👉 **[DEPLOY.md](DEPLOY.md)** — Step-by-step beginner-friendly deployment guide
+
+Covers:
+- One-time GCP setup (Cloud Run, Cloud SQL)
+- Backend & frontend deployment commands
+- Firebase Hosting as an optional alternative
+- Local development with Docker
+- CI/CD setup via GitHub Actions
+
 See [masterplan.md](masterplan.md) for full PRD and [actionplan.md](actionplan.md) for the build plan.
