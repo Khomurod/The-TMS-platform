@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from uuid import UUID
 
 
 # ── Request Schemas ──────────────────────────────────────────────
@@ -55,7 +56,7 @@ class DriverUpdate(BaseModel):
 
 class DriverResponse(BaseModel):
     """Single driver response."""
-    id: str
+    id: UUID
     first_name: str
     last_name: str
     date_of_birth: Optional[date] = None
@@ -72,8 +73,8 @@ class DriverResponse(BaseModel):
     use_company_defaults: bool
     status: str
     is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -88,7 +89,7 @@ class DriverListResponse(BaseModel):
 
 class DriverAvailableResponse(BaseModel):
     """Lightweight driver info for assignment dropdowns."""
-    id: str
+    id: UUID
     first_name: str
     last_name: str
     cdl_class: Optional[str] = None
@@ -99,7 +100,7 @@ class DriverAvailableResponse(BaseModel):
 
 class DriverExpiringResponse(BaseModel):
     """Driver with upcoming document expiration."""
-    id: str
+    id: UUID
     first_name: str
     last_name: str
     cdl_expiry_date: Optional[date] = None

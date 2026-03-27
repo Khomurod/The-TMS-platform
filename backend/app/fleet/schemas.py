@@ -3,6 +3,7 @@
 from datetime import date, datetime
 from pydantic import BaseModel
 from typing import Optional
+from uuid import UUID
 
 
 # ── Truck Schemas ────────────────────────────────────────────────
@@ -33,7 +34,7 @@ class TruckUpdate(BaseModel):
 
 
 class TruckResponse(BaseModel):
-    id: str
+    id: UUID
     unit_number: str
     year: Optional[int] = None
     make: Optional[str] = None
@@ -45,8 +46,8 @@ class TruckResponse(BaseModel):
     dot_inspection_expiry: Optional[date] = None
     status: str
     is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -59,7 +60,7 @@ class TruckListResponse(BaseModel):
 
 
 class TruckAvailableResponse(BaseModel):
-    id: str
+    id: UUID
     unit_number: str
     make: Optional[str] = None
     model: Optional[str] = None
@@ -98,7 +99,7 @@ class TrailerUpdate(BaseModel):
 
 
 class TrailerResponse(BaseModel):
-    id: str
+    id: UUID
     unit_number: str
     year: Optional[int] = None
     make: Optional[str] = None
@@ -111,8 +112,8 @@ class TrailerResponse(BaseModel):
     dot_inspection_expiry: Optional[date] = None
     status: str
     is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -125,7 +126,7 @@ class TrailerListResponse(BaseModel):
 
 
 class TrailerAvailableResponse(BaseModel):
-    id: str
+    id: UUID
     unit_number: str
     trailer_type: Optional[str] = None
     make: Optional[str] = None

@@ -4,6 +4,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from pydantic import BaseModel
 from typing import Optional
+from uuid import UUID
 
 
 # ── Stop Schemas ─────────────────────────────────────────────────
@@ -22,7 +23,7 @@ class StopCreate(BaseModel):
 
 
 class StopResponse(BaseModel):
-    id: str
+    id: UUID
     stop_type: str
     stop_sequence: int
     facility_name: Optional[str] = None
@@ -48,7 +49,7 @@ class AccessorialCreate(BaseModel):
 
 
 class AccessorialResponse(BaseModel):
-    id: str
+    id: UUID
     type: str
     amount: Decimal
     description: Optional[str] = None
@@ -99,7 +100,7 @@ class AssignmentRequest(BaseModel):
 
 class LoadResponse(BaseModel):
     """Full load detail."""
-    id: str
+    id: UUID
     load_number: str
     broker_load_id: Optional[str] = None
     broker_id: Optional[str] = None
@@ -113,8 +114,8 @@ class LoadResponse(BaseModel):
     contact_agent: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     stops: list[StopResponse] = []
     accessorials: list[AccessorialResponse] = []
 
@@ -123,7 +124,7 @@ class LoadResponse(BaseModel):
 
 class LoadListItem(BaseModel):
     """Lightweight load for board listings."""
-    id: str
+    id: UUID
     load_number: str
     broker_load_id: Optional[str] = None
     status: str
@@ -131,7 +132,7 @@ class LoadListItem(BaseModel):
     total_rate: Optional[Decimal] = None
     driver_id: Optional[str] = None
     truck_id: Optional[str] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     # Populated from stops
     pickup_city: Optional[str] = None
     pickup_date: Optional[date] = None
