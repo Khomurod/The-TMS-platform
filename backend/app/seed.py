@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import uuid
 from datetime import date
 
 # Ensure the backend directory is on sys.path when run as a module
@@ -96,7 +97,7 @@ async def create_company(db: AsyncSession) -> Company:
     return company
 
 
-async def create_company_users(db: AsyncSession, company_id: object) -> dict[str, User]:
+async def create_company_users(db: AsyncSession, company_id: uuid.UUID) -> dict[str, User]:
     users_spec = [
         {
             "label": "Creating Company Admin: James Wenze...",
@@ -152,7 +153,7 @@ async def create_company_users(db: AsyncSession, company_id: object) -> dict[str
 # ── Brokers ──────────────────────────────────────────────────────
 
 
-async def create_brokers(db: AsyncSession, company_id: object) -> dict[str, Broker]:
+async def create_brokers(db: AsyncSession, company_id: uuid.UUID) -> dict[str, Broker]:
     brokers_spec = [
         {
             "label": "Creating broker: CH Robinson...",
@@ -210,7 +211,7 @@ async def create_brokers(db: AsyncSession, company_id: object) -> dict[str, Brok
 # ── Drivers ──────────────────────────────────────────────────────
 
 
-async def create_drivers(db: AsyncSession, company_id: object) -> dict[str, Driver]:
+async def create_drivers(db: AsyncSession, company_id: uuid.UUID) -> dict[str, Driver]:
     drivers_spec = [
         {
             "label": "Creating driver: Robert Williams...",
@@ -319,7 +320,7 @@ async def create_drivers(db: AsyncSession, company_id: object) -> dict[str, Driv
 # ── Trucks ───────────────────────────────────────────────────────
 
 
-async def create_trucks(db: AsyncSession, company_id: object) -> dict[str, Truck]:
+async def create_trucks(db: AsyncSession, company_id: uuid.UUID) -> dict[str, Truck]:
     trucks_spec = [
         {
             "label": "Creating truck: TRK-101...",
@@ -402,7 +403,7 @@ async def create_trucks(db: AsyncSession, company_id: object) -> dict[str, Truck
 # ── Trailers ─────────────────────────────────────────────────────
 
 
-async def create_trailers(db: AsyncSession, company_id: object) -> dict[str, Trailer]:
+async def create_trailers(db: AsyncSession, company_id: uuid.UUID) -> dict[str, Trailer]:
     trailers_spec = [
         {
             "label": "Creating trailer: TRL-201...",
@@ -492,7 +493,7 @@ async def create_trailers(db: AsyncSession, company_id: object) -> dict[str, Tra
 
 async def create_loads(
     db: AsyncSession,
-    company_id: object,
+    company_id: uuid.UUID,
     brokers: dict[str, Broker],
     drivers: dict[str, Driver],
     trucks: dict[str, Truck],
