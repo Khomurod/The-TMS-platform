@@ -201,7 +201,7 @@ async def get_fleet_status(
     company_id: UUID = Depends(get_current_company_id),
 ):
     """Truck distribution by status."""
-    statuses = [EquipmentStatus.available, EquipmentStatus.in_use, EquipmentStatus.in_shop]
+    statuses = [EquipmentStatus.available, EquipmentStatus.in_use, EquipmentStatus.maintenance]
     result = {}
 
     for status in statuses:
@@ -221,7 +221,7 @@ async def get_fleet_status(
     return {
         "loaded": result.get("in_use", 0),
         "available": result.get("available", 0),
-        "in_shop": result.get("in_shop", 0),
+        "in_shop": result.get("maintenance", 0),
         "total": total,
         "utilization_rate": utilization,
     }

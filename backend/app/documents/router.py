@@ -25,9 +25,9 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 def _get_service(
     db: AsyncSession = Depends(get_db),
     company_id: UUID = Depends(get_current_company_id),
-    user_id: UUID = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id),
 ) -> DocumentService:
-    return DocumentService(db, company_id, user_id)
+    return DocumentService(db, company_id, UUID(user_id))
 
 
 # ══════════════════════════════════════════════════════════════════

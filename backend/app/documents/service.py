@@ -106,6 +106,11 @@ class DocumentService:
 
     def _validate_file(self, file: UploadFile, content: bytes) -> None:
         """Raise HTTPException if file fails size or type validation."""
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Empty files are not allowed.",
+            )
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=400,
@@ -125,9 +130,18 @@ class DocumentService:
     def _gcs_object_path(
         self, entity_type: EntityType, entity_id: uuid.UUID, filename: str
     ) -> str:
-        """Build the GCS object path: {company_id}/{entity_type}/{entity_id}/{uuid}_{filename}."""
+        """Build the GCS object path: {company_id}/{entity_type}/{entity_id}/{uuid}_{filename}.
+
+        Sanitizes the filename to prevent path traversal attacks.
+        """
+        import os
+        # Strip any directory components and sanitize the filename
+        safe_filename = os.path.basename(filename).replace(" ", "_")
+        # Remove any remaining path-traversal characters
+        safe_filename = safe_filename.replace("..", "").strip("/\\").strip()
+        if not safe_filename:
+            safe_filename = "upload"
         unique_prefix = uuid.uuid4().hex
-        safe_filename = filename.replace(" ", "_")
         return (
             f"{self.company_id}/{entity_type.value}/{entity_id}/{unique_prefix}_{safe_filename}"
         )
