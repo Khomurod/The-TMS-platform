@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { Settings2, ArrowUpRight, DollarSign, CheckCircle2 } from "lucide-react";
+import { Settings2, ArrowUpRight, DollarSign, CheckCircle2, ChevronDown } from "lucide-react";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("Get things done");
