@@ -30,14 +30,14 @@ export default function TopBar() {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-[64px] bg-white border-b border-[#e5e7eb] flex items-center justify-between px-6 sticky top-0 z-10 w-full shrink-0">
+    <header className="h-[64px] bg-[var(--surface-lowest)] border-b border-[var(--outline-variant)] flex items-center justify-between px-6 sticky top-0 z-10 w-full shrink-0">
       
       {/* Left side Breadcrumbs */}
       <div className="flex items-center text-sm">
         {breadcrumbs.map((crumb, i) => (
-          <span key={crumb} className="flex items-center text-[#6b7280]">
-            {i > 0 && <span className="mx-2 text-[#d1d5db]">/</span>}
-            <span className={i === breadcrumbs.length - 1 ? "text-[#111827] font-semibold" : ""}>
+          <span key={crumb} className="flex items-center text-[var(--on-surface-variant)]">
+            {i > 0 && <span className="mx-2 text-[var(--outline-variant)]">/</span>}
+            <span className={i === breadcrumbs.length - 1 ? "text-[var(--on-surface)] font-bold label-md" : "label-md"}>
               {crumb}
             </span>
           </span>
@@ -47,50 +47,53 @@ export default function TopBar() {
       {/* Right side Utility Actions */}
       <div className="flex items-center gap-4">
         {/* Search */}
-        <div className="relative flex items-center hidden md:flex">
-          <div className="flex items-center border border-[#e5e7eb] rounded-md overflow-hidden h-9">
-            <select className="bg-[#f9fafb] text-[#374151] border-none text-xs px-3 focus:ring-0 outline-none border-r border-[#e5e7eb] h-full cursor-pointer">
+        <div className="relative hidden md:flex items-center">
+          <div className="flex items-center bg-[var(--surface-container-high)] ghost-border rounded-[var(--radius-md)] overflow-hidden h-8 transition-colors focus-within:bg-[var(--surface-lowest)] focus-within:border-[var(--primary)]">
+            <select className="bg-transparent text-[var(--on-surface-variant)] border-none text-xs px-2 focus:ring-0 outline-none border-r ghost-border h-full cursor-pointer label-sm font-medium">
               <option>All</option>
             </select>
-            <div className="flex items-center bg-white px-3 w-64">
-              <Search className="h-4 w-4 text-[#9ca3af] mr-2" />
+            <div className="flex items-center px-2 w-56">
+              <Search className="h-3.5 w-3.5 text-[var(--on-surface-variant)] mr-2" />
               <input 
                 type="text" 
                 placeholder="Ctrl + K to search" 
-                className="w-full text-xs text-[#374151] placeholder-[#9ca3af] border-none focus:ring-0 outline-none"
+                className="w-full bg-transparent text-[var(--on-surface)] placeholder-[var(--on-surface-variant)] border-none focus:ring-0 outline-none label-sm"
               />
             </div>
           </div>
         </div>
 
-        <div className="w-px h-6 bg-[#e5e7eb] mx-2 hidden md:block"></div>
+        <div className="w-px h-5 bg-[var(--outline-variant)] mx-1 hidden md:block"></div>
 
         {/* Global Nav */}
-        <button className="flex items-center gap-1.5 text-xs font-semibold text-[#111827] hover:text-[#3525cd]">
-          <Globe className="h-4 w-4 text-[#3525cd] rounded-full bg-[#eef2ff]" />
+        <button className="flex items-center gap-1.5 label-md font-bold text-[var(--on-surface)] hover:text-[var(--primary)] transition-colors">
+          <Globe className="h-4 w-4 text-[var(--primary)] rounded-full bg-[var(--primary-fixed)]" />
           Safehaul 2.0
-          <ChevronDown className="h-3 w-3 text-[#6b7280]" />
+          <ChevronDown className="h-3 w-3 text-[var(--on-surface-variant)]" />
         </button>
 
         {/* Create Action */}
-        <button className="flex items-center gap-1 bg-white border border-[#e5e7eb] text-[#374151] px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-[#f3f4f6]">
-          <Plus className="h-4 w-4 text-[#6b7280]" />
+        <button className="flex items-center gap-1 bg-[var(--surface-lowest)] border border-[var(--outline-variant)] text-[var(--on-surface)] px-2.5 py-1 rounded-[var(--radius-md)] label-sm font-bold shadow-ambient hover:bg-[var(--surface-container)] transition-colors">
+          <Plus className="h-3.5 w-3.5 text-[var(--on-surface-variant)]" />
           Create new
         </button>
 
         {/* Icons */}
-        <div className="flex items-center gap-3 ml-2 text-[#6b7280]">
-          <button className="flex items-center gap-1.5 text-xs font-medium text-[#10b981] mx-2 hover:bg-[#ecfdf5] px-2 py-1 rounded-md">
-            <HelpCircle className="h-4 w-4" />
-            Live Support
+        <div className="flex items-center gap-2.5 ml-1 text-[var(--on-surface-variant)]">
+          <button className="flex items-center gap-1 label-sm font-bold text-[var(--success)] mx-1 hover:bg-[var(--success-container)] px-2 py-1 rounded-[var(--radius-md)] transition-colors">
+            <HelpCircle className="h-3.5 w-3.5" />
+            Support
           </button>
           
-          <button className="hover:text-[#111827]"><Sun className="h-5 w-5" /></button>
-          <button className="hover:text-[#111827]"><Settings className="h-5 w-5" /></button>
-          <button className="hover:text-[#111827]"><Send className="h-5 w-5" /></button>
-          <button className="hover:text-[#111827]"><Bell className="h-5 w-5" /></button>
-          <button className="hover:text-[#111827] ml-2 h-8 w-8 rounded-full bg-[#f3f4f6] flex items-center justify-center border border-[#e5e7eb]">
-            <User className="h-4 w-4" />
+          <button className="hover:text-[var(--on-surface)] transition-colors"><Sun className="h-4 w-4" /></button>
+          <button className="hover:text-[var(--on-surface)] transition-colors"><Settings className="h-4 w-4" /></button>
+          <button className="hover:text-[var(--on-surface)] transition-colors"><Send className="h-4 w-4" /></button>
+          <button className="hover:text-[var(--on-surface)] transition-colors relative">
+            <Bell className="h-4 w-4" />
+            <span className="absolute top-0 right-0 h-1.5 w-1.5 bg-[var(--error)] rounded-full"></span>
+          </button>
+          <button className="ml-1 h-7 w-7 rounded-full bg-[var(--surface-container-highest)] flex items-center justify-center ghost-border hover:bg-[var(--surface-variant)] transition-colors text-[var(--on-surface)]">
+            <User className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

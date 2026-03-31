@@ -13,23 +13,23 @@ export default function DashboardPage() {
   ];
 
   const gaugeData = [
-    { name: "Covered", value: 91.8, color: "#10b981" },
-    { name: "Uncovered", value: 8.2, color: "#f97316" }
+    { name: "Covered", value: 91.8, color: "var(--success)" },
+    { name: "Uncovered", value: 8.2, color: "var(--warning)" }
   ];
 
   return (
-    <div className="h-full flex flex-col p-4 bg-white rounded-md">
+    <div className="h-full flex flex-col bg-transparent">
       
       {/* Sub Navigation */}
-      <div className="flex bg-white items-center gap-6 px-4 pt-2 pb-2 border-b border-[#e5e7eb] overflow-x-auto whitespace-nowrap scrollbar-hide mb-6 -mt-2">
+      <div className="flex bg-transparent items-center gap-6 pt-2 pb-2 mb-6 border-b border-[var(--outline-variant)] overflow-x-auto whitespace-nowrap scrollbar-hide">
         {tabs.map(t => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
-            className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+            className={`label-sm font-bold pb-2 border-b-2 transition-colors ${
               activeTab === t 
-                ? "border-[#3525cd] text-[#3525cd]" 
-                : "border-transparent text-[#6b7280] hover:text-[#374151]"
+                ? "border-[var(--primary)] text-[var(--primary)]" 
+                : "border-transparent text-[var(--on-surface-variant)] hover:text-[var(--on-surface)]"
             }`}
           >
             {t}
@@ -37,37 +37,37 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* ROW 1 */}
         {/* Quick Setup */}
-        <div className="border border-[#e5e7eb] rounded-lg p-5">
-          <div className="flex items-center gap-2 text-[#3525cd] font-semibold mb-6">
+        <div className="bg-[var(--surface-lowest)] rounded-[var(--radius-xl)] shadow-ambient ghost-border p-5">
+          <div className="flex items-center gap-2 text-[var(--primary)] title-md font-bold mb-6">
             <Settings2 className="h-5 w-5" /> Quick Setup
           </div>
-          <p className="text-sm font-semibold text-[#374151] mb-6">Unassigned Trucks, Trailers, Drivers</p>
+          <p className="label-sm text-[var(--on-surface)] font-bold mb-5 uppercase tracking-wide">Unassigned Items</p>
           <div className="flex justify-around text-center">
-             <div>
-               <p className="text-xs text-[#6b7280] mb-2 font-medium">Trucks</p>
-               <p className="text-2xl text-[#3b82f6] font-medium">5</p>
+             <div className="flex flex-col items-center">
+               <p className="label-md font-bold text-[var(--on-surface-variant)] mb-1">Trucks</p>
+               <p className="headline-lg text-[var(--info)] tabular-nums">5</p>
              </div>
-             <div>
-               <p className="text-xs text-[#6b7280] mb-2 font-medium">Trailers</p>
-               <p className="text-2xl text-[#ef4444] font-medium">163</p>
+             <div className="flex flex-col items-center">
+               <p className="label-md font-bold text-[var(--on-surface-variant)] mb-1">Trailers</p>
+               <p className="headline-lg text-[var(--error)] tabular-nums">163</p>
              </div>
-             <div>
-               <p className="text-xs text-[#6b7280] mb-2 font-medium">Drivers</p>
-               <p className="text-2xl text-[#3525cd] font-medium">6</p>
+             <div className="flex flex-col items-center">
+               <p className="label-md font-bold text-[var(--on-surface-variant)] mb-1">Drivers</p>
+               <p className="headline-lg text-[var(--primary)] tabular-nums">6</p>
              </div>
           </div>
         </div>
 
         {/* Covered Drivers Gauge */}
-        <div className="border border-[#e5e7eb] rounded-lg p-5 relative flex flex-col items-center">
-          <div className="flex items-center gap-2 text-[#3525cd] font-semibold mb-2 self-start absolute top-5 left-5">
+        <div className="bg-[var(--surface-lowest)] rounded-[var(--radius-xl)] shadow-ambient ghost-border p-5 relative flex flex-col items-center justify-center min-h-[260px]">
+          <div className="flex items-center gap-2 text-[var(--primary)] title-md font-bold mb-2 self-start absolute top-5 left-5 z-10">
             <ArrowUpRight className="h-5 w-5" /> Covered Drivers
           </div>
-          <div className="w-[200px] h-[200px] mt-8 relative">
+          <div className="w-[180px] h-[180px] relative mt-6">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -76,8 +76,8 @@ export default function DashboardPage() {
                   cy="50%"
                   startAngle={180}
                   endAngle={0}
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={65}
+                  outerRadius={85}
                   paddingAngle={5}
                   dataKey="value"
                   stroke="none"
@@ -89,18 +89,21 @@ export default function DashboardPage() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 flex flex-col items-center text-center">
-               <div className="text-[10px] text-gray-400 font-bold mb-1 tracking-wider uppercase">Covered</div>
-               <div className="text-xl font-bold text-gray-800">91.8%</div>
+            
+            {/* Center Absolute Absolute Positioning for precise alignment */}
+            <div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none pb-8">
+               <div className="label-sm font-bold text-[var(--on-surface-variant)] uppercase tracking-widest mb-1">Covered</div>
+               <div className="headline-md text-[var(--on-surface)] tabular-nums">91.8%</div>
             </div>
-            <div className="absolute bottom-[40%] text-xs font-bold text-gray-500 left-5">0</div>
-            <div className="absolute bottom-[40%] text-xs font-bold text-gray-500 right-4">100</div>
+            
+            <div className="absolute bottom-[20%] text-xs font-bold text-[var(--on-surface-variant)] left-2">0</div>
+            <div className="absolute bottom-[20%] text-xs font-bold text-[var(--on-surface-variant)] right-2">100</div>
           </div>
         </div>
 
         {/* Tasks List */}
-        <div className="border border-[#e5e7eb] rounded-lg p-5">
-          <div className="flex items-center gap-2 text-[#10b981] font-semibold mb-4">
+        <div className="bg-[var(--surface-lowest)] rounded-[var(--radius-xl)] shadow-ambient ghost-border p-5">
+          <div className="flex items-center gap-2 text-[var(--success)] title-md font-bold mb-5">
             <CheckCircle2 className="h-5 w-5" /> Tasks
           </div>
           <div className="space-y-3">
@@ -110,9 +113,11 @@ export default function DashboardPage() {
                "Dispatch 60 booked loads to drivers",
                "Dispatch loads to 54 available drivers"
              ].map((task, i) => (
-               <div key={i} className="flex items-center justify-between border-b border-[#f3f4f6] pb-3 last:border-0 last:pb-0">
-                 <span className="text-xs font-medium text-[#4b5563]">{task}</span>
-                 <button className="border border-[#e5e7eb] bg-white hover:bg-gray-50 px-4 py-1.5 rounded text-xs font-semibold text-gray-700">Go</button>
+               <div key={i} className="flex items-center justify-between border-b border-[var(--surface-variant)] pb-3 last:border-0 last:pb-0">
+                 <span className="body-sm font-medium text-[var(--on-surface-variant)]">{task}</span>
+                 <button className="ghost-border bg-[var(--surface-low)] hover:bg-[var(--surface-container)] transition-colors px-3 py-1 rounded-[var(--radius-sm)] label-sm font-bold text-[var(--on-surface)] shadow-sm">
+                    Go
+                 </button>
                </div>
              ))}
           </div>
@@ -120,110 +125,135 @@ export default function DashboardPage() {
 
         {/* ROW 2 */}
         {/* Driver Dispatch Statuses */}
-        <div className="border border-[#e5e7eb] rounded-lg p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-[#3525cd] font-semibold">
+        <div className="bg-[var(--surface-lowest)] rounded-[var(--radius-xl)] shadow-ambient ghost-border p-5 md:col-span-1 lg:col-span-1">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2 text-[var(--primary)] title-md font-bold">
               <ArrowUpRight className="h-5 w-5" /> Driver Dispatch Statuses
             </div>
-            <div className="flex border border-[#e5e7eb] rounded divide-x divide-[#e5e7eb] text-[10px] font-bold">
-               <span className="px-2 py-1 text-[#3525cd] bg-blue-50">Driver</span>
-               <span className="px-2 py-1 text-gray-500">Dispatch</span>
+            <div className="flex ghost-border rounded-[var(--radius-sm)] overflow-hidden">
+               <span className="px-2 py-1 bg-[var(--primary-fixed)] text-[var(--primary)] label-sm font-bold">Driver</span>
+               <span className="px-2 py-1 bg-[var(--surface-lowest)] text-[var(--on-surface-variant)] label-sm font-bold border-l ghost-border">Dispatch</span>
             </div>
           </div>
-          <table className="w-full text-xs font-medium mt-4">
-            <thead>
-              <tr className="text-[#9ca3af] border-b border-white pb-2 text-left">
-                <th className="font-semibold pb-2">STATUS</th>
-                <th className="font-semibold pb-2 text-center">QTY</th>
-                <th className="font-semibold pb-2 text-right">%</th>
-              </tr>
-            </thead>
-            <tbody>
-               <tr>
-                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div> DISPATCHED</td>
-                 <td className="py-2 text-center"><span className="bg-[#3b82f6] text-white px-6 py-1 rounded-full text-[10px]">18</span></td>
-                 <td className="py-2 text-right text-gray-500">19.15</td>
-               </tr>
-               <tr>
-                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div> IN TRANSIT</td>
-                 <td className="py-2 text-center"><span className="bg-[#f97316] text-white px-6 py-1 rounded-full text-[10px]">26</span></td>
-                 <td className="py-2 text-right text-gray-500">27.66</td>
-               </tr>
-               <tr>
-                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#10b981]"></div> AVAILABLE</td>
-                 <td className="py-2 text-center"><span className="bg-[#10b981] text-white px-6 py-1 rounded-full text-[10px]">50</span></td>
-                 <td className="py-2 text-right text-gray-500">53.19</td>
-               </tr>
-            </tbody>
-          </table>
+          
+          <div className="flex flex-col mt-4">
+             {/* Header */}
+             <div className="grid grid-cols-12 gap-2 border-b border-[var(--surface-variant)] pb-2 mb-2">
+                <div className="col-span-6 label-sm font-bold text-[var(--on-surface-variant)]">STATUS</div>
+                <div className="col-span-3 label-sm font-bold text-[var(--on-surface-variant)] text-center">QTY</div>
+                <div className="col-span-3 label-sm font-bold text-[var(--on-surface-variant)] text-right">%</div>
+             </div>
+             
+             {/* Rows */}
+             {[
+               { name: "DISPATCHED", color: "var(--info)", qty: 18, pct: 19.15 },
+               { name: "IN TRANSIT", color: "var(--warning)", qty: 26, pct: 27.66 },
+               { name: "AVAILABLE", color: "var(--success)", qty: 50, pct: 53.19 },
+             ].map((status, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2 items-center py-2.5">
+                  <div className="col-span-6 flex items-center gap-2.5 label-sm font-bold text-[var(--on-surface)]">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }}></div> 
+                    {status.name}
+                  </div>
+                  <div className="col-span-3 flex justify-center">
+                    <span className="px-3 py-0.5 rounded-full text-[10px] font-bold text-[var(--surface-lowest)]" style={{ backgroundColor: status.color }}>
+                      {status.qty}
+                    </span>
+                  </div>
+                  <div className="col-span-3 label-sm font-medium text-[var(--on-surface-variant)] text-right tabular-nums">
+                    {status.pct}
+                  </div>
+                </div>
+             ))}
+          </div>
         </div>
 
         {/* Truck Statuses */}
-        <div className="border border-[#e5e7eb] rounded-lg p-5">
-           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-[#3525cd] font-semibold">
+        <div className="bg-[var(--surface-lowest)] rounded-[var(--radius-xl)] shadow-ambient ghost-border p-5 md:col-span-1 lg:col-span-1">
+           <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2 text-[var(--primary)] title-md font-bold">
               <ArrowUpRight className="h-5 w-5" /> Truck Statuses
             </div>
-            <div className="flex border border-[#e5e7eb] rounded divide-x divide-[#e5e7eb] text-[10px] font-bold">
-               <span className="px-2 py-1 text-[#3525cd] bg-blue-50">Truck</span>
-               <span className="px-2 py-1 text-gray-500">Fleet</span>
+            <div className="flex ghost-border rounded-[var(--radius-sm)] overflow-hidden">
+               <span className="px-2 py-1 bg-[var(--primary-fixed)] text-[var(--primary)] label-sm font-bold">Truck</span>
+               <span className="px-2 py-1 bg-[var(--surface-lowest)] text-[var(--on-surface-variant)] label-sm font-bold border-l ghost-border">Fleet</span>
             </div>
           </div>
-          <table className="w-full text-xs font-medium mt-4">
-            <thead>
-              <tr className="text-[#9ca3af] border-b border-white pb-2 text-left">
-                <th className="font-semibold pb-2">STATUS</th>
-                <th className="font-semibold pb-2 text-center">QTY</th>
-                <th className="font-semibold pb-2 text-right">%</th>
-              </tr>
-            </thead>
-            <tbody>
-               <tr>
-                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#10b981]"></div> AVAILABLE</td>
-                 <td className="py-2 text-center"><span className="bg-[#10b981] text-white px-6 py-1 rounded-full text-[10px]">62</span></td>
-                 <td className="py-2 text-right text-gray-500">70.5</td>
-               </tr>
-               <tr>
-                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div> IN TRANSIT</td>
-                 <td className="py-2 text-center"><span className="bg-[#f97316] text-white px-6 py-1 rounded-full text-[10px]">26</span></td>
-                 <td className="py-2 text-right text-gray-500">29.5</td>
-               </tr>
-            </tbody>
-          </table>
-          <div className="border-t border-[#e5e7eb] mt-12 pt-3 flex justify-between text-xs font-bold text-gray-400">
+          
+          <div className="flex flex-col mt-4">
+             {/* Header */}
+             <div className="grid grid-cols-12 gap-2 border-b border-[var(--surface-variant)] pb-2 mb-2">
+                <div className="col-span-6 label-sm font-bold text-[var(--on-surface-variant)]">STATUS</div>
+                <div className="col-span-3 label-sm font-bold text-[var(--on-surface-variant)] text-center">QTY</div>
+                <div className="col-span-3 label-sm font-bold text-[var(--on-surface-variant)] text-right">%</div>
+             </div>
+             
+             {/* Rows */}
+             {[
+               { name: "AVAILABLE", color: "var(--success)", qty: 62, pct: 70.5 },
+               { name: "IN TRANSIT", color: "var(--warning)", qty: 26, pct: 29.5 },
+             ].map((status, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2 items-center py-2.5">
+                  <div className="col-span-6 flex items-center gap-2.5 label-sm font-bold text-[var(--on-surface)]">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }}></div> 
+                    {status.name}
+                  </div>
+                  <div className="col-span-3 flex justify-center">
+                    <span className="px-3 py-0.5 rounded-full text-[10px] font-bold text-[var(--surface-lowest)]" style={{ backgroundColor: status.color }}>
+                      {status.qty}
+                    </span>
+                  </div>
+                  <div className="col-span-3 label-sm font-medium text-[var(--on-surface-variant)] text-right tabular-nums">
+                    {status.pct}
+                  </div>
+                </div>
+             ))}
+          </div>
+
+          <div className="border-t border-[var(--outline-variant)] mt-8 pt-4 flex justify-between label-sm font-bold text-[var(--on-surface-variant)] sticky bottom-0 bg-[var(--surface-lowest)]">
              <span>GRAND TOTAL</span>
-             <span className="mr-8">88</span>
-             <span>100%</span>
+             <div className="pr-[4.5rem]">
+               <span className="pr-12">88</span>
+               <span>100%</span>
+             </div>
           </div>
         </div>
 
         {/* Profit & Loss */}
-        <div className="border border-[#e5e7eb] rounded-lg p-5">
-          <div className="flex items-center gap-2 text-[#10b981] font-semibold mb-4">
+        <div className="bg-[var(--surface-lowest)] rounded-[var(--radius-xl)] shadow-ambient ghost-border p-5 md:col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-2 text-[var(--success)] title-md font-bold mb-5">
              <DollarSign className="h-5 w-5" /> Profit & Loss
           </div>
-          <div className="flex items-center gap-2 mb-6">
-             <div className="border border-[#e5e7eb] p-1 text-xs text-gray-600 rounded">03/29/2026 - 04/04/2026</div>
-             <div className="border border-[#e5e7eb] p-1 text-xs text-gray-600 rounded px-3">Delivery ▾</div>
+          <div className="flex items-center gap-3 mb-6">
+             <div className="ghost-border bg-[var(--surface-container)] px-2 py-1 label-sm font-medium text-[var(--on-surface-variant)] rounded-[var(--radius-sm)]">
+                 03/29/2026 - 04/04/2026
+             </div>
+             <div className="ghost-border bg-[var(--surface-lowest)] px-3 py-1 label-sm font-bold text-[var(--on-surface)] rounded-[var(--radius-sm)] cursor-pointer hover:bg-[var(--surface-low)] transition-colors flex items-center gap-1">
+                 Delivery <ChevronDown className="h-3.5 w-3.5 text-[var(--on-surface-variant)]" />
+             </div>
           </div>
           
-          <div className="space-y-4">
-             <div>
-               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Total Gross Revenue</span> </div>
-               <div className="flex items-center gap-2"><div className="w-full bg-[#10b981] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$255,942.00</span></div>
-             </div>
-             <div>
-               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Driver Salary Expenses</span> </div>
-               <div className="flex items-center gap-2"><div className="w-[50%] bg-[#3525cd] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$150,421.22</span></div>
-             </div>
-             <div>
-               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Fuel Costs</span> </div>
-               <div className="flex items-center gap-2"><div className="w-[8%] bg-[#3b82f6] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$13,788.68</span></div>
-             </div>
-             <div>
-               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Toll Costs</span> </div>
-               <div className="flex items-center gap-2"><div className="w-[2%] bg-[#ef4444] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$3,696.45</span></div>
-             </div>
+          <div className="space-y-5">
+             {[
+               { label: "Total Gross Revenue", amount: "$255,942.00", pct: 100, color: "var(--success)" },
+               { label: "Driver Salary Expenses", amount: "$150,421.22", pct: 58.7, color: "var(--primary)" },
+               { label: "Fuel Costs", amount: "$13,788.68", pct: 8.4, color: "var(--info)" },
+               { label: "Toll Costs", amount: "$3,696.45", pct: 2.1, color: "var(--error)" }
+             ].map((item, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-end">
+                     <span className="label-sm font-bold text-[var(--on-surface-variant)]">{item.label}</span>
+                     <span className="body-sm font-bold text-[var(--on-surface)] tabular-nums">{item.amount}</span>
+                  </div>
+                  {/* Modern Sleek Progress Bar */}
+                  <div className="w-full h-2 bg-[var(--surface-container)] rounded-full overflow-hidden">
+                     <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out" 
+                        style={{ width: `${Math.max(item.pct, 1)}%`, backgroundColor: item.color }} 
+                     />
+                  </div>
+                </div>
+             ))}
           </div>
         </div>
 
