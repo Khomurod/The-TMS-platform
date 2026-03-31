@@ -1,4 +1,4 @@
-"""Kinetic TMS — FastAPI Application Entry Point."""
+"""Safehaul TMS — FastAPI Application Entry Point."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +24,7 @@ from app.dashboard.router import router as dashboard_router
 from app.documents.router import router as documents_router
 
 app = FastAPI(
-    title="Kinetic TMS API",
+    title="Safehaul TMS API",
     description="Next-Gen Transportation Management System — API Server",
     version="0.1.0",
     docs_url="/docs",
@@ -68,11 +68,11 @@ app.include_router(documents_router, prefix=API_V1_PREFIX)
 @app.get("/api/v1/health", tags=["System"])
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "Kinetic TMS API", "version": "0.1.0"}
+    return {"status": "healthy", "service": "Safehaul TMS API", "version": "0.1.0"}
 
 
 # ── Root Redirect ────────────────────────────────────────────────
 @app.get("/", tags=["System"])
 async def root():
     """Root endpoint — redirects to docs."""
-    return {"message": "Kinetic TMS API", "docs": "/docs"}
+    return {"message": "Safehaul TMS API", "docs": "/docs"}

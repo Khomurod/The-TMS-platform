@@ -1,1 +1,1 @@
-"""Kinetic TMS Backend Application."""
+"""Safehaul TMS Backend Application."""

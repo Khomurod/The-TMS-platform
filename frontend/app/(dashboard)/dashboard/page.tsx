@@ -1,344 +1,232 @@
 "use client";
 
-/**
- * Executive Dashboard Page — Phase 5.7
- *
- * 4 KPI cards, compliance alerts, fleet status, recent events
- */
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import {
-  DollarSign,
-  TrendingUp,
-  Truck,
-  Activity,
-  AlertTriangle,
-  ChevronRight,
-  Plus,
-  Zap,
-} from "lucide-react";
-import api from "@/lib/api";
-
-interface KPIs {
-  gross_revenue: number;
-  avg_rpm: number;
-  active_loads: number;
-  planned_loads: number;
-  fleet_effectiveness: number;
-  active_drivers: number;
-  on_route_drivers: number;
-}
-
-interface Alert {
-  type: string;
-  severity: string;
-  entity_type: string;
-  entity_id: string;
-  entity_name: string;
-  description: string;
-  expiry_date: string;
-}
-
-interface FleetStatus {
-  loaded: number;
-  available: number;
-  in_shop: number;
-  total: number;
-  utilization_rate: number;
-}
-
-interface Event {
-  load_id: string;
-  load_number: string;
-  status: string;
-  description: string;
-  driver_name: string | null;
-  timestamp: string | null;
-  color: string;
-}
+import React, { useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { Settings2, ArrowUpRight, DollarSign, CheckCircle2 } from "lucide-react";
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [kpis, setKpis] = useState<KPIs | null>(null);
-  const [alerts, setAlerts] = useState<{ alerts: Alert[]; critical_count: number }>({ alerts: [], critical_count: 0 });
-  const [fleet, setFleet] = useState<FleetStatus | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [activeTab, setActiveTab] = useState("Get things done");
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [kRes, aRes, fRes, eRes] = await Promise.all([
-          api.get("/dashboard/kpis"),
-          api.get("/dashboard/compliance-alerts"),
-          api.get("/dashboard/fleet-status"),
-          api.get("/dashboard/recent-events"),
-        ]);
-        setKpis(kRes.data);
-        setAlerts(aRes.data);
-        setFleet(fRes.data);
-        setEvents(eRes.data.events);
-      } catch (err) {
-        console.error("Dashboard fetch error", err);
-      }
-    };
-    fetchAll();
-  }, []);
+  const tabs = [
+    "Get things done", "Overview", "Profit reports", "Financial reports", 
+    "IFTA reports", "Report calculator", "Custom report"
+  ];
 
-  const fmt = (v: number) => `$${v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  const fmtDec = (v: number) => `$${v.toFixed(2)}`;
-
-  const EVENT_COLORS: Record<string, string> = {
-    green: "#22c55e",
-    blue: "#3b82f6",
-    red: "#ef4444",
-  };
+  const gaugeData = [
+    { name: "Covered", value: 91.8, color: "#10b981" },
+    { name: "Uncovered", value: 8.2, color: "#f97316" }
+  ];
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--spacing-8)" }}>
-        <div>
-          <h1 className="headline-md" style={{ color: "var(--on-surface)", margin: 0 }}>Executive Overview</h1>
-          <p className="body-sm" style={{ color: "var(--on-surface-variant)", margin: "4px 0 0" }}>
-            Real-time performance metrics
-          </p>
-        </div>
-        <button
-          onClick={() => router.push("/loads/new")}
-          style={{
-            display: "flex", alignItems: "center", gap: "var(--spacing-2)",
-            padding: "var(--spacing-3) var(--spacing-6)",
-            background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
-            color: "var(--on-primary)", border: "none", borderRadius: "var(--radius-lg)",
-            cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-          }}
-        >
-          <Plus size={16} />
-          Dispatch Load
-        </button>
+    <div className="h-full flex flex-col p-4 bg-white rounded-md">
+      
+      {/* Sub Navigation */}
+      <div className="flex bg-white items-center gap-6 px-4 pt-2 pb-2 border-b border-[#e5e7eb] overflow-x-auto whitespace-nowrap scrollbar-hide mb-6 -mt-2">
+        {tabs.map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+              activeTab === t 
+                ? "border-[#3525cd] text-[#3525cd]" 
+                : "border-transparent text-[#6b7280] hover:text-[#374151]"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--spacing-5)", marginBottom: "var(--spacing-8)" }}>
-        <KPICard
-          icon={<DollarSign size={22} />}
-          label="Gross Revenue"
-          value={kpis ? fmt(kpis.gross_revenue) : "—"}
-          accentColor="var(--primary)"
-        />
-        <KPICard
-          icon={<TrendingUp size={22} />}
-          label="Average RPM"
-          value={kpis ? fmtDec(kpis.avg_rpm) : "—"}
-          accentColor="#f59e0b"
-        />
-        <KPICard
-          icon={<Truck size={22} />}
-          label="Active Loads"
-          value={kpis?.active_loads?.toString() || "0"}
-          sub={kpis ? `${kpis.planned_loads} scheduled for pickup` : ""}
-          accentColor="#0ea5e9"
-        />
-        <KPICard
-          icon={<Activity size={22} />}
-          label="Fleet Effectiveness"
-          value={kpis ? `${kpis.fleet_effectiveness}%` : "—"}
-          sub={kpis ? `${kpis.on_route_drivers}/${kpis.active_drivers} drivers active` : ""}
-          accentColor="#22c55e"
-        />
-      </div>
-
-      {/* Two Column: Compliance Alerts + Fleet Status */}
-      <div style={{ display: "grid", gridTemplateColumns: "6fr 4fr", gap: "var(--spacing-6)", marginBottom: "var(--spacing-8)" }}>
-        {/* Compliance Alerts */}
-        <div style={{
-          backgroundColor: "var(--surface-low)", borderRadius: "var(--radius-xl)",
-          padding: "var(--spacing-6)", border: "1px solid var(--outline-variant)",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--spacing-5)" }}>
-            <h3 className="title-md" style={{ color: "var(--on-surface)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-              <AlertTriangle size={18} style={{ color: "#ef4444" }} />
-              Compliance Alert Center
-            </h3>
-            {alerts.critical_count > 0 && (
-              <span style={{
-                padding: "2px 10px", borderRadius: "var(--radius-full)",
-                backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#ef4444",
-                fontSize: "0.75rem", fontWeight: 700,
-              }}>
-                {alerts.critical_count} CRITICAL
-              </span>
-            )}
+      <div className="grid grid-cols-3 gap-6">
+        
+        {/* ROW 1 */}
+        {/* Quick Setup */}
+        <div className="border border-[#e5e7eb] rounded-lg p-5">
+          <div className="flex items-center gap-2 text-[#3525cd] font-semibold mb-6">
+            <Settings2 className="h-5 w-5" /> Quick Setup
           </div>
+          <p className="text-sm font-semibold text-[#374151] mb-6">Unassigned Trucks, Trailers, Drivers</p>
+          <div className="flex justify-around text-center">
+             <div>
+               <p className="text-xs text-[#6b7280] mb-2 font-medium">Trucks</p>
+               <p className="text-2xl text-[#3b82f6] font-medium">5</p>
+             </div>
+             <div>
+               <p className="text-xs text-[#6b7280] mb-2 font-medium">Trailers</p>
+               <p className="text-2xl text-[#ef4444] font-medium">163</p>
+             </div>
+             <div>
+               <p className="text-xs text-[#6b7280] mb-2 font-medium">Drivers</p>
+               <p className="text-2xl text-[#3525cd] font-medium">6</p>
+             </div>
+          </div>
+        </div>
 
-          {alerts.alerts.length === 0 ? (
-            <p style={{ color: "var(--on-surface-variant)", textAlign: "center", padding: "var(--spacing-6)" }}>
-              No compliance alerts — all clear ✓
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-3)" }}>
-              {alerts.alerts.slice(0, 6).map((alert, i) => (
-                <div key={i} style={{
-                  padding: "var(--spacing-4)", backgroundColor: "var(--surface-lowest)",
-                  borderRadius: "var(--radius-lg)",
-                  borderLeft: `3px solid ${alert.severity === "critical" ? "#ef4444" : "#f59e0b"}`,
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <span style={{ fontWeight: 600, color: "var(--on-surface)", fontSize: "0.9rem" }}>
-                        {alert.entity_name}
-                      </span>
-                      <span style={{ marginLeft: 8, color: "var(--on-surface-variant)", fontSize: "0.8rem" }}>
-                        ({alert.entity_type})
-                      </span>
-                    </div>
-                    <span style={{
-                      padding: "1px 6px", borderRadius: "var(--radius-full)",
-                      fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase",
-                      backgroundColor: alert.severity === "critical" ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                      color: alert.severity === "critical" ? "#ef4444" : "#f59e0b",
-                    }}>
-                      {alert.severity}
-                    </span>
-                  </div>
-                  <p style={{ color: "var(--on-surface-variant)", fontSize: "0.8rem", margin: "4px 0 0" }}>
-                    {alert.description}
-                  </p>
-                </div>
-              ))}
+        {/* Covered Drivers Gauge */}
+        <div className="border border-[#e5e7eb] rounded-lg p-5 relative flex flex-col items-center">
+          <div className="flex items-center gap-2 text-[#3525cd] font-semibold mb-2 self-start absolute top-5 left-5">
+            <ArrowUpRight className="h-5 w-5" /> Covered Drivers
+          </div>
+          <div className="w-[200px] h-[200px] mt-8 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={gaugeData}
+                  cx="50%"
+                  cy="50%"
+                  startAngle={180}
+                  endAngle={0}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {gaugeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 flex flex-col items-center text-center">
+               <div className="text-[10px] text-gray-400 font-bold mb-1 tracking-wider uppercase">Covered</div>
+               <div className="text-xl font-bold text-gray-800">91.8%</div>
             </div>
-          )}
+            <div className="absolute bottom-[40%] text-xs font-bold text-gray-500 left-5">0</div>
+            <div className="absolute bottom-[40%] text-xs font-bold text-gray-500 right-4">100</div>
+          </div>
         </div>
 
-        {/* Fleet Status */}
-        <div style={{
-          backgroundColor: "var(--surface-low)", borderRadius: "var(--radius-xl)",
-          padding: "var(--spacing-6)", border: "1px solid var(--outline-variant)",
-        }}>
-          <h3 className="title-md" style={{ color: "var(--on-surface)", margin: 0, marginBottom: "var(--spacing-5)" }}>
-            Live Fleet Status
-          </h3>
-
-          {fleet && (
-            <>
-              <FleetBar label="Loaded" count={fleet.loaded} total={fleet.total} color="#3b82f6" />
-              <FleetBar label="Available" count={fleet.available} total={fleet.total} color="#22c55e" />
-              <FleetBar label="In Shop" count={fleet.in_shop} total={fleet.total} color="#f59e0b" />
-
-              <div style={{
-                marginTop: "var(--spacing-5)", paddingTop: "var(--spacing-4)",
-                borderTop: "1px solid var(--outline-variant)",
-                display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--spacing-4)",
-              }}>
-                <div>
-                  <p style={{ color: "var(--on-surface-variant)", fontSize: "0.75rem", margin: 0, marginBottom: 2 }}>Total Fleet</p>
-                  <p style={{ color: "var(--on-surface)", fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>{fleet.total}</p>
-                </div>
-                <div>
-                  <p style={{ color: "var(--on-surface-variant)", fontSize: "0.75rem", margin: 0, marginBottom: 2 }}>Utilization Rate</p>
-                  <p style={{ color: "#22c55e", fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>{fleet.utilization_rate}%</p>
-                </div>
-              </div>
-            </>
-          )}
+        {/* Tasks List */}
+        <div className="border border-[#e5e7eb] rounded-lg p-5">
+          <div className="flex items-center gap-2 text-[#10b981] font-semibold mb-4">
+            <CheckCircle2 className="h-5 w-5" /> Tasks
+          </div>
+          <div className="space-y-3">
+             {[
+               "Prepare invoices for 447 delivered loads",
+               "Mark 40 in-transit loads delivered",
+               "Dispatch 60 booked loads to drivers",
+               "Dispatch loads to 54 available drivers"
+             ].map((task, i) => (
+               <div key={i} className="flex items-center justify-between border-b border-[#f3f4f6] pb-3 last:border-0 last:pb-0">
+                 <span className="text-xs font-medium text-[#4b5563]">{task}</span>
+                 <button className="border border-[#e5e7eb] bg-white hover:bg-gray-50 px-4 py-1.5 rounded text-xs font-semibold text-gray-700">Go</button>
+               </div>
+             ))}
+          </div>
         </div>
-      </div>
 
-      {/* Recent Events */}
-      <div style={{
-        backgroundColor: "var(--surface-low)", borderRadius: "var(--radius-xl)",
-        padding: "var(--spacing-6)", border: "1px solid var(--outline-variant)",
-      }}>
-        <h3 className="title-md" style={{ color: "var(--on-surface)", margin: 0, marginBottom: "var(--spacing-5)" }}>
-          Recent Logistical Events
-        </h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--spacing-4)" }}>
-          {events.slice(0, 6).map((event, i) => {
-            const color = EVENT_COLORS[event.color] || "#3b82f6";
-            return (
-              <div
-                key={i}
-                onClick={() => router.push(`/loads/${event.load_id}`)}
-                style={{
-                  padding: "var(--spacing-4)", backgroundColor: "var(--surface-lowest)",
-                  borderRadius: "var(--radius-lg)", borderLeft: `3px solid ${color}`,
-                  cursor: "pointer", transition: "transform 0.1s ease",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{
-                    padding: "1px 8px", borderRadius: "var(--radius-full)",
-                    backgroundColor: `${color}20`, color, fontSize: "0.7rem",
-                    fontWeight: 600, textTransform: "capitalize",
-                  }}>
-                    {event.status.replace("_", " ")}
-                  </span>
-                  <span style={{ color: "var(--on-surface-variant)", fontSize: "0.7rem" }}>
-                    {event.timestamp ? new Date(event.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
-                  </span>
-                </div>
-                <p style={{ color: "var(--on-surface)", fontWeight: 600, fontSize: "0.9rem", margin: "4px 0 2px" }}>
-                  {event.load_number}
-                </p>
-                <p style={{ color: "var(--on-surface-variant)", fontSize: "0.8rem", margin: 0 }}>
-                  {event.description}
-                </p>
-                {event.driver_name && (
-                  <p style={{ color: "var(--on-surface-variant)", fontSize: "0.75rem", margin: "4px 0 0", fontStyle: "italic" }}>
-                    Driver: {event.driver_name}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-          {events.length === 0 && (
-            <p style={{ color: "var(--on-surface-variant)", gridColumn: "1 / -1", textAlign: "center", padding: "var(--spacing-6)" }}>
-              No recent events
-            </p>
-          )}
+        {/* ROW 2 */}
+        {/* Driver Dispatch Statuses */}
+        <div className="border border-[#e5e7eb] rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-[#3525cd] font-semibold">
+              <ArrowUpRight className="h-5 w-5" /> Driver Dispatch Statuses
+            </div>
+            <div className="flex border border-[#e5e7eb] rounded divide-x divide-[#e5e7eb] text-[10px] font-bold">
+               <span className="px-2 py-1 text-[#3525cd] bg-blue-50">Driver</span>
+               <span className="px-2 py-1 text-gray-500">Dispatch</span>
+            </div>
+          </div>
+          <table className="w-full text-xs font-medium mt-4">
+            <thead>
+              <tr className="text-[#9ca3af] border-b border-white pb-2 text-left">
+                <th className="font-semibold pb-2">STATUS</th>
+                <th className="font-semibold pb-2 text-center">QTY</th>
+                <th className="font-semibold pb-2 text-right">%</th>
+              </tr>
+            </thead>
+            <tbody>
+               <tr>
+                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div> DISPATCHED</td>
+                 <td className="py-2 text-center"><span className="bg-[#3b82f6] text-white px-6 py-1 rounded-full text-[10px]">18</span></td>
+                 <td className="py-2 text-right text-gray-500">19.15</td>
+               </tr>
+               <tr>
+                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div> IN TRANSIT</td>
+                 <td className="py-2 text-center"><span className="bg-[#f97316] text-white px-6 py-1 rounded-full text-[10px]">26</span></td>
+                 <td className="py-2 text-right text-gray-500">27.66</td>
+               </tr>
+               <tr>
+                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#10b981]"></div> AVAILABLE</td>
+                 <td className="py-2 text-center"><span className="bg-[#10b981] text-white px-6 py-1 rounded-full text-[10px]">50</span></td>
+                 <td className="py-2 text-right text-gray-500">53.19</td>
+               </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-    </div>
-  );
-}
 
-// ── Sub Components ──────────────────────────────────────────────
-
-function KPICard({ icon, label, value, sub, accentColor }: {
-  icon: React.ReactNode; label: string; value: string; sub?: string; accentColor: string;
-}) {
-  return (
-    <div style={{
-      backgroundColor: "var(--surface-low)", borderRadius: "var(--radius-xl)",
-      padding: "var(--spacing-6)", border: "1px solid var(--outline-variant)",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-3)", marginBottom: "var(--spacing-3)" }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: "var(--radius-lg)",
-          backgroundColor: `${accentColor}15`, display: "flex", alignItems: "center",
-          justifyContent: "center", color: accentColor,
-        }}>
-          {icon}
+        {/* Truck Statuses */}
+        <div className="border border-[#e5e7eb] rounded-lg p-5">
+           <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-[#3525cd] font-semibold">
+              <ArrowUpRight className="h-5 w-5" /> Truck Statuses
+            </div>
+            <div className="flex border border-[#e5e7eb] rounded divide-x divide-[#e5e7eb] text-[10px] font-bold">
+               <span className="px-2 py-1 text-[#3525cd] bg-blue-50">Truck</span>
+               <span className="px-2 py-1 text-gray-500">Fleet</span>
+            </div>
+          </div>
+          <table className="w-full text-xs font-medium mt-4">
+            <thead>
+              <tr className="text-[#9ca3af] border-b border-white pb-2 text-left">
+                <th className="font-semibold pb-2">STATUS</th>
+                <th className="font-semibold pb-2 text-center">QTY</th>
+                <th className="font-semibold pb-2 text-right">%</th>
+              </tr>
+            </thead>
+            <tbody>
+               <tr>
+                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#10b981]"></div> AVAILABLE</td>
+                 <td className="py-2 text-center"><span className="bg-[#10b981] text-white px-6 py-1 rounded-full text-[10px]">62</span></td>
+                 <td className="py-2 text-right text-gray-500">70.5</td>
+               </tr>
+               <tr>
+                 <td className="py-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#f97316]"></div> IN TRANSIT</td>
+                 <td className="py-2 text-center"><span className="bg-[#f97316] text-white px-6 py-1 rounded-full text-[10px]">26</span></td>
+                 <td className="py-2 text-right text-gray-500">29.5</td>
+               </tr>
+            </tbody>
+          </table>
+          <div className="border-t border-[#e5e7eb] mt-12 pt-3 flex justify-between text-xs font-bold text-gray-400">
+             <span>GRAND TOTAL</span>
+             <span className="mr-8">88</span>
+             <span>100%</span>
+          </div>
         </div>
-        <span style={{ color: "var(--on-surface-variant)", fontSize: "0.8rem", fontWeight: 500 }}>{label}</span>
-      </div>
-      <p className="headline-sm" style={{ color: "var(--on-surface)", margin: 0, fontWeight: 700 }}>{value}</p>
-      {sub && <p style={{ color: "var(--on-surface-variant)", fontSize: "0.75rem", margin: "4px 0 0" }}>{sub}</p>}
-    </div>
-  );
-}
 
-function FleetBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
-  const pct = total > 0 ? (count / total) * 100 : 0;
-  return (
-    <div style={{ marginBottom: "var(--spacing-4)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ color: "var(--on-surface)", fontSize: "0.85rem", fontWeight: 500 }}>{label}</span>
-        <span style={{ color: "var(--on-surface)", fontSize: "0.85rem", fontWeight: 600 }}>{count}</span>
-      </div>
-      <div style={{ height: 8, backgroundColor: "var(--surface-lowest)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, backgroundColor: color, borderRadius: "var(--radius-full)", transition: "width 0.5s ease" }} />
+        {/* Profit & Loss */}
+        <div className="border border-[#e5e7eb] rounded-lg p-5">
+          <div className="flex items-center gap-2 text-[#10b981] font-semibold mb-4">
+             <DollarSign className="h-5 w-5" /> Profit & Loss
+          </div>
+          <div className="flex items-center gap-2 mb-6">
+             <div className="border border-[#e5e7eb] p-1 text-xs text-gray-600 rounded">03/29/2026 - 04/04/2026</div>
+             <div className="border border-[#e5e7eb] p-1 text-xs text-gray-600 rounded px-3">Delivery ▾</div>
+          </div>
+          
+          <div className="space-y-4">
+             <div>
+               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Total Gross Revenue</span> </div>
+               <div className="flex items-center gap-2"><div className="w-full bg-[#10b981] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$255,942.00</span></div>
+             </div>
+             <div>
+               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Driver Salary Expenses</span> </div>
+               <div className="flex items-center gap-2"><div className="w-[50%] bg-[#3525cd] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$150,421.22</span></div>
+             </div>
+             <div>
+               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Fuel Costs</span> </div>
+               <div className="flex items-center gap-2"><div className="w-[8%] bg-[#3b82f6] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$13,788.68</span></div>
+             </div>
+             <div>
+               <div className="flex justify-between text-xs font-medium mb-1 text-gray-700"><span>Toll Costs</span> </div>
+               <div className="flex items-center gap-2"><div className="w-[2%] bg-[#ef4444] h-6 rounded-r"></div><span className="text-xs font-bold text-gray-800">$3,696.45</span></div>
+             </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

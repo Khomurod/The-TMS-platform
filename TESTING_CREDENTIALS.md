@@ -41,7 +41,7 @@ These are seeded by running `cd backend && python -m app.seed`.
 
 | Role | Email | Password |
 |---|---|---|
-| Super Admin | `superadmin@kinetic.test` | `SuperAdmin1!` |
+| Super Admin | `superadmin@Safehaul.test` | `SuperAdmin1!` |
 | Company Admin | `admin@wenzetrucking.com` | `WenzeAdmin1!` |
 | Dispatcher | `dispatcher@wenzetrucking.com` | `Dispatch1!` |
 | Accountant | `accounting@wenzetrucking.com` | `Account1!` |

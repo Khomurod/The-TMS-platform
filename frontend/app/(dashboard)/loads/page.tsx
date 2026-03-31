@@ -1,489 +1,151 @@
 "use client";
 
-/**
- * Load Board Page — Phase 4.5
- *
- * Tabs: Live Loads | Upcoming | Completed
- * KPI Cards: Total Revenue, Active Shipments, On-Time Performance
- * Data Table with pagination
- */
+import React, { useState } from "react";
+import DataTable, { ColumnDef } from "@/components/ui/DataTable";
+import StatusPill from "@/components/ui/StatusPill";
+import { Filter, ChevronRight, FileText } from "lucide-react";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, Truck, DollarSign, Clock, AlertTriangle } from "lucide-react";
-import api from "@/lib/api";
+// Mock Data mimicking screenshot rows
+const mockLoads = [
+  { shipId: "DT-005756", loadId: "1175227 J", customer: "AFN LLC", driver: "CLYDE LEE JR MALLE", truck: "318 CMP", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Ontario, CA, 91761", delivery: "Allentown, PA, 18101", date: "Apr 3, 2026", status: "IN TRANSIT" },
+  { shipId: "DT-005755", loadId: "445884 CO", customer: "BBI LOGISTICS LLC", driver: "FIRUZ AZIMOV", truck: "313", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Center, CO, 81125", delivery: "Overlea, MD, 21236", date: "Apr 2, 2026", status: "DISPATCHED" },
+  { shipId: "DT-005754", loadId: "361061 CI", customer: "CRANE SOLUTIONS", driver: "MIKE AUGUSTE", truck: "290B COMPANY", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Chantilly, VA, 20152", delivery: "Hebron, KY, 41048", date: "Apr 1, 2026", status: "DISPATCHED" },
+  { shipId: "DT-005753", loadId: "3508277 Q", customer: "KNX LOGISTICS", driver: "MUZAFFAR KHAMIDI", truck: "707 muzaf", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Village of Penn Yan", delivery: "Jessup, MD, 20794", date: "Mar 31, 2026", status: "DISPATCHED" },
+  { shipId: "DT-005752", loadId: "5281467 CL", customer: "AFN LLC", driver: "TEDLA MOUZ B", truck: "312 CMP", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Woodstock, AL, 3518", delivery: "Upper Macungie To", date: "Apr 1, 2026", status: "IN TRANSIT" },
+  { shipId: "DT-005751", loadId: "143364732 CI", customer: "HUB GROUP INC", driver: "MUZAFFAR KHAMIDI", truck: "707 muzaf", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Marysville, OH, 4304", delivery: "Pittston, PA, 18640", date: "Mar 31, 2026", status: "IN TRANSIT" },
+  { shipId: "DT-005742", loadId: "2228900 Q", customer: "TOTAL", driver: "STANLEY BRUTUS", truck: "3447", trailer: "-", mc: "WENZE TRANSPORT", pickup: "Port Wentworth, GA", delivery: "McDonough, GA, 30", date: "Mar 30, 2026", status: "DELIVERED" },
+];
 
-// ── Types ───────────────────────────────────────────────────────
+export default function LoadsPage() {
+  const [activeTab, setActiveTab] = useState("All Loads");
 
-interface LoadListItem {
-  id: string;
-  load_number: string;
-  broker_load_id: string | null;
-  status: string;
-  base_rate: number | null;
-  total_rate: number | null;
-  driver_id: string | null;
-  truck_id: string | null;
-  created_at: string;
-  pickup_city: string | null;
-  pickup_date: string | null;
-  delivery_city: string | null;
-  delivery_date: string | null;
-  broker_name: string | null;
-  driver_name: string | null;
-  truck_number: string | null;
-}
-
-interface LoadListResponse {
-  items: LoadListItem[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
-type TabKey = "live" | "upcoming" | "completed";
-
-// ── Status Pill Colors ──────────────────────────────────────────
-
-const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  planned: { bg: "rgba(100, 116, 139, 0.15)", color: "#94a3b8" },
-  dispatched: { bg: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" },
-  at_pickup: { bg: "rgba(168, 85, 247, 0.15)", color: "#a855f7" },
-  in_transit: { bg: "rgba(14, 165, 233, 0.15)", color: "#0ea5e9" },
-  delivered: { bg: "rgba(34, 197, 94, 0.15)", color: "#22c55e" },
-  delayed: { bg: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" },
-  billed: { bg: "rgba(20, 184, 166, 0.15)", color: "#14b8a6" },
-  paid: { bg: "rgba(16, 185, 129, 0.15)", color: "#10b981" },
-  cancelled: { bg: "rgba(239, 68, 68, 0.15)", color: "#ef4444" },
-};
-
-export default function LoadBoardPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("live");
-  const [data, setData] = useState<LoadListResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
-
-  const fetchLoads = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/loads/${activeTab}`, {
-        params: { page, page_size: pageSize },
-      });
-      setData(res.data);
-    } catch (err) {
-      console.error("Failed to fetch loads", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, page]);
-
-  useEffect(() => {
-    fetchLoads();
-  }, [fetchLoads]);
-
-  // Reset page when tab changes
-  useEffect(() => {
-    setPage(1);
-  }, [activeTab]);
-
-  const totalPages = data ? Math.ceil(data.total / pageSize) : 1;
-
-  const formatCurrency = (value: number | null) => {
-    if (value == null) return "—";
-    return `$${Number(value).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  };
-
-  const formatDate = (d: string | null) => {
-    if (!d) return "—";
-    return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const TABS: { key: TabKey; label: string }[] = [
-    { key: "live", label: "Live Loads" },
-    { key: "upcoming", label: "Upcoming" },
-    { key: "completed", label: "Completed" },
+  const tabs = [
+    { name: "All Loads" },
+    { name: "Upcoming Loads", count: 12 },
+    { name: "Dispatched", count: 19 },
+    { name: "In-Transit", count: 48 },
+    { name: "Delivered", count: 46 },
+    { name: "Unpaid", count: 1952 },
+    { name: "Trips" },
   ];
 
-  return (
-    <div>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "var(--spacing-8)",
-        }}
-      >
-        <div>
-          <p
-            className="label-sm"
-            style={{ color: "var(--on-surface-variant)", marginBottom: 4 }}
-          >
-            Dashboard &gt; Load Board
-          </p>
-          <h1
-            className="headline-md"
-            style={{ color: "var(--on-surface)", margin: 0 }}
-          >
-            Load Board
-          </h1>
+  const columns: ColumnDef<any>[] = [
+    { 
+      header: "Shipment ID", 
+      accessorKey: "shipId",
+      cell: (row) => (
+        <div className="flex items-center gap-1 font-medium">
+          <ChevronRight className="h-3 w-3 text-gray-400" />
+          {row.shipId}
         </div>
-        <button
-          id="create-load-btn"
-          onClick={() => router.push("/loads/new")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--spacing-2)",
-            padding: "var(--spacing-3) var(--spacing-6)",
-            background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
-            color: "var(--on-primary)",
-            border: "none",
-            borderRadius: "var(--radius-lg)",
-            cursor: "pointer",
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            transition: "opacity 0.15s ease",
-          }}
-          onMouseEnter={(e) => ((e.target as HTMLElement).style.opacity = "0.9")}
-          onMouseLeave={(e) => ((e.target as HTMLElement).style.opacity = "1")}
-        >
-          <Plus size={16} />
-          Create New Load
-        </button>
-      </div>
+      )
+    },
+    { 
+      header: "Load ID", 
+      accessorKey: "loadId",
+      cell: (row) => <div className="text-[#10b981] font-semibold">{row.loadId}</div>
+    },
+    { 
+      header: "Customer", 
+      accessorKey: "customer",
+      cell: (row) => <div className="text-[#3b82f6] hover:underline cursor-pointer font-medium">{row.customer}</div>
+    },
+    { header: "Driver/Carrier", accessorKey: "driver", cell: (r) => <div className="text-[#3b82f6] hover:underline cursor-pointer">{r.driver}</div> },
+    { header: "Truck", accessorKey: "truck", cell: (r) => <div className="text-[#3b82f6] hover:underline cursor-pointer">{r.truck}</div> },
+    { header: "Trailer", accessorKey: "trailer" },
+    { header: "MC Number", accessorKey: "mc" },
+    { header: "Pickup locat...", accessorKey: "pickup" },
+    { header: "Delivery loc...", accessorKey: "delivery" },
+    { header: "DEL date", accessorKey: "date" },
+    { 
+      header: "Load status", 
+      accessorKey: "status",
+      cell: (row) => <StatusPill status={row.status} />
+    },
+    { 
+      header: "Docu...", 
+      accessorKey: "doc",
+      cell: () => <div className="w-6 h-6 bg-blue-50 text-blue-500 rounded flex items-center justify-center cursor-pointer"><FileText className="h-3 w-3" /></div>
+    }
+  ];
 
-      {/* KPI Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "var(--spacing-5)",
-          marginBottom: "var(--spacing-8)",
-        }}
-      >
-        <KPICard
-          icon={<DollarSign size={20} />}
-          label="Total Revenue (Weekly)"
-          value={data ? formatCurrency(data.items.reduce((sum, l) => sum + (l.total_rate || 0), 0)) : "—"}
-          accentColor="var(--primary)"
-        />
-        <KPICard
-          icon={<Truck size={20} />}
-          label="Active Shipments"
-          value={data?.total?.toString() || "0"}
-          accentColor="#0ea5e9"
-        />
-        <KPICard
-          icon={<Clock size={20} />}
-          label="On-Time Performance"
-          value="—"
-          accentColor="#22c55e"
-        />
-      </div>
-
-      {/* Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "var(--spacing-1)",
-          marginBottom: "var(--spacing-6)",
-          borderBottom: "1px solid var(--outline-variant)",
-        }}
-      >
-        {TABS.map((tab) => (
+  const renderSubNav = () => (
+    <div className="flex flex-col border-b border-[#e5e7eb] bg-white pt-4">
+      <div className="flex items-center gap-6 px-4 pb-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
+        {tabs.map(t => (
           <button
-            key={tab.key}
-            id={`tab-${tab.key}`}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: "var(--spacing-3) var(--spacing-6)",
-              background: "transparent",
-              border: "none",
-              borderBottom: activeTab === tab.key ? "2px solid var(--primary)" : "2px solid transparent",
-              color: activeTab === tab.key ? "var(--primary)" : "var(--on-surface-variant)",
-              fontWeight: activeTab === tab.key ? 600 : 400,
-              fontSize: "0.875rem",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
+            key={t.name}
+            onClick={() => setActiveTab(t.name)}
+            className={`flex items-center gap-2 text-sm font-semibold pb-2 border-b-2 transition-colors ${
+              activeTab === t.name 
+                ? "border-[#3b82f6] text-[#3b82f6]" 
+                : "border-transparent text-[#6b7280] hover:text-[#374151]"
+            }`}
           >
-            {tab.label}
-            {activeTab === tab.key && data && (
-              <span
-                style={{
-                  marginLeft: 6,
-                  padding: "1px 8px",
-                  borderRadius: "var(--radius-full)",
-                  background: "var(--primary)",
-                  color: "var(--on-primary)",
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                }}
-              >
-                {data.total}
+            {t.name}
+            {t.count && (
+              <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                activeTab === t.name ? "bg-[#3b82f6] text-white" : "bg-gray-100 text-gray-500"
+              }`}>
+                {t.count}
               </span>
             )}
           </button>
         ))}
       </div>
-
-      {/* Data Table */}
-      <div
-        style={{
-          backgroundColor: "var(--surface-low)",
-          borderRadius: "var(--radius-xl)",
-          overflow: "hidden",
-          border: "1px solid var(--outline-variant)",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "0.85rem",
-          }}
-        >
-          <thead>
-            <tr
-              style={{
-                borderBottom: "1px solid var(--outline-variant)",
-                textAlign: "left",
-              }}
-            >
-              {["Load #", "Broker", "Pickup", "Delivery", "Driver", "Truck", "Rate", "Status"].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: "var(--spacing-4) var(--spacing-5)",
-                    color: "var(--on-surface-variant)",
-                    fontWeight: 500,
-                    fontSize: "0.75rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={8}
-                  style={{
-                    padding: "var(--spacing-12)",
-                    textAlign: "center",
-                    color: "var(--on-surface-variant)",
-                  }}
-                >
-                  Loading...
-                </td>
-              </tr>
-            ) : data && data.items.length > 0 ? (
-              data.items.map((load) => {
-                const statusStyle = STATUS_STYLES[load.status] || STATUS_STYLES.planned;
-                return (
-                  <tr
-                    key={load.id}
-                    onClick={() => router.push(`/loads/${load.id}`)}
-                    style={{
-                      borderBottom: "1px solid var(--outline-variant)",
-                      cursor: "pointer",
-                      transition: "background-color 0.1s ease",
-                    }}
-                    onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-lowest)")
-                    }
-                    onMouseLeave={(e) =>
-                      ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")
-                    }
-                  >
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)", fontWeight: 600, color: "var(--on-surface)" }}>
-                      {load.load_number}
-                    </td>
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)", color: "var(--on-surface)" }}>
-                      {load.broker_name || "—"}
-                    </td>
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)" }}>
-                      <div style={{ color: "var(--on-surface)" }}>{load.pickup_city || "—"}</div>
-                      <div style={{ color: "var(--on-surface-variant)", fontSize: "0.75rem" }}>
-                        {formatDate(load.pickup_date)}
-                      </div>
-                    </td>
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)" }}>
-                      <div style={{ color: "var(--on-surface)" }}>{load.delivery_city || "—"}</div>
-                      <div style={{ color: "var(--on-surface-variant)", fontSize: "0.75rem" }}>
-                        {formatDate(load.delivery_date)}
-                      </div>
-                    </td>
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)", color: "var(--on-surface)" }}>
-                      {load.driver_name || "Unassigned"}
-                    </td>
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)", color: "var(--on-surface)" }}>
-                      {load.truck_number || "—"}
-                    </td>
-                    <td
-                      style={{
-                        padding: "var(--spacing-4) var(--spacing-5)",
-                        color: "#22c55e",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {formatCurrency(load.total_rate || load.base_rate)}
-                    </td>
-                    <td style={{ padding: "var(--spacing-4) var(--spacing-5)" }}>
-                      <span
-                        style={{
-                          padding: "2px 10px",
-                          borderRadius: "var(--radius-full)",
-                          backgroundColor: statusStyle.bg,
-                          color: statusStyle.color,
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          textTransform: "capitalize",
-                        }}
-                      >
-                        {load.status.replace("_", " ")}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td
-                  colSpan={8}
-                  style={{
-                    padding: "var(--spacing-12)",
-                    textAlign: "center",
-                    color: "var(--on-surface-variant)",
-                  }}
-                >
-                  No loads found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        {data && totalPages > 1 && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "var(--spacing-3)",
-              padding: "var(--spacing-4)",
-              borderTop: "1px solid var(--outline-variant)",
-            }}
-          >
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              style={{
-                padding: "var(--spacing-2) var(--spacing-4)",
-                background: "var(--surface-lowest)",
-                border: "1px solid var(--outline-variant)",
-                borderRadius: "var(--radius-md)",
-                color: "var(--on-surface)",
-                cursor: page === 1 ? "not-allowed" : "pointer",
-                opacity: page === 1 ? 0.5 : 1,
-                fontSize: "0.8rem",
-              }}
-            >
-              Previous
-            </button>
-            <span className="body-sm" style={{ color: "var(--on-surface-variant)" }}>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              style={{
-                padding: "var(--spacing-2) var(--spacing-4)",
-                background: "var(--surface-lowest)",
-                border: "1px solid var(--outline-variant)",
-                borderRadius: "var(--radius-md)",
-                color: "var(--on-surface)",
-                cursor: page === totalPages ? "not-allowed" : "pointer",
-                opacity: page === totalPages ? 0.5 : 1,
-                fontSize: "0.8rem",
-              }}
-            >
-              Next
-            </button>
-          </div>
-        )}
+      
+      {/* Filtering row specifically beneath subnav in Loads */}
+      <div className="flex items-center gap-3 px-4 py-2 text-sm">
+        <button className="flex items-center gap-2 border border-[#e5e7eb] px-3 py-1.5 rounded bg-white font-medium text-[#374151] hover:bg-gray-50">
+          <Filter className="h-3 w-3" /> Filter
+        </button>
+        <div className="flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded px-3 py-1.5 w-48">
+          <span className="text-gray-400 text-xs">Pickup Time</span>
+        </div>
+        <div className="flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded px-3 py-1.5 w-48">
+          <span className="text-gray-400 text-xs">Delivery Time</span>
+        </div>
+        <div className="flex items-center gap-2 border border-[#e5e7eb] px-3 py-1.5 rounded bg-white w-32 justify-between">
+          <span className="text-gray-400 text-xs">Load status</span>
+          <ChevronRight className="h-3 w-3 text-gray-400 rotate-90" />
+        </div>
       </div>
     </div>
   );
-}
 
-// ── KPI Card Component ──────────────────────────────────────────
+  const renderFooter = () => (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 w-full text-[11px]">
+      <span>Total pay: <span className="text-black">$10,477,005.01</span></span>
+      <span>Total load pay: <span className="text-black">$10,446,745.01</span></span>
+      <span>Driver gross: <span className="text-black">$10,403,045.45</span></span>
+      <span>Total miles: <span className="text-black">4,292,276.99</span></span>
+      <span>Empty miles: <span className="text-black">689,571.38</span></span>
+      <span>RPM for loaded miles: <span className="text-black">$2.91</span></span>
+      <span>RPM for total miles: <span className="text-black">$2.44</span></span>
+      <span>Service fee: <span className="text-black">$43,261.55</span></span>
+    </div>
+  );
 
-function KPICard({
-  icon,
-  label,
-  value,
-  accentColor,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  accentColor: string;
-}) {
   return (
-    <div
-      style={{
-        backgroundColor: "var(--surface-low)",
-        borderRadius: "var(--radius-xl)",
-        padding: "var(--spacing-6)",
-        border: "1px solid var(--outline-variant)",
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--spacing-4)",
-      }}
-    >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: "var(--radius-lg)",
-          backgroundColor: `${accentColor}15`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: accentColor,
-        }}
-      >
-        {icon}
+    <div className="h-full flex flex-col p-4">
+      <div className="flex justify-end mb-2 -mt-10 mr-2 z-10 relative gap-2">
+        <button className="bg-[#3b82f6] text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center hover:bg-[#2563eb]">
+          <span className="mr-1 font-bold">+</span> New load
+        </button>
+        <button className="bg-white border border-[#e5e7eb] text-gray-500 px-2 py-1.5 rounded flex items-center hover:bg-gray-50">
+          <div className="w-1 h-1 rounded-full bg-gray-500 mx-[1px]" />
+          <div className="w-1 h-1 rounded-full bg-gray-500 mx-[1px]" />
+          <div className="w-1 h-1 rounded-full bg-gray-500 mx-[1px]" />
+        </button>
       </div>
-      <div>
-        <p
-          className="label-sm"
-          style={{ color: "var(--on-surface-variant)", margin: 0, marginBottom: 2 }}
-        >
-          {label}
-        </p>
-        <p
-          className="headline-sm"
-          style={{ color: "var(--on-surface)", margin: 0, fontWeight: 700 }}
-        >
-          {value}
-        </p>
+
+      <div className="flex-1 rounded-lg border border-[#e5e7eb] bg-white shadow-sm overflow-hidden h-[80vh]">
+        <DataTable 
+          data={mockLoads}
+          columns={columns}
+          renderSubNav={renderSubNav}
+          renderFooter={renderFooter}
+        />
       </div>
     </div>
   );

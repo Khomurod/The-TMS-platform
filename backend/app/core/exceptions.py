@@ -1,4 +1,4 @@
-"""Custom exception classes for the Kinetic TMS API."""
+"""Custom exception classes for the Safehaul TMS API."""
 
 from fastapi import HTTPException, status
 

@@ -26,16 +26,16 @@ async def seed():
 
     async with async_session_factory() as db:
         # ── 1. Create company for company admin ──────────────────
-        result = await db.execute(select(Company).where(Company.name == "Kinetic Demo Corp"))
+        result = await db.execute(select(Company).where(Company.name == "Safehaul Demo Corp"))
         company = result.scalar_one_or_none()
 
         if not company:
-            company = Company(name="Kinetic Demo Corp", mc_number="MC-123456", dot_number="DOT-789012")
+            company = Company(name="Safehaul Demo Corp", mc_number="MC-123456", dot_number="DOT-789012")
             db.add(company)
             await db.flush()
-            print(f"✓ Created company: Kinetic Demo Corp (id={company.id})")
+            print(f"✓ Created company: Safehaul Demo Corp (id={company.id})")
         else:
-            print(f"• Company already exists: Kinetic Demo Corp (id={company.id})")
+            print(f"• Company already exists: Safehaul Demo Corp (id={company.id})")
 
         # ── 2. Create company admin user ─────────────────────────
         result = await db.execute(select(User).where(User.email == "adminuser"))

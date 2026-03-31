@@ -342,7 +342,7 @@ class AccountingService:
             styles["Heading2"],
         ))
         elements.append(Spacer(1, 8))
-        elements.append(Paragraph("Confidential — Kinetic TMS", styles["Normal"]))
+        elements.append(Paragraph("Confidential — Safehaul TMS", styles["Normal"]))
 
         doc.build(elements)
         buffer.seek(0)

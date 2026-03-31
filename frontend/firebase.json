@@ -6,7 +6,7 @@
       {
         "source": "/api/**",
         "run": {
-          "serviceId": "kinetic-api",
+          "serviceId": "Safehaul-api",
           "region": "us-central1"
         }
       },

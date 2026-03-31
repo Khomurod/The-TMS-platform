@@ -1,8 +1,8 @@
-# Kinetic TMS - Full Data Population Script
+# Safehaul TMS - Full Data Population Script
 # Populates all modules: Company Settings, Drivers, Fleet, Loads (with state machine), Settlements, Invoices
 
 $ErrorActionPreference = "Stop"
-$API_URL = "https://kinetic-api-1065403267999.us-central1.run.app/api/v1"
+$API_URL = "https://Safehaul-api-1065403267999.us-central1.run.app/api/v1"
 
 # ---------- 1. AUTHENTICATE ----------
 Write-Host "1. Authenticating..."
@@ -15,7 +15,7 @@ Write-Host "   OK"
 # ---------- 2. UPDATE COMPANY PROFILE ----------
 Write-Host "2. Updating Company Profile..."
 $companyBody = @{
-    name       = "Kinetic Test Corp"
+    name       = "Safehaul Test Corp"
     mc_number  = "MC-987654"
     dot_number = "DOT-1234567"
     address    = "4500 Spring Valley Rd, Suite 300, Dallas, TX 75244"

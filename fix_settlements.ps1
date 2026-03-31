@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$API_URL = "https://kinetic-api-1065403267999.us-central1.run.app/api/v1"
+$API_URL = "https://Safehaul-api-1065403267999.us-central1.run.app/api/v1"
 $lb = @{ email="admin@testcompany.com"; password="SecurePass123!" } | ConvertTo-Json
 $lr = Invoke-RestMethod -Uri "$API_URL/auth/login" -Method Post -Body $lb -ContentType "application/json"
 $h = @{ Authorization = "Bearer $($lr.access_token)" }

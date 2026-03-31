@@ -1,4 +1,4 @@
-# 🚀 Kinetic TMS — Deployment Guide
+# 🚀 Safehaul TMS — Deployment Guide
 
 > **This guide is written for non-developers.** You do not need to understand code to follow it. Just copy and paste the commands exactly as shown, replacing the `PLACEHOLDER` values with your own.
 
@@ -68,7 +68,7 @@ You only need to do this once when setting up the project for the first time.
 
 1. Go to https://console.cloud.google.com
 2. Click **"Select a project"** at the top, then **"New Project"**
-3. Give it a name (e.g., `kinetic-tms`) and note the **Project ID** (e.g., `kinetic-tms-123456`)
+3. Give it a name (e.g., `Safehaul-tms`) and note the **Project ID** (e.g., `Safehaul-tms-123456`)
 
 ### 2.2 Enable Required APIs
 
@@ -89,21 +89,21 @@ In the GCP Console:
 1. Go to **SQL** → **Create Instance**
 2. Choose **PostgreSQL**
 3. Select version **PostgreSQL 16**
-4. Set an instance ID (e.g., `kinetic-db`)
+4. Set an instance ID (e.g., `Safehaul-db`)
 5. Choose a region (e.g., `us-central1`)
-6. Note down the **Connection name** — it looks like `YOUR_PROJECT_ID:us-central1:kinetic-db`
+6. Note down the **Connection name** — it looks like `YOUR_PROJECT_ID:us-central1:Safehaul-db`
 
 ### 2.4 Create a Database and User
 
 In your Cloud SQL instance:
-1. Go to **Databases** tab → **Create Database** (e.g., `kinetic_tms`)
-2. Go to **Users** tab → **Add User** (e.g., username: `kinetic_user`, password: choose a strong password)
+1. Go to **Databases** tab → **Create Database** (e.g., `Safehaul_tms`)
+2. Go to **Users** tab → **Add User** (e.g., username: `Safehaul_user`, password: choose a strong password)
 
 ### 2.5 Note Your Connection String
 
 Your `DATABASE_URL` will look like:
 ```
-postgresql+asyncpg://kinetic_user:YOUR_PASSWORD@/kinetic_tms?host=/cloudsql/YOUR_PROJECT_ID:us-central1:kinetic-db
+postgresql+asyncpg://Safehaul_user:YOUR_PASSWORD@/Safehaul_tms?host=/cloudsql/YOUR_PROJECT_ID:us-central1:Safehaul-db
 ```
 
 Write this down — you will need it in the next step.
@@ -126,7 +126,7 @@ A browser window will open. Sign in with your Google account.
 ### 3.2 Build and Push the Backend Image
 
 ```bash
-gcloud builds submit ./backend --tag gcr.io/YOUR_PROJECT_ID/kinetic-api:latest
+gcloud builds submit ./backend --tag gcr.io/YOUR_PROJECT_ID/Safehaul-api:latest
 ```
 
 This will take 2–5 minutes. You will see build logs scrolling by — that is normal.
@@ -134,26 +134,26 @@ This will take 2–5 minutes. You will see build logs scrolling by — that is n
 ### 3.3 Deploy to Cloud Run
 
 ```bash
-gcloud run deploy kinetic-api \
-  --image gcr.io/YOUR_PROJECT_ID/kinetic-api:latest \
+gcloud run deploy Safehaul-api \
+  --image gcr.io/YOUR_PROJECT_ID/Safehaul-api:latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars "ENVIRONMENT=production" \
   --set-env-vars "JWT_SECRET_KEY=GENERATE_A_RANDOM_SECRET" \
   --set-env-vars "DATABASE_URL=postgresql+asyncpg://USER:PASS@/DB_NAME?host=/cloudsql/PROJECT:REGION:INSTANCE" \
-  --set-env-vars "CORS_ORIGINS=[\"https://kinetic-web-XXXXX-uc.a.run.app\"]"
+  --set-env-vars "CORS_ORIGINS=[\"https://Safehaul-web-XXXXX-uc.a.run.app\"]"
 ```
 
 **Before running, replace:**
 - `YOUR_PROJECT_ID` → your GCP project ID
 - `GENERATE_A_RANDOM_SECRET` → a long random string (you can use https://www.random.org/passwords/?num=1&len=32&format=html&rnd=new)
 - `DATABASE_URL` → the connection string from Section 2.5
-- `https://kinetic-web-XXXXX-uc.a.run.app` → your frontend URL (from Section 5 after you deploy the frontend)
+- `https://Safehaul-web-XXXXX-uc.a.run.app` → your frontend URL (from Section 5 after you deploy the frontend)
 
 After deployment, Cloud Run will give you a **Service URL** like:
 ```
-https://kinetic-api-abc123-uc.a.run.app
+https://Safehaul-api-abc123-uc.a.run.app
 ```
 
 Write this down — it is your backend API URL.
@@ -168,7 +168,7 @@ The seed command creates initial test data (admin users, demo company, sample lo
 
 ```bash
 gcloud run jobs create seed-db \
-  --image gcr.io/YOUR_PROJECT_ID/kinetic-api:latest \
+  --image gcr.io/YOUR_PROJECT_ID/Safehaul-api:latest \
   --region us-central1 \
   --command "python" \
   --args "-m,app.seed" \
@@ -186,7 +186,7 @@ docker compose exec backend python -m app.seed
 ```
 
 > **Test credentials created by the seed:**
-> - Super Admin: `superadmin@kinetic.dev` / `SuperAdmin123!`
+> - Super Admin: `superadmin@Safehaul.dev` / `SuperAdmin123!`
 > - Company Admin: `admin@wenzetrucking.com` / `Admin123!`
 
 ---
@@ -200,19 +200,19 @@ You have two options. **Option A (Cloud Run) is recommended** because it support
 This is the same approach as the CI/CD pipeline.
 
 ```bash
-gcloud builds submit ./frontend --tag gcr.io/YOUR_PROJECT_ID/kinetic-web:latest
+gcloud builds submit ./frontend --tag gcr.io/YOUR_PROJECT_ID/Safehaul-web:latest
 
-gcloud run deploy kinetic-web \
-  --image gcr.io/YOUR_PROJECT_ID/kinetic-web:latest \
+gcloud run deploy Safehaul-web \
+  --image gcr.io/YOUR_PROJECT_ID/Safehaul-web:latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars "NEXT_PUBLIC_API_URL=https://kinetic-api-XXXXX-uc.a.run.app"
+  --set-env-vars "NEXT_PUBLIC_API_URL=https://Safehaul-api-XXXXX-uc.a.run.app"
 ```
 
-Replace `https://kinetic-api-XXXXX-uc.a.run.app` with the backend URL you got in Section 3.3.
+Replace `https://Safehaul-api-XXXXX-uc.a.run.app` with the backend URL you got in Section 3.3.
 
-After deployment, you will get a frontend URL like `https://kinetic-web-abc123-uc.a.run.app`.
+After deployment, you will get a frontend URL like `https://Safehaul-web-abc123-uc.a.run.app`.
 
 ---
 
@@ -283,7 +283,7 @@ Open your browser and go to: **http://localhost:3000**
 
 | Role | Email | Password |
 |------|-------|----------|
-| Super Admin | `superadmin@kinetic.dev` | `SuperAdmin123!` |
+| Super Admin | `superadmin@Safehaul.dev` | `SuperAdmin123!` |
 | Company Admin | `admin@wenzetrucking.com` | `Admin123!` |
 | Dispatcher | `dispatcher@wenzetrucking.com` | `Dispatch1!` |
 | Accountant | `accounting@wenzetrucking.com` | `Account1!` |
@@ -307,9 +307,9 @@ For the CI/CD pipeline to work, you need to add these secrets to your GitHub rep
 | Secret Name | Description | Example Value |
 |-------------|-------------|---------------|
 | `GCP_SA_KEY` | GCP service account key (full JSON content) | `{"type":"service_account","project_id":"..."}` |
-| `GCP_PROJECT_ID` | Your GCP project ID | `kinetic-tms-123456` |
-| `CORS_ORIGINS` | The URL of your frontend (for CORS) | `https://kinetic-web-abc123-uc.a.run.app` |
-| `API_URL` | The URL of your backend API | `https://kinetic-api-abc123-uc.a.run.app` |
+| `GCP_PROJECT_ID` | Your GCP project ID | `Safehaul-tms-123456` |
+| `CORS_ORIGINS` | The URL of your frontend (for CORS) | `https://Safehaul-web-abc123-uc.a.run.app` |
+| `API_URL` | The URL of your backend API | `https://Safehaul-api-abc123-uc.a.run.app` |
 
 ### How to Create a GCP Service Account Key
 

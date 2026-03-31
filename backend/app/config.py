@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # ── Database ─────────────────────────────────────────────────
-    database_url: str = "postgresql+asyncpg://kinetic:kinetic_dev_2024@localhost:5432/kinetic_tms"
+    database_url: str = "postgresql+asyncpg://Safehaul:Safehaul_dev_2024@localhost:5432/Safehaul_tms"
 
     # ── JWT Authentication ───────────────────────────────────────
     jwt_secret_key: str = "dev-secret-key-change-in-production"
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
                     "FATAL: JWT_SECRET_KEY must be changed from the default in production! "
                     "Set the JWT_SECRET_KEY environment variable."
                 )
-            if "kinetic_dev_2024" in self.database_url:
+            if "Safehaul_dev_2024" in self.database_url:
                 raise ValueError(
                     "FATAL: DATABASE_URL contains development credentials. "
                     "Set the DATABASE_URL environment variable for production."

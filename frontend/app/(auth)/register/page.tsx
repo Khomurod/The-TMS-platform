@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Registration Page — Company signup for Kinetic TMS.
+ * Registration Page — Company signup for Safehaul TMS.
  */
 
 import { useState } from "react";
@@ -86,7 +86,7 @@ export default function RegisterPage() {
               marginBottom: 4,
             }}
           >
-            KINETIC
+            Safehaul
           </div>
           <p
             style={{

@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════
-#   Kinetic TMS — Frontend Dockerfile (Next.js)
+#   Safehaul TMS — Frontend Dockerfile (Next.js)
 # ═══════════════════════════════════════════════════════════════════
 
 FROM node:20-alpine AS deps
@@ -11,7 +11,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG NEXT_PUBLIC_API_URL=https://kinetic-api-1065403267999.us-central1.run.app
+ARG NEXT_PUBLIC_API_URL=https://Safehaul-api-1065403267999.us-central1.run.app
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 

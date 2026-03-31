@@ -24,7 +24,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem("kinetic-theme") as Theme | null;
+    const saved = localStorage.getItem("Safehaul-theme") as Theme | null;
     if (saved) {
       setTheme(saved);
       document.documentElement.classList.toggle("dark", saved === "dark");
@@ -34,7 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
-    localStorage.setItem("kinetic-theme", next);
+    localStorage.setItem("Safehaul-theme", next);
     document.documentElement.classList.toggle("dark", next === "dark");
   };
 

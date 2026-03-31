@@ -1,4 +1,4 @@
-# 🚛 Kinetic TMS — Build Tracker
+# 🚛 Safehaul TMS — Build Tracker
 
 ## Phase 0 — Project Scaffolding & DevOps Foundation
 - [x] 0.1 — Repository & Monorepo Structure (folders, Docker, docker-compose)

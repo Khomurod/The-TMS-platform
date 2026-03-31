@@ -1,158 +1,99 @@
 "use client";
 
-/**
- * Drivers Management Page
- */
+import React, { useState } from "react";
+import DataTable, { ColumnDef } from "@/components/ui/DataTable";
+import StatusPill from "@/components/ui/StatusPill";
+import { Edit2 } from "lucide-react";
 
-import { useState, useEffect, useCallback } from "react";
-import { Users, Search, AlertTriangle } from "lucide-react";
-import api from "@/lib/api";
-
-interface Driver {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone?: string;
-  status: string;
-  employment_type?: string;
-  pay_rate_type?: string;
-  pay_rate_value?: number;
-  cdl_number?: string;
-  cdl_expiry_date?: string;
-  medical_card_expiry_date?: string;
-}
-
-const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
-  available: { bg: "rgba(34, 197, 94, 0.15)", color: "#22c55e" },
-  on_route: { bg: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" },
-  off_duty: { bg: "rgba(100, 116, 139, 0.15)", color: "#94a3b8" },
-  on_leave: { bg: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" },
-  terminated: { bg: "rgba(239, 68, 68, 0.15)", color: "#ef4444" },
-};
+// Mock Data representing the exact rows from the "Active Drivers" screenshot
+const mockDrivers = [
+  { id: "1", assign: "Not ready", empStatus: "ACTIVE", first: "Khasan", last: "Azimov", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+13322007674", email: "azimovkhasan05@gm", status: "AVAILABLE", truck: "-", trailer: "-", team: "No" },
+  { id: "2", assign: "Ready to go", empStatus: "ACTIVE", first: "Pascal", last: "Fleurimond", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+17722409360", email: "pfleurimond@live.d", status: "AVAILABLE", truck: "96266 CMP", trailer: "-", team: "No" },
+  { id: "3", assign: "Not ready", empStatus: "ACTIVE", first: "William Joseph", last: "Massey", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+15732829304", email: "-", status: "AVAILABLE", truck: "-", trailer: "-", team: "No" },
+  { id: "4", assign: "Ready to go", empStatus: "ACTIVE", first: "Torris Dawod", last: "Robinson", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+12566892557", email: "torrisrobinson77@g", status: "AVAILABLE", truck: "320 CMP", trailer: "-", team: "No" },
+  { id: "5", assign: "Ready to go", empStatus: "ACTIVE", first: "CLYDE LEE JR", last: "MALLETT", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+18187913231", email: "clyvaughnandlila@g", status: "IN TRANSIT", truck: "318 CMP", trailer: "-", team: "No" },
+  { id: "6", assign: "Ready to go", empStatus: "ACTIVE", first: "JOSEPH", last: "JEAN WALMY", type: "Owner operator", mc: "WENZE TRANSPORT", phone: "+12394401411", email: "j.mybentz91@gmail.", status: "IN TRANSIT", truck: "1991", trailer: "-", team: "No" },
+  { id: "7", assign: "Ready to go", empStatus: "ACTIVE", first: "Jamaal Omari", last: "Gist", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+12542587216", email: "jamaalgist39@gmai", status: "IN TRANSIT", truck: "96254 CMP", trailer: "-", team: "No" },
+  { id: "8", assign: "Ready to go", empStatus: "ACTIVE", first: "John Wolf", last: "ELISEE", type: "Company driver", mc: "WENZE TRANSPORT", phone: "(786) 642-9033", email: "johnwolf.elisee90@", status: "AVAILABLE", truck: "1 Rudolph", trailer: "-", team: "Yes" },
+  { id: "9", assign: "Ready to go", empStatus: "ACTIVE", first: "REY DAVID", last: "OD HIONG", type: "Company driver", mc: "WENZE TRANSPORT", phone: "+14654132132", email: "davidtransportusa@", status: "DISPATCHED", truck: "983", trailer: "-", team: "No" },
+];
 
 export default function DriversPage() {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [activeTab, setActiveTab] = useState("Active Drivers");
 
-  const fetchDrivers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = { page: 1, page_size: 50 };
-      if (statusFilter) params.status = statusFilter;
-      const res = await api.get("/drivers", { params });
-      setDrivers(res.data.items || []);
-      setTotal(res.data.total || 0);
-    } catch (err) {
-      console.error("Drivers fetch error", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
+  const tabs = [
+    "Active Drivers", "Unassigned drivers", "Active Dispatchers", 
+    "Active Employees", "Archived dispatchers", "Archived Employees", 
+    "All Drivers", "Terminated Drivers", "Vacation board"
+  ];
 
-  useEffect(() => { fetchDrivers(); }, [fetchDrivers]);
+  const columns: ColumnDef<any>[] = [
+    {
+      header: "Assign status",
+      accessorKey: "assign",
+      cell: (row) => <StatusPill status={row.assign} />
+    },
+    {
+      header: "Employee st...",
+      accessorKey: "empStatus",
+      cell: (row) => <StatusPill status={row.empStatus} />
+    },
+    { header: "First name", accessorKey: "first" },
+    { header: "Last name", accessorKey: "last" },
+    { header: "Driver Type", accessorKey: "type" },
+    { header: "MC number", accessorKey: "mc" },
+    { header: "Contact nu...", accessorKey: "phone" },
+    { header: "Email", accessorKey: "email" },
+    {
+      header: "Driver status",
+      accessorKey: "status",
+      cell: (row) => <StatusPill status={row.status} />
+    },
+    { 
+      header: "Truck", 
+      accessorKey: "truck",
+      cell: (row) => <div className="text-[#3b82f6] hover:underline cursor-pointer">{row.truck}</div>
+    },
+    { header: "Trailer", accessorKey: "trailer" },
+    { header: "Team", accessorKey: "team" }
+  ];
 
-  const filtered = drivers.filter((d) =>
-    `${d.first_name} ${d.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-    d.email?.toLowerCase().includes(search.toLowerCase()) ||
-    d.cdl_number?.toLowerCase().includes(search.toLowerCase())
+  const renderSubNav = () => (
+    <div className="flex bg-white items-center gap-6 px-4 pt-4 pb-2 border-b border-[#e5e7eb] overflow-x-auto whitespace-nowrap scrollbar-hide">
+      {tabs.map(t => (
+        <button
+          key={t}
+          onClick={() => setActiveTab(t)}
+          className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+            activeTab === t 
+              ? "border-[#3b82f6] text-[#3b82f6]" 
+              : "border-transparent text-[#6b7280] hover:text-[#374151]"
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+      <div className="ml-auto pb-2 flex items-center">
+         {/* Stubbed to match the 'Create driver' button alignment */}
+      </div>
+    </div>
   );
 
-  const cardStyle: React.CSSProperties = {
-    backgroundColor: "var(--surface-low)",
-    borderRadius: "var(--radius-xl)",
-    border: "1px solid var(--outline-variant)",
-    padding: "var(--spacing-6)",
-  };
-
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--spacing-6)" }}>
-        <div>
-          <p className="label-sm" style={{ color: "var(--on-surface-variant)", marginBottom: 4 }}>Dashboard &gt; Drivers</p>
-          <h1 className="headline-md" style={{ color: "var(--on-surface)", margin: 0 }}>Driver Management</h1>
-        </div>
-        <span className="body-sm" style={{ color: "var(--on-surface-variant)" }}>{total} drivers</span>
+    <div className="h-full flex flex-col p-4">
+      {/* Tab bar header actions */}
+      <div className="flex justify-end mb-2 -mt-10 mr-2 z-10 relative">
+        <button className="bg-[#3b82f6] text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center gap-2 hover:bg-[#2563eb]">
+          <span className="text-lg leading-none">+</span> Create driver
+        </button>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: "var(--spacing-4)", marginBottom: "var(--spacing-5)" }}>
-        <div style={{ position: "relative", flex: 1, maxWidth: 400 }}>
-          <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--on-surface-variant)" }} />
-          <input
-            placeholder="Search drivers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "100%", padding: "var(--spacing-3) var(--spacing-3) var(--spacing-3) 36px",
-              borderRadius: "var(--radius-lg)", border: "1px solid var(--outline-variant)",
-              backgroundColor: "var(--surface-lowest)", color: "var(--on-surface)",
-              fontSize: "0.875rem", outline: "none",
-            }}
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{
-            padding: "var(--spacing-3) var(--spacing-4)", borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--outline-variant)", backgroundColor: "var(--surface-lowest)",
-            color: "var(--on-surface)", fontSize: "0.85rem",
-          }}
-        >
-          <option value="">All Statuses</option>
-          <option value="available">Available</option>
-          <option value="on_route">On Route</option>
-          <option value="off_duty">Off Duty</option>
-          <option value="on_leave">On Leave</option>
-        </select>
-      </div>
-
-      {/* Table */}
-      <div style={cardStyle}>
-        {loading ? (
-          <p style={{ textAlign: "center", color: "var(--on-surface-variant)", padding: "var(--spacing-8)" }}>Loading...</p>
-        ) : filtered.length === 0 ? (
-          <p style={{ textAlign: "center", color: "var(--on-surface-variant)", padding: "var(--spacing-8)" }}>No drivers found</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--outline-variant)" }}>
-                {["Name", "Status", "Email", "Phone", "CDL #", "CDL Expiry", "Medical Expiry", "Pay Type"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "var(--spacing-3)", color: "var(--on-surface-variant)", fontWeight: 500, fontSize: "0.75rem", textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((d) => {
-                const badge = STATUS_BADGE[d.status] || STATUS_BADGE.available;
-                const cdlExpiring = d.cdl_expiry_date && new Date(d.cdl_expiry_date) <= new Date(Date.now() + 30 * 86400000);
-                return (
-                  <tr key={d.id} style={{ borderBottom: "1px solid var(--outline-variant)" }}>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)", fontWeight: 600 }}>{d.first_name} {d.last_name}</td>
-                    <td style={{ padding: "var(--spacing-3)" }}>
-                      <span style={{ padding: "2px 8px", borderRadius: "var(--radius-full)", backgroundColor: badge.bg, color: badge.color, fontSize: "0.7rem", fontWeight: 600, textTransform: "capitalize" }}>
-                        {d.status?.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface-variant)" }}>{d.email}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)" }}>{d.phone || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)" }}>{d.cdl_number || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: cdlExpiring ? "#ef4444" : "var(--on-surface)" }}>
-                      {cdlExpiring && <AlertTriangle size={12} style={{ display: "inline", marginRight: 4 }} />}
-                      {d.cdl_expiry_date || "—"}
-                    </td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface-variant)" }}>{d.medical_card_expiry_date || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)", textTransform: "uppercase", fontSize: "0.7rem", fontWeight: 600 }}>{d.pay_rate_type || "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+      <div className="flex-1 rounded-lg border border-[#e5e7eb] bg-white shadow-sm overflow-hidden h-[80vh]">
+        <DataTable 
+          data={mockDrivers}
+          columns={columns}
+          renderSubNav={renderSubNav}
+        />
       </div>
     </div>
   );

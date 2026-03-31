@@ -1,4 +1,4 @@
-const baseUrl = "https://kinetic-api-1065403267999.us-central1.run.app/api/v1";
+const baseUrl = "https://Safehaul-api-1065403267999.us-central1.run.app/api/v1";
 
 async function runTest() {
   console.log("1. Logging in Test Company (Wenze)...");

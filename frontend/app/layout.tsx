@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Kinetic TMS — Precision Logistics",
+  title: "Safehaul TMS — Precision Logistics",
   description:
     "Next-Gen Transportation Management System for trucking companies. Manage loads, drivers, fleet, and accounting in one platform.",
 };

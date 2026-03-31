@@ -1,4 +1,4 @@
-"""Pytest conftest — async test fixtures for Kinetic TMS backend.
+"""Pytest conftest — async test fixtures for Safehaul TMS backend.
 
 Provides:
   - Async event loop

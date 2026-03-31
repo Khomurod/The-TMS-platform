@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Login Page — Kinetic Precision Framework aesthetic.
+ * Login Page — Safehaul Precision Framework aesthetic.
  * Uses correct design tokens from globals.css.
  */
 
@@ -65,7 +65,7 @@ export default function LoginPage() {
               marginBottom: "4px",
             }}
           >
-            KINETIC
+            Safehaul
           </div>
           <p
             style={{

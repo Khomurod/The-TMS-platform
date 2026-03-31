@@ -1,8 +1,8 @@
-# 🚛 Kinetic TMS — Detailed Action Plan
+# 🚛 Safehaul TMS — Detailed Action Plan
 
 > **Source of Truth:** [masterplan.md](file:///c:/Users/Kholmurod/Documents/GitHub/The%20TMS%20platform/masterplan.md)
 > **UI Reference:** [prototype/](file:///c:/Users/Kholmurod/Documents/GitHub/The%20TMS%20platform/prototype)
-> **Design System:** [DESIGN.md](file:///c:/Users/Kholmurod/Documents/GitHub/The%20TMS%20platform/prototype/freight_flow_mono/DESIGN.md) — "Kinetic Precision Framework"
+> **Design System:** [DESIGN.md](file:///c:/Users/Kholmurod/Documents/GitHub/The%20TMS%20platform/prototype/freight_flow_mono/DESIGN.md) — "Safehaul Precision Framework"
 
 ---
 
@@ -95,7 +95,7 @@ README.md
 
 ### 0.3 — Frontend Skeleton & Design System
 
-**What:** Initialize the Next.js app (App Router) and implement the Kinetic Precision design system from `DESIGN.md`.
+**What:** Initialize the Next.js app (App Router) and implement the Safehaul Precision design system from `DESIGN.md`.
 
 **Key Decisions:**
 - **Next.js 14+** with App Router (`/app` directory)

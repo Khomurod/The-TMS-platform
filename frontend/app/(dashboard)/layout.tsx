@@ -25,17 +25,7 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
   // Show loading spinner while checking auth
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          background: "var(--surface-lowest)",
-          color: "var(--text-muted)",
-          fontSize: "var(--text-lg)",
-        }}
-      >
+      <div className="flex items-center justify-center min-h-screen bg-[#f3f4f6] text-[#6b7280] text-lg">
         Loading...
       </div>
     );
@@ -45,17 +35,14 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return null;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className="flex min-h-screen bg-white text-[#111827] font-sans">
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: "var(--sidebar-width)" }}>
+      <div className="flex flex-col flex-1 w-full relative">
         <TopBar />
-        <main
-          style={{
-            padding: "var(--spacing-8) var(--spacing-10)",
-            minHeight: "calc(100vh - 64px)",
-          }}
-        >
-          {children}
+        <main className="flex-1 w-full overflow-x-hidden bg-[#f8f9fa] p-4">
+          <div className="bg-white rounded-md shadow-sm border border-[#e5e7eb] min-h-[calc(100vh-64px-32px)]">
+            {children}
+          </div>
         </main>
       </div>
     </div>

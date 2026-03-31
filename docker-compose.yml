@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════
-#   Kinetic TMS — Docker Compose (Local Development)
+#   Safehaul TMS — Docker Compose (Local Development)
 # ═══════════════════════════════════════════════════════════════════
 
 services:
@@ -7,15 +7,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: kinetic
-      POSTGRES_PASSWORD: kinetic_dev_2024
-      POSTGRES_DB: kinetic_tms
+      POSTGRES_USER: Safehaul
+      POSTGRES_PASSWORD: Safehaul_dev_2024
+      POSTGRES_DB: Safehaul_tms
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kinetic"]
+      test: ["CMD-SHELL", "pg_isready -U Safehaul"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -28,7 +28,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://kinetic:kinetic_dev_2024@db:5432/kinetic_tms
+      DATABASE_URL: postgresql+asyncpg://Safehaul:Safehaul_dev_2024@db:5432/Safehaul_tms
       JWT_SECRET_KEY: dev-secret-key-change-in-production
       ENVIRONMENT: development
       CORS_ORIGINS: '["http://localhost:3000"]'

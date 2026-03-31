@@ -1,151 +1,95 @@
 "use client";
 
-/**
- * Fleet Management Page — Trucks & Trailers
- */
+import React, { useState } from "react";
+import DataTable, { ColumnDef } from "@/components/ui/DataTable";
 
-import { useState, useEffect, useCallback } from "react";
-import { Truck, Plus, Search, Filter } from "lucide-react";
-import api from "@/lib/api";
-
-interface Equipment {
-  id: string;
-  unit_number: string;
-  status: string;
-  make?: string;
-  model?: string;
-  year?: number;
-  vin?: string;
-  license_plate?: string;
-  dot_inspection_expiry?: string;
-}
-
-const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
-  available: { bg: "rgba(34, 197, 94, 0.15)", color: "#22c55e" },
-  in_use: { bg: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" },
-  in_shop: { bg: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" },
-  retired: { bg: "rgba(100, 116, 139, 0.15)", color: "#94a3b8" },
-};
+const mockFleet = [
+  { make: "FRHT", model: "TR", unit: "005 CMP", plate: "C076FJ", vin: "3AKJHHDR6NSN...", year: 2022, state: "GA", mc: "WENZE TRANSPORT", operator: "-", owner: "-", odo: "0", trailer: "-" },
+  { make: "FREIG", model: "TRAC", unit: "771 Jurabek", plate: "55769PF", vin: "3AKJHHDR2RSU...", year: 2024, state: "NY", mc: "WENZE TRANSPORT", operator: "JURABEK SHADMAN", owner: "-", odo: "0", trailer: "-" },
+  { make: "VOLV", model: "VOLV", unit: "1991", plate: "XD929V", vin: "4VANC9EHSMN2...", year: 2021, state: "FL", mc: "WENZE TRANSPORT", operator: "JOSEPH JEAN WALI...", owner: "-", odo: "0", trailer: "-" },
+  { make: "FRHT", model: "TR", unit: "96256 CMP", plate: "P1340675", vin: "3AKJHHDR7TSW...", year: 2024, state: "IL", mc: "WENZE TRANSPORT", operator: "Pascal Fleurimond", owner: "-", odo: "0", trailer: "-" },
+  { make: "INTL", model: "MX", unit: "182", plate: "ZP91203", vin: "3HSDZAPR7NNS...", year: 2022, state: "CA", mc: "WENZE TRANSPORT", operator: "-", owner: "-", odo: "0", trailer: "-" },
+  { make: "FRHT", model: "FRHT", unit: "318 CMP", plate: "PXE9165", vin: "3AKJHHDR9TSW...", year: 2024, state: "OH", mc: "WENZE TRANSPORT", operator: "CLYDE LEE JR MALLE", owner: "-", odo: "0", trailer: "-" },
+];
 
 export default function FleetPage() {
-  const [tab, setTab] = useState<"trucks" | "trailers">("trucks");
-  const [items, setItems] = useState<Equipment[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("Active Trucks");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/fleet/${tab}`, { params: { page: 1, page_size: 50 } });
-      setItems(res.data.items || []);
-      setTotal(res.data.total || 0);
-    } catch (err) {
-      console.error("Fleet fetch error", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [tab]);
+  const tabs = [
+    "Active Trucks", "Unassigned trucks", "All Trucks", "Inactive Trucks"
+  ];
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const columns: ColumnDef<any>[] = [
+    { header: "Make", accessorKey: "make" },
+    { header: "Model", accessorKey: "model" },
+    { 
+      header: "Unit number", 
+      accessorKey: "unit",
+      cell: (row) => <div className="text-[#3b82f6] hover:underline cursor-pointer">{row.unit}</div>
+    },
+    { header: "Plate number", accessorKey: "plate" },
+    { header: "Vin", accessorKey: "vin" },
+    { header: "Year", accessorKey: "year" },
+    { header: "State", accessorKey: "state" },
+    { header: "MC number", accessorKey: "mc" },
+    { 
+      header: "Operator (dr...", 
+      accessorKey: "operator",
+      cell: (row) => <div className="text-[#3b82f6] hover:underline cursor-pointer">{row.operator}</div>
+    },
+    { header: "Owner name", accessorKey: "owner" },
+    { header: "Odometer", accessorKey: "odo" },
+    { header: "Trailer", accessorKey: "trailer" },
+  ];
 
-  const filtered = items.filter((i) =>
-    i.unit_number?.toLowerCase().includes(search.toLowerCase()) ||
-    i.make?.toLowerCase().includes(search.toLowerCase()) ||
-    i.model?.toLowerCase().includes(search.toLowerCase())
+  const renderSubNav = () => (
+    <div className="flex bg-white items-center gap-6 px-4 pt-4 pb-2 border-b border-[#e5e7eb] overflow-x-auto whitespace-nowrap scrollbar-hide">
+      {tabs.map(t => (
+        <button
+          key={t}
+          onClick={() => setActiveTab(t)}
+          className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
+            activeTab === t 
+              ? "border-[#3b82f6] text-[#3b82f6]" 
+              : "border-transparent text-[#6b7280] hover:text-[#374151]"
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
   );
 
-  const cardStyle: React.CSSProperties = {
-    backgroundColor: "var(--surface-low)",
-    borderRadius: "var(--radius-xl)",
-    border: "1px solid var(--outline-variant)",
-    padding: "var(--spacing-6)",
-  };
+  const renderFooter = () => (
+    <div className="flex items-center gap-4 w-full justify-start font-medium text-[11px]">
+      <div className="flex items-center gap-2">
+        <span className="bg-[#10b981] text-white px-2 py-0.5 rounded-sm">AVAILABLE 59</span>
+        <span className="bg-[#f97316] text-white px-2 py-0.5 rounded-sm">IN TRANSIT 26</span>
+      </div>
+      <div className="flex items-center gap-2 ml-4">
+        <div className="w-8 h-4 bg-[#e5e7eb] rounded-xl relative cursor-pointer">
+           <div className="w-3 h-3 bg-white rounded-full absolute top-0.5 left-0.5 shadow-sm"></div>
+        </div>
+        <span className="text-[#6b7280]">By fleet status</span>
+      </div>
+    </div>
+  );
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--spacing-6)" }}>
-        <div>
-          <p className="label-sm" style={{ color: "var(--on-surface-variant)", marginBottom: 4 }}>Dashboard &gt; Fleet</p>
-          <h1 className="headline-md" style={{ color: "var(--on-surface)", margin: 0 }}>Fleet Management</h1>
-        </div>
+    <div className="h-full flex flex-col p-4">
+      <div className="flex justify-end mb-2 -mt-10 mr-2 z-10 relative">
+        <button className="bg-[#3b82f6] text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center hover:bg-[#2563eb]">
+          Create Truck
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "var(--spacing-3)", marginBottom: "var(--spacing-6)" }}>
-        {(["trucks", "trailers"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              padding: "var(--spacing-3) var(--spacing-6)",
-              borderRadius: "var(--radius-lg)",
-              border: tab === t ? "1px solid var(--primary)" : "1px solid var(--outline-variant)",
-              backgroundColor: tab === t ? "var(--primary)" : "transparent",
-              color: tab === t ? "var(--on-primary)" : "var(--on-surface)",
-              cursor: "pointer", fontSize: "0.875rem", fontWeight: 600,
-              textTransform: "capitalize",
-            }}
-          >
-            {t} ({tab === t ? total : "—"})
-          </button>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div style={{ marginBottom: "var(--spacing-5)", position: "relative", maxWidth: 400 }}>
-        <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--on-surface-variant)" }} />
-        <input
-          placeholder={`Search ${tab}...`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            width: "100%", padding: "var(--spacing-3) var(--spacing-3) var(--spacing-3) 36px",
-            borderRadius: "var(--radius-lg)", border: "1px solid var(--outline-variant)",
-            backgroundColor: "var(--surface-lowest)", color: "var(--on-surface)",
-            fontSize: "0.875rem", outline: "none",
-          }}
+      <div className="flex-1 rounded-lg border border-[#e5e7eb] bg-white shadow-sm overflow-hidden h-[80vh]">
+        <DataTable 
+          data={mockFleet}
+          columns={columns}
+          renderSubNav={renderSubNav}
+          renderFooter={renderFooter}
         />
-      </div>
-
-      {/* Table */}
-      <div style={cardStyle}>
-        {loading ? (
-          <p style={{ textAlign: "center", color: "var(--on-surface-variant)", padding: "var(--spacing-8)" }}>Loading...</p>
-        ) : filtered.length === 0 ? (
-          <p style={{ textAlign: "center", color: "var(--on-surface-variant)", padding: "var(--spacing-8)" }}>No {tab} found</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--outline-variant)" }}>
-                {["Unit #", "Status", "Make", "Model", "Year", "VIN", "License Plate", "DOT Expiry"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "var(--spacing-3)", color: "var(--on-surface-variant)", fontWeight: 500, fontSize: "0.75rem", textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => {
-                const badge = STATUS_BADGE[item.status] || STATUS_BADGE.available;
-                return (
-                  <tr key={item.id} style={{ borderBottom: "1px solid var(--outline-variant)" }}>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)", fontWeight: 600 }}>{item.unit_number}</td>
-                    <td style={{ padding: "var(--spacing-3)" }}>
-                      <span style={{ padding: "2px 8px", borderRadius: "var(--radius-full)", backgroundColor: badge.bg, color: badge.color, fontSize: "0.7rem", fontWeight: 600, textTransform: "capitalize" }}>
-                        {item.status?.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)" }}>{item.make || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)" }}>{item.model || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)" }}>{item.year || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface-variant)", fontSize: "0.75rem" }}>{item.vin || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface)" }}>{item.license_plate || "—"}</td>
-                    <td style={{ padding: "var(--spacing-3)", color: "var(--on-surface-variant)" }}>{item.dot_inspection_expiry || "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$API_URL = "https://kinetic-api-1065403267999.us-central1.run.app/api/v1"
+$API_URL = "https://Safehaul-api-1065403267999.us-central1.run.app/api/v1"
 
 Write-Host "1. Logging in as Admin (testcompany.com)..."
 $loginBody = @{

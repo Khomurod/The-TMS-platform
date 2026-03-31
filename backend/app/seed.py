@@ -55,7 +55,7 @@ async def create_tables() -> None:
 
 
 async def create_super_admin(db: AsyncSession) -> User:
-    email = "superadmin@kinetic.test"
+    email = "superadmin@Safehaul.test"
     result = await db.execute(select(User).where(User.email == email))
     existing = result.scalar_one_or_none()
     if existing:
@@ -740,7 +740,7 @@ def print_summary() -> None:
     print()
     print(f"  {'Role':<18} {'Email':<33} {'Password'}")
     print(f"  {'──────────────':<18} {'─────────────────────────────':<33} {'─────────────'}")
-    print(f"  {'Super Admin':<18} {'superadmin@kinetic.test':<33} SuperAdmin1!")
+    print(f"  {'Super Admin':<18} {'superadmin@Safehaul.test':<33} SuperAdmin1!")
     print(f"  {'Company Admin':<18} {'admin@wenzetrucking.com':<33} WenzeAdmin1!")
     print(f"  {'Dispatcher':<18} {'dispatcher@wenzetrucking.com':<33} Dispatch1!")
     print(f"  {'Accountant':<18} {'accounting@wenzetrucking.com':<33} Account1!")
@@ -756,7 +756,7 @@ def print_summary() -> None:
 async def seed() -> None:
     sep = "═" * 55
     print(f"\n{sep}")
-    print("  Kinetic TMS — Database Seed Script")
+    print("  Safehaul TMS — Database Seed Script")
     print(f"{sep}\n")
 
     await create_tables()

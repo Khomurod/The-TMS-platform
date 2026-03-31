@@ -2,150 +2,82 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Truck,
-  Container,
-  Users,
-  Receipt,
-  Settings,
-  Zap,
+import { 
+  Building2, 
+  LayoutDashboard, 
+  Truck, 
+  Map, 
+  Users, 
+  Settings, 
+  Wallet,
+  MoreHorizontal
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Loads", href: "/loads", icon: Truck },
-  { label: "Fleet", href: "/fleet", icon: Container },
-  { label: "Drivers", href: "/drivers", icon: Users },
-  { label: "Accounting", href: "/accounting", icon: Receipt },
-  { label: "Settings", href: "/settings", icon: Settings },
+const mainLinks = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Load Management", href: "/loads", icon: Map },
+  { name: "Fleet Management", href: "/fleet", icon: Truck },
+  { name: "HR Management", href: "/drivers", icon: Users },
+  { name: "Accounting", href: "/accounting", icon: Wallet },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside
-      style={{
-        width: "var(--sidebar-width)",
-        minHeight: "100vh",
-        backgroundColor: "var(--surface-low)",
-        display: "flex",
-        flexDirection: "column",
-        padding: "var(--spacing-8) 0",
-        position: "fixed",
-        left: 0,
-        top: 0,
-        zIndex: 40,
-        transition: "background-color 0.2s ease",
-      }}
-    >
-      {/* Logo */}
-      <div
-        style={{
-          padding: "0 var(--spacing-8)",
-          marginBottom: "var(--spacing-12)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-2)" }}>
-          <h1
-            className="headline-sm"
-            style={{ color: "var(--on-surface)", margin: 0, lineHeight: 1.2 }}
-          >
-            Kinetic TMS
-          </h1>
-          <Zap
-            size={18}
-            style={{ color: "var(--primary)" }}
-            strokeWidth={2.5}
-          />
+    <aside className="w-[280px] bg-white border-r border-[#e5e7eb] flex flex-col h-screen overflow-hidden sticky top-0 transition-all duration-300 z-20">
+      {/* Brand Header */}
+      <div className="h-[64px] flex items-center px-6 border-b border-[#e5e7eb] shrink-0">
+        <div className="flex items-center gap-2 text-[#3525cd] font-bold text-xl tracking-tight">
+          <Truck className="h-6 w-6 text-[#3525cd]" />
+          Safehaul TMS
         </div>
-        <span
-          className="label-sm"
-          style={{
-            color: "var(--on-surface-variant)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            fontSize: "0.625rem",
-          }}
-        >
-          Precision Logistics
-        </span>
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: "var(--spacing-1)" }}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname?.startsWith(item.href);
-          const Icon = item.icon;
-
+      <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
+        {mainLinks.map((link) => {
+          const isActive = pathname.startsWith(link.href) || (pathname === "/" && link.href === "/dashboard");
+          const Icon = link.icon;
+          
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--spacing-3)",
-                padding: "var(--spacing-3) var(--spacing-8)",
-                color: isActive ? "var(--primary)" : "var(--on-surface-variant)",
-                backgroundColor: isActive ? "var(--surface-lowest)" : "transparent",
-                textDecoration: "none",
-                fontSize: "0.875rem",
-                fontWeight: isActive ? 600 : 400,
-                borderLeft: isActive ? "3px solid var(--primary)" : "3px solid transparent",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-lowest)";
-                  (e.currentTarget as HTMLElement).style.color = "var(--on-surface)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-                  (e.currentTarget as HTMLElement).style.color = "var(--on-surface-variant)";
-                }
-              }}
+              key={link.name}
+              href={link.href}
+              className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                isActive 
+                  ? "bg-[#eef2ff] text-[#3525cd]" 
+                  : "text-[#4b5563] hover:bg-[#f3f4f6]"
+              }`}
             >
-              <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
-              <span>{item.label}</span>
+              <Icon className={`mr-3 h-5 w-5 ${isActive ? "text-[#3525cd]" : "text-[#9ca3af]"}`} />
+              {link.name}
+              {link.name === "Load Management" && (
+                <span className="ml-auto bg-[#3b82f6] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">NEW</span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* User Profile (bottom) */}
-      <div
-        style={{
-          padding: "var(--spacing-4) var(--spacing-8)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--spacing-3)",
-        }}
-      >
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "var(--radius-full)",
-            background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--on-primary)",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-          }}
-        >
-          AR
-        </div>
-        <div>
-          <div className="body-sm" style={{ fontWeight: 600, color: "var(--on-surface)" }}>
-            Alex Rivera
+      {/* Footer Profile */}
+      <div className="shrink-0 p-4 border-t border-[#e5e7eb]">
+        <button className="flex items-center w-full gap-2 px-3 py-2 rounded-md hover:bg-[#f3f4f6] transition-colors text-left border border-[#e5e7eb] bg-white mb-4">
+          <Building2 className="h-4 w-4 text-[#6b7280]" />
+          <span className="text-xs font-medium text-[#374151] truncate w-full">WENZE TRANSPORT SERVICES</span>
+        </button>
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-[#eef2ff] text-[#3525cd] flex items-center justify-center text-xs font-bold ring-2 ring-white">
+              TR
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-[#111827] leading-none mb-1">Tom Robinson</span>
+              <span className="text-[10px] text-[#6b7280] leading-none">hr@wenze.com</span>
+            </div>
           </div>
-          <div className="label-sm">Fleet Director</div>
+          <MoreHorizontal className="h-4 w-4 text-[#9ca3af] cursor-pointer" />
         </div>
       </div>
     </aside>
