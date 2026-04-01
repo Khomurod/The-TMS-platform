@@ -2,7 +2,7 @@
 #   Kinetic TMS — CI/CD Pipeline (GitHub Actions)
 # ═══════════════════════════════════════════════════════════════════
 
-name: Kinetic TMS CI/CD
+name: Safehaul TMS CI/CD
 
 on:
   push:
@@ -92,12 +92,12 @@ jobs:
       - name: Build & push backend image
         run: |
           gcloud builds submit ./backend \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-api:${{ github.sha }}
+            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/safehaul-api:${{ github.sha }}
 
       - name: Deploy backend to Cloud Run
         run: |
-          gcloud run deploy kinetic-api \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-api:${{ github.sha }} \
+          gcloud run deploy safehaul-api \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/safehaul-api:${{ github.sha }} \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \
@@ -108,12 +108,12 @@ jobs:
       - name: Build & push frontend image
         run: |
           gcloud builds submit ./frontend \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-web:${{ github.sha }}
+            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-frontend:${{ github.sha }}
 
       - name: Deploy frontend to Cloud Run
         run: |
-          gcloud run deploy kinetic-web \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-web:${{ github.sha }} \
+          gcloud run deploy kinetic-frontend \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-frontend:${{ github.sha }} \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \

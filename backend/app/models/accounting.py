@@ -3,9 +3,10 @@
 import enum
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, func,
+    Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -69,7 +70,7 @@ class LoadAccessorial(Base, TenantMixin):
         nullable=False,
     )
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)  # Never float in DB
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     # ── Relationships ────────────────────────────────────────────
     load = relationship("Load", back_populates="accessorials")
@@ -81,7 +82,7 @@ class CompanyDefaultDeduction(Base, TenantMixin):
     __tablename__ = "company_default_deductions"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)  # e.g., "Weekly Trailer Rental"
-    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     frequency: Mapped[DeductionFrequency] = mapped_column(
         Enum(DeductionFrequency, name="deduction_frequency_enum", create_constraint=True),
         nullable=False,
@@ -92,6 +93,9 @@ class DriverSettlement(Base, TenantMixin):
     """A settlement period for a driver — aggregates load pay, accessorials, and deductions."""
 
     __tablename__ = "driver_settlements"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'settlement_number', name='uq_settlements_company_number'),
+    )
 
     driver_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -104,10 +108,10 @@ class DriverSettlement(Base, TenantMixin):
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
 
     # ── Financials (NUMERIC — never float) ───────────────────────
-    gross_pay: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
-    total_accessorials: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
-    total_deductions: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
-    net_pay: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    gross_pay: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    total_accessorials: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    total_deductions: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    net_pay: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
 
     status: Mapped[SettlementStatus] = mapped_column(
         Enum(SettlementStatus, name="settlement_status_enum", create_constraint=True),
@@ -142,7 +146,7 @@ class SettlementLineItem(Base, TenantMixin):
         nullable=False,
     )
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)  # Positive = earnings, negative = deductions
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)  # Positive = earnings, negative = deductions
 
     # ── Relationships ────────────────────────────────────────────
     settlement = relationship("DriverSettlement", back_populates="line_items")

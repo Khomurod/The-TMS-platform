@@ -37,10 +37,10 @@ class Company(Base):
         DateTime(timezone=True), onupdate=func.now(), nullable=True
     )
 
-    # ── Relationships ────────────────────────────────────────────
-    users = relationship("User", back_populates="company", lazy="selectin")
-    brokers = relationship("Broker", back_populates="company", lazy="selectin")
-    drivers = relationship("Driver", back_populates="company", lazy="selectin")
-    trucks = relationship("Truck", back_populates="company", lazy="selectin")
-    trailers = relationship("Trailer", back_populates="company", lazy="selectin")
-    loads = relationship("Load", back_populates="company", lazy="selectin")
+    # ── Relationships (lazy="noload" — use explicit selectinload where needed) ──
+    users = relationship("User", back_populates="company", lazy="noload")
+    brokers = relationship("Broker", back_populates="company", lazy="noload")
+    drivers = relationship("Driver", back_populates="company", lazy="noload")
+    trucks = relationship("Truck", back_populates="company", lazy="noload")
+    trailers = relationship("Trailer", back_populates="company", lazy="noload")
+    loads = relationship("Load", back_populates="company", lazy="noload")

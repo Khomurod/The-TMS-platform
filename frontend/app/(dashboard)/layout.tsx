@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 
 function ProtectedShell({ children }: { children: React.ReactNode }) {
@@ -46,7 +47,9 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
           background: "#f1f5f9",
           overflowX: "hidden",
         }}>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

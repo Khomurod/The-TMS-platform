@@ -3,9 +3,11 @@
 import enum
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from sqlalchemy import (
-    Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, Time, func,
+    Date, DateTime, Enum, ForeignKey, Index, Integer, Numeric,
+    String, Text, Time, UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -41,6 +43,9 @@ class Load(Base, TenantMixin):
     """
 
     __tablename__ = "loads"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'load_number', name='uq_loads_company_number'),
+    )
 
     # ── Load Identification ──────────────────────────────────────
     load_number: Mapped[str] = mapped_column(
@@ -80,9 +85,9 @@ class Load(Base, TenantMixin):
     )
 
     # ── Financials (NUMERIC — never float) ───────────────────────
-    base_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)  # Linehaul rate
-    total_miles: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
-    total_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)  # base_rate + accessorials
+    base_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)  # Linehaul rate
+    total_miles: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    total_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)  # base_rate + accessorials
 
     # ── Other ────────────────────────────────────────────────────
     contact_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Broker agent name
@@ -106,6 +111,9 @@ class LoadStop(Base, TenantMixin):
     """
 
     __tablename__ = "load_stops"
+    __table_args__ = (
+        Index('ix_load_stops_load_id', 'load_id'),
+    )
 
     load_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

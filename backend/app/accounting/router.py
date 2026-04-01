@@ -59,7 +59,7 @@ async def list_settlements(
     status: str = Query(None),
     driver_id: str = Query(None),
     svc: AccountingService = Depends(_get_service),
-    _role=Depends(require_roles("company_admin")),
+    _role=Depends(require_roles("company_admin", "accountant")),
 ):
     """List settlements with optional filters."""
     return await svc.list_settlements(page, page_size, status, driver_id)
@@ -69,7 +69,7 @@ async def list_settlements(
 async def get_settlement(
     settlement_id: UUID,
     svc: AccountingService = Depends(_get_service),
-    _role=Depends(require_roles("company_admin")),
+    _role=Depends(require_roles("company_admin", "accountant")),
 ):
     """Get full settlement detail with line items."""
     return await svc.get_settlement(settlement_id)
@@ -103,7 +103,7 @@ async def pay_settlement(
 async def download_settlement_pdf(
     settlement_id: UUID,
     svc: AccountingService = Depends(_get_service),
-    _role=Depends(require_roles("company_admin")),
+    _role=Depends(require_roles("company_admin", "accountant")),
 ):
     """Download settlement as PDF paystub."""
     return await svc.generate_pdf(settlement_id)

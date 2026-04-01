@@ -1,9 +1,13 @@
 """Safehaul TMS — FastAPI Application Entry Point."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.database import get_db
 from app.core.middleware import TenantMiddleware
 from app.core.security_middleware import (
     RateLimitMiddleware,
@@ -23,12 +27,16 @@ from app.auth.admin_router import router as admin_router
 from app.dashboard.router import router as dashboard_router
 from app.documents.router import router as documents_router
 
+# ── Disable Swagger/OpenAPI docs in production ───────────────────
+_is_prod = settings.environment == "production"
+
 app = FastAPI(
     title="Safehaul TMS API",
     description="Next-Gen Transportation Management System — API Server",
     version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
 )
 
 # ── CORS Middleware ──────────────────────────────────────────────
@@ -66,13 +74,20 @@ app.include_router(documents_router, prefix=API_V1_PREFIX)
 
 # ── Health Check ─────────────────────────────────────────────────
 @app.get("/api/v1/health", tags=["System"])
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "Safehaul TMS API", "version": "0.1.0"}
+async def health_check(db: AsyncSession = Depends(get_db)):
+    """Health check endpoint — verifies database connectivity."""
+    try:
+        await db.execute(text("SELECT 1"))
+        return {"status": "healthy", "service": "Safehaul TMS API", "version": "0.1.0", "database": "connected"}
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "service": "Safehaul TMS API", "database": "disconnected"},
+        )
 
 
-# ── Root Redirect ────────────────────────────────────────────────
+# ── Root ─────────────────────────────────────────────────────────
 @app.get("/", tags=["System"])
 async def root():
-    """Root endpoint — redirects to docs."""
-    return {"message": "Safehaul TMS API", "docs": "/docs"}
+    """Root endpoint."""
+    return {"message": "Safehaul TMS API", "version": "0.1.0"}

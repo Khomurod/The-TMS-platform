@@ -29,7 +29,10 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # ── CORS ─────────────────────────────────────────────────────
-    cors_origins: List[str] = ["http://localhost:3000"]
+    cors_origins: List[str] = [
+        "http://localhost:3000",
+        "https://kinetic-frontend-1065403267999.us-central1.run.app",
+    ]
 
     # ── Google Cloud Storage (Phase 3) ───────────────────────────
     gcs_bucket_name: str = ""
@@ -53,9 +56,9 @@ class Settings(BaseSettings):
                     "FATAL: DATABASE_URL contains development credentials. "
                     "Set the DATABASE_URL environment variable for production."
                 )
-            if not self.cors_origins or self.cors_origins == ["http://localhost:3000"]:
+            if not self.cors_origins or all(o.startswith("http://localhost") for o in self.cors_origins):
                 raise ValueError(
-                    "FATAL: CORS_ORIGINS must be configured for production. "
+                    "FATAL: CORS_ORIGINS must include a production domain. "
                     "Set the CORS_ORIGINS environment variable."
                 )
         return self

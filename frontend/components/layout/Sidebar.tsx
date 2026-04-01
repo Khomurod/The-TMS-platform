@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { 
   Building2, LayoutDashboard, Truck, Map, Users, Settings, Wallet,
   ChevronDown, ChevronRight, LogOut, Mail, Calendar, MapPin, 
@@ -59,7 +60,7 @@ const navItems: NavItem[] = [
     name: "HR Management", icon: Users,
     children: [
       { name: "Drivers", href: "/drivers", implemented: true },
-      { name: "Users", href: "/users", implemented: true },
+      { name: "Users", href: "/users", implemented: false },
     ]
   },
   { name: "Reports", href: "/reports", icon: BarChart3, implemented: false },
@@ -131,6 +132,7 @@ function UnderDevModal({ open, onClose }: { open: boolean; onClose: () => void }
 }
 
 export default function Sidebar() {
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     "Accounting": true,
@@ -279,7 +281,7 @@ export default function Sidebar() {
             marginBottom: 10, textAlign: "left",
           }}>
             <Building2 style={{ width: 14, height: 14, color: "#94a3b8", flexShrink: 0 }} />
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>WENZE TRANSPORT SERVICES</span>
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.company_name || "Company"}</span>
             <ChevronRight style={{ width: 12, height: 12, color: "#64748b" }} />
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px" }}>
@@ -288,12 +290,12 @@ export default function Sidebar() {
               background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "#fff", fontSize: 11, fontWeight: 700, flexShrink: 0,
-            }}>TR</div>
+            }}>{user ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` : "?"}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "#f1f5f9", fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 }}>Tom Robinson</div>
-              <div style={{ color: "#64748b", fontSize: 10.5, lineHeight: 1.2, marginTop: 2 }}>hr@wenze.com</div>
+              <div style={{ color: "#f1f5f9", fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 }}>{user ? `${user.first_name} ${user.last_name}` : "User"}</div>
+              <div style={{ color: "#64748b", fontSize: 10.5, lineHeight: 1.2, marginTop: 2 }}>{user?.email || ""}</div>
             </div>
-            <button style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }} title="Sign out">
+            <button onClick={() => logout()} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }} title="Sign out">
               <LogOut style={{ width: 15, height: 15 }} />
             </button>
           </div>

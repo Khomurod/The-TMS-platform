@@ -1,6 +1,6 @@
 """Broker model — broker directory for load assignments."""
 
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantMixin
@@ -13,6 +13,9 @@ class Broker(Base, TenantMixin):
     """
 
     __tablename__ = "brokers"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'name', name='uq_brokers_company_name'),
+    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     mc_number: Mapped[str | None] = mapped_column(String(50), nullable=True)

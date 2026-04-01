@@ -97,12 +97,19 @@ export default function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {data.map((row, rowIndex) => (
-              <tr 
-                key={rowIndex} 
-                onClick={() => onRowClick && onRowClick(row)}
-                className="border-b border-[#e5e7eb] hover:bg-[#f9fafb] cursor-pointer"
-              >
+            {data.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 2} className="px-4 py-16 text-center text-gray-400 text-sm">
+                  No data available
+                </td>
+              </tr>
+            ) : (
+              data.map((row, rowIndex) => (
+                <tr 
+                  key={rowIndex} 
+                  onClick={() => onRowClick && onRowClick(row)}
+                  className="border-b border-[#e5e7eb] hover:bg-[#f9fafb] cursor-pointer"
+                >
                 <td className="px-4 py-2 text-center border-r border-[#e5e7eb]">
                   <input type="checkbox" className="rounded border-gray-300 text-[#3525cd] focus:ring-[#3525cd]" onClick={(e) => e.stopPropagation()}/>
                 </td>
@@ -117,7 +124,8 @@ export default function DataTable<T>({
                   </button>
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -137,7 +145,7 @@ export default function DataTable<T>({
           <option>50</option>
           <option>100</option>
         </select>
-        <span>1-20 of {data.length}</span>
+        <span>{data.length > 0 ? `1-${data.length}` : "0"} of {data.length}</span>
       </div>
     </div>
   );

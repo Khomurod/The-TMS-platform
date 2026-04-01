@@ -2,7 +2,7 @@
 
 import enum
 
-from sqlalchemy import Date, Enum, Integer, String
+from sqlalchemy import Date, Enum, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TenantMixin
@@ -42,6 +42,9 @@ class Truck(Base, TenantMixin):
     """
 
     __tablename__ = "trucks"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'unit_number', name='uq_trucks_company_unit'),
+    )
 
     unit_number: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "TRK-402"
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -76,6 +79,9 @@ class Trailer(Base, TenantMixin):
     """
 
     __tablename__ = "trailers"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'unit_number', name='uq_trailers_company_unit'),
+    )
 
     unit_number: Mapped[str] = mapped_column(String(50), nullable=False)
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)

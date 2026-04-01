@@ -195,6 +195,16 @@ class LoadService:
                 detail=f"Invalid transition: '{current}' → '{new_status}'. Allowed: {allowed}",
             )
 
+        # Dispatch requires driver + truck
+        if new_status == "dispatched":
+            errors = []
+            if not load.driver_id:
+                errors.append("Driver must be assigned before dispatching")
+            if not load.truck_id:
+                errors.append("Truck must be assigned before dispatching")
+            if errors:
+                raise HTTPException(status_code=400, detail="; ".join(errors))
+
         # Apply side effects
         await self._apply_side_effects(load, new_status)
 

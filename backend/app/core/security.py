@@ -8,13 +8,24 @@ Implements:
 """
 
 from datetime import datetime, timedelta, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import bcrypt
 import jwt
 from jwt.exceptions import InvalidTokenError
 
 from app.config import settings
+
+# ── Token Blacklist (in-memory — acceptable for single Cloud Run instance) ──
+_blacklisted_jtis: set[str] = set()
+
+def blacklist_token(jti: str) -> None:
+    """Add a JTI to the blacklist."""
+    _blacklisted_jtis.add(jti)
+
+def is_token_blacklisted(jti: str) -> bool:
+    """Check if a JTI is blacklisted."""
+    return jti in _blacklisted_jtis
 
 # ── Password Hashing ─────────────────────────────────────────────
 
@@ -46,6 +57,7 @@ def create_access_token(user_id: UUID, company_id: UUID | None, role: str) -> st
         "role": role,
         "exp": expire,
         "type": "access",
+        "jti": str(uuid4()),
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
@@ -60,6 +72,7 @@ def create_refresh_token(user_id: UUID) -> str:
         "sub": str(user_id),
         "exp": expire,
         "type": "refresh",
+        "jti": str(uuid4()),
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
@@ -68,6 +81,10 @@ def decode_token(token: str) -> dict:
     """Decode and validate a JWT token.
 
     Returns the payload dict.
-    Raises InvalidTokenError if token is invalid, expired, or malformed.
+    Raises InvalidTokenError if token is invalid, expired, blacklisted, or malformed.
     """
-    return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    jti = payload.get("jti")
+    if jti and is_token_blacklisted(jti):
+        raise InvalidTokenError("Token has been revoked")
+    return payload

@@ -23,5 +23,5 @@ ENV PORT=8000
 
 EXPOSE 8000
 
-# Run with uvicorn — Cloud Run handles scaling
-CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"
+# Run with gunicorn + uvicorn workers — production-ready process manager
+CMD sh -c "gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --workers ${WORKERS:-2} --bind 0.0.0.0:${PORT:-8000} --timeout 120 --access-logfile -"

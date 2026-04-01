@@ -102,6 +102,7 @@ async def toggle_company_status(
         raise NotFoundError("Company not found")
 
     company.is_active = not company.is_active
+    await db.commit()
     status = "activated" if company.is_active else "suspended"
     return {"message": f"Company '{company.name}' has been {status}", "is_active": company.is_active}
 

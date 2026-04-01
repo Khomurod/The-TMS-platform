@@ -1,8 +1,9 @@
 """Auth schemas — Pydantic models for request/response validation."""
 
+import re
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # ── Request Schemas ──────────────────────────────────────────────
@@ -20,6 +21,18 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        """Enforce: >= 1 uppercase, >= 1 lowercase, >= 1 digit."""
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'[0-9]', v):
+            raise ValueError('Password must contain at least one digit')
+        return v
 
 
 class LoginRequest(BaseModel):

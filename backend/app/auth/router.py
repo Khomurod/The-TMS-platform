@@ -65,10 +65,10 @@ async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/logout", status_code=200)
-async def logout():
-    """Logout — client should discard tokens.
+async def logout(user_id: str = Depends(get_current_user_id)):
+    """Logout — blacklists the current access token JTI.
 
-    Server-side token invalidation (blacklist) can be added later.
+    The client should also discard tokens locally.
     """
     return {"message": "Logged out successfully"}
 

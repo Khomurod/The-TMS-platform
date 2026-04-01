@@ -119,13 +119,16 @@ class DriverRepository:
 
     async def has_active_loads(self, driver_id: UUID) -> bool:
         """Check if driver is attached to non-completed loads."""
-        from app.models.load import Load
+        from app.models.load import Load, LoadStatus
         query = (
             select(func.count())
             .select_from(Load)
             .where(Load.driver_id == driver_id)
             .where(Load.company_id == self.company_id)
-            .where(Load.status.notin_(["delivered", "billed", "paid", "cancelled"]))
+            .where(Load.status.notin_([
+                LoadStatus.delivered, LoadStatus.billed,
+                LoadStatus.paid, LoadStatus.cancelled,
+            ]))
         )
         result = (await self.db.execute(query)).scalar() or 0
         return result > 0

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { 
   Settings2, ArrowUpRight, DollarSign, CheckCircle2, ChevronDown,
@@ -37,6 +38,7 @@ interface FleetStatus {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("Get things done");
   const [kpis, setKpis] = useState<KpiData | null>(null);
   const [fleet, setFleet] = useState<FleetStatus | null>(null);
@@ -207,23 +209,25 @@ export default function DashboardPage() {
             <span style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Tasks</span>
           </div>
           {(() => {
-            const tasks = [];
+            const tasks: { text: string; href: string }[] = [];
             if (kpis) {
-              if (kpis.active_loads > 0) tasks.push(`Mark ${kpis.active_loads} active loads as delivered`);
-              if (kpis.planned_loads > 0) tasks.push(`Dispatch ${kpis.planned_loads} planned loads`);
-              if (kpis.active_drivers > 0 && kpis.on_route_drivers < kpis.active_drivers) tasks.push(`Assign loads to ${kpis.active_drivers - kpis.on_route_drivers} available drivers`);
+              if (kpis.active_loads > 0) tasks.push({ text: `Mark ${kpis.active_loads} active loads as delivered`, href: "/loads" });
+              if (kpis.planned_loads > 0) tasks.push({ text: `Dispatch ${kpis.planned_loads} planned loads`, href: "/loads" });
+              if (kpis.active_drivers > 0 && kpis.on_route_drivers < kpis.active_drivers) tasks.push({ text: `Assign loads to ${kpis.active_drivers - kpis.on_route_drivers} available drivers`, href: "/drivers" });
             }
-            if (fleetAvailable > 0) tasks.push(`${fleetAvailable} trucks available for dispatch`);
-            if (tasks.length === 0) tasks.push("No pending tasks — all caught up!");
+            if (fleetAvailable > 0) tasks.push({ text: `${fleetAvailable} trucks available for dispatch`, href: "/fleet" });
+            if (tasks.length === 0) tasks.push({ text: "No pending tasks \u2014 all caught up!", href: "" });
             return tasks.map((task, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0",
                 borderBottom: i < tasks.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                <span style={{ fontSize: 12.5, color: "#475569", fontWeight: 500 }}>{task}</span>
-                <button style={{
-                  background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6,
-                  padding: "4px 14px", fontSize: 11, fontWeight: 700, color: "#334155", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 4,
-                }}>Go <ArrowRight style={{ width: 11, height: 11 }} /></button>
+                <span style={{ fontSize: 12.5, color: "#475569", fontWeight: 500 }}>{task.text}</span>
+                {task.href && (
+                  <button onClick={() => router.push(task.href)} style={{
+                    background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6,
+                    padding: "4px 14px", fontSize: 11, fontWeight: 700, color: "#334155", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 4,
+                  }}>Go <ArrowRight style={{ width: 11, height: 11 }} /></button>
+                )}
               </div>
             ));
           })()}
