@@ -116,7 +116,7 @@ export default function TopBar() {
           }}>
             <Globe style={{ width: 13, height: 13, color: "#3b82f6" }} />
           </span>
-          Datatruck 2.0
+          Safehaul 2.0
           <ChevronDown style={{ width: 12, height: 12, color: "#94a3b8" }} />
         </button>
 
