@@ -22,25 +22,31 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Show loading spinner while checking auth
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--surface)] text-[var(--on-surface-variant)] title-md">
+      <div 
+        className="flex items-center justify-center min-h-screen text-[15px] font-semibold"
+        style={{ backgroundColor: "var(--surface)", color: "var(--on-surface-variant)" }}
+      >
         Loading...
       </div>
     );
   }
 
-  // Don't render until authenticated
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen bg-[var(--surface)] text-[var(--on-surface)] font-sans">
+    <div 
+      className="flex min-h-screen"
+      style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}
+    >
       <Sidebar />
-      <div className="flex flex-col flex-1 w-full relative">
+      <div className="flex flex-col flex-1 w-full relative min-w-0">
         <TopBar />
-        {/* Step 1: Fixed Box Model - Children render their own cards entirely on the surface background */}
-        <main className="flex-1 w-full overflow-x-hidden bg-[var(--surface-low)] p-6">
+        <main 
+          className="flex-1 w-full overflow-x-hidden p-5"
+          style={{ backgroundColor: "var(--surface-low)" }}
+        >
           {children}
         </main>
       </div>

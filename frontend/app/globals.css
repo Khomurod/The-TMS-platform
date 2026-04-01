@@ -9,13 +9,13 @@
 
 :root {
   /* Surface Architecture — Light Mode */
-  --surface: #f7f9fb;
-  --surface-low: #f2f4f6;
+  --surface: #f4f5f7;
+  --surface-low: #eef0f3;
   --surface-lowest: #ffffff;
-  --surface-container: #eceef0;
-  --surface-container-high: #e4e6e8;
-  --surface-container-highest: #dcdee0;
-  --surface-variant: #e0e2e5;
+  --surface-container: #e8eaed;
+  --surface-container-high: #dfe1e4;
+  --surface-container-highest: #d5d7da;
+  --surface-variant: #dddfe2;
 
   /* Primary */
   --primary: #3525cd;
@@ -25,17 +25,18 @@
 
   /* Text Colors */
   --on-surface: #191c1e;
-  --on-surface-variant: #464555;
+  --on-surface-variant: #5a5d6b;
 
   /* Outline */
-  --outline-variant: #c7c4d8;
+  --outline: #8e8e9e;
+  --outline-variant: #c2bfd4;
 
   /* Status Colors */
   --success: #16a34a;
   --success-container: #dcfce7;
   --warning: #f59e0b;
   --warning-container: #fef3c7;
-  --error: #97000c;
+  --error: #dc2626;
   --error-container: #ffdad6;
   --info: #2563eb;
   --info-container: #dbeafe;
@@ -46,7 +47,7 @@
   --on-tertiary-container: #16a34a;
 
   /* Shadows — tinted with on-surface, not black */
-  --shadow-ambient: rgba(25, 28, 30, 0.06);
+  --shadow-ambient: rgba(25, 28, 30, 0.08);
 
   /* Spacing scale */
   --spacing-1: 0.25rem;
@@ -61,8 +62,8 @@
 
   /* Radius */
   --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
   --radius-full: 9999px;
@@ -72,7 +73,7 @@
   --font-body: "Inter", sans-serif;
 
   /* Sidebar */
-  --sidebar-width: 220px;
+  --sidebar-width: 230px;
 }
 
 /* ── Dark Mode — Surface Architecture ────────────────────────── */
@@ -94,6 +95,7 @@
   --on-surface: #e2e4e8;
   --on-surface-variant: #9e9dae;
 
+  --outline: #6b6980;
   --outline-variant: #45435a;
 
   --success: #4ade80;
@@ -108,7 +110,7 @@
   --tertiary: #ff8a80;
   --tertiary-fixed: #4a0404;
 
-  --shadow-ambient: rgba(0, 0, 0, 0.2);
+  --shadow-ambient: rgba(0, 0, 0, 0.25);
 }
 
 /* ── Base Styles ─────────────────────────────────────────────── */
@@ -209,10 +211,9 @@ body {
 
 .label-md {
   font-family: var(--font-body);
-  font-size: 0.75rem;
-  line-height: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
   font-weight: 500;
-  color: var(--on-surface-variant);
 }
 
 .label-sm {
@@ -220,7 +221,6 @@ body {
   font-size: 0.6875rem;
   line-height: 0.875rem;
   font-weight: 500;
-  color: var(--on-surface-variant);
 }
 
 /* ── KPI Rule — Tabular Numbers ──────────────────────────────── */
@@ -229,20 +229,33 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Card — the core surface-elevated container ──────────────── */
+
+.card {
+  background-color: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 1px 3px 0 var(--shadow-ambient), 0 1px 2px -1px var(--shadow-ambient);
+}
+
+.dark .card {
+  border-color: var(--outline-variant);
+}
+
 /* ── Ghost Border (accessibility fallback) ───────────────────── */
 
 .ghost-border {
-  border: 1px solid rgba(199, 196, 216, 0.15);
+  border: 1px solid var(--outline-variant);
 }
 
 .dark .ghost-border {
-  border: 1px solid rgba(69, 67, 90, 0.3);
+  border: 1px solid var(--outline-variant);
 }
 
 /* ── Ambient Shadow (floating elements only) ─────────────────── */
 
 .shadow-ambient {
-  box-shadow: 0 12px 32px -8px var(--shadow-ambient);
+  box-shadow: 0 1px 3px 0 var(--shadow-ambient), 0 1px 2px -1px var(--shadow-ambient);
 }
 
 /* ── Glassmorphism (modals, command menus) ────────────────────── */

@@ -17,7 +17,6 @@ import {
 export default function TopBar() {
   const pathname = usePathname();
 
-  // Basic breadcrumb generation for visual demo
   const getBreadcrumbs = () => {
     if (pathname.includes("drivers")) return ["HR management", "Drivers", "Active drivers"];
     if (pathname.includes("loads")) return ["Load management", "All Loads"];
@@ -30,69 +29,119 @@ export default function TopBar() {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-[64px] bg-[var(--surface-lowest)] border-b border-[var(--outline-variant)] flex items-center justify-between px-6 sticky top-0 z-10 w-full shrink-0">
-      
-      {/* Left side Breadcrumbs */}
-      <div className="flex items-center text-sm">
+    <header 
+      className="h-16 flex items-center justify-between px-6 sticky top-0 z-10 w-full shrink-0 border-b"
+      style={{ 
+        backgroundColor: "var(--surface-lowest)", 
+        borderColor: "var(--outline-variant)" 
+      }}
+    >
+      {/* Left: Breadcrumbs */}
+      <div className="flex items-center">
         {breadcrumbs.map((crumb, i) => (
-          <span key={crumb} className="flex items-center text-[var(--on-surface-variant)]">
-            {i > 0 && <span className="mx-2 text-[var(--outline-variant)]">/</span>}
-            <span className={i === breadcrumbs.length - 1 ? "text-[var(--on-surface)] font-bold label-md" : "label-md"}>
+          <span key={crumb} className="flex items-center">
+            {i > 0 && (
+              <span className="mx-2 text-xs" style={{ color: "var(--outline-variant)" }}>/</span>
+            )}
+            <span 
+              className="text-[13px]"
+              style={{ 
+                color: i === breadcrumbs.length - 1 ? "var(--on-surface)" : "var(--on-surface-variant)",
+                fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
+              }}
+            >
               {crumb}
             </span>
           </span>
         ))}
       </div>
 
-      {/* Right side Utility Actions */}
-      <div className="flex items-center gap-4">
-        {/* Search */}
-        <div className="relative hidden md:flex items-center">
-          <div className="flex items-center bg-[var(--surface-container-high)] ghost-border rounded-[var(--radius-md)] overflow-hidden h-8 transition-colors focus-within:bg-[var(--surface-lowest)] focus-within:border-[var(--primary)]">
-            <select className="bg-transparent text-[var(--on-surface-variant)] border-none text-xs px-2 focus:ring-0 outline-none border-r ghost-border h-full cursor-pointer label-sm font-medium">
+      {/* Right: Actions */}
+      <div className="flex items-center gap-3">
+        {/* Search Bar */}
+        <div className="hidden md:flex items-center">
+          <div 
+            className="flex items-center rounded-lg overflow-hidden h-8 transition-all"
+            style={{ 
+              backgroundColor: "var(--surface-container-high)", 
+              border: "1px solid var(--outline-variant)" 
+            }}
+          >
+            <select 
+              className="bg-transparent border-none text-[11px] px-2 outline-none h-full cursor-pointer font-medium"
+              style={{ color: "var(--on-surface-variant)", borderRight: "1px solid var(--outline-variant)" }}
+            >
               <option>All</option>
             </select>
-            <div className="flex items-center px-2 w-56">
-              <Search className="h-3.5 w-3.5 text-[var(--on-surface-variant)] mr-2" />
+            <div className="flex items-center px-2.5 w-52">
+              <Search className="h-3.5 w-3.5 mr-2 shrink-0" style={{ color: "var(--on-surface-variant)" }} />
               <input 
                 type="text" 
                 placeholder="Ctrl + K to search" 
-                className="w-full bg-transparent text-[var(--on-surface)] placeholder-[var(--on-surface-variant)] border-none focus:ring-0 outline-none label-sm"
+                className="w-full bg-transparent border-none outline-none text-[12px]"
+                style={{ color: "var(--on-surface)" }}
               />
             </div>
           </div>
         </div>
 
-        <div className="w-px h-5 bg-[var(--outline-variant)] mx-1 hidden md:block"></div>
+        <div className="w-px h-5 hidden md:block" style={{ backgroundColor: "var(--outline-variant)" }} />
 
-        {/* Global Nav */}
-        <button className="flex items-center gap-1.5 label-md font-bold text-[var(--on-surface)] hover:text-[var(--primary)] transition-colors">
-          <Globe className="h-4 w-4 text-[var(--primary)] rounded-full bg-[var(--primary-fixed)]" />
+        {/* Version Badge */}
+        <button className="flex items-center gap-1.5 text-[12px] font-bold transition-colors"
+          style={{ color: "var(--on-surface)" }}
+        >
+          <span 
+            className="h-5 w-5 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: "var(--primary-fixed)" }}
+          >
+            <Globe className="h-3 w-3" style={{ color: "var(--primary)" }} />
+          </span>
           Safehaul 2.0
-          <ChevronDown className="h-3 w-3 text-[var(--on-surface-variant)]" />
+          <ChevronDown className="h-3 w-3 opacity-40" />
         </button>
 
-        {/* Create Action */}
-        <button className="flex items-center gap-1 bg-[var(--surface-lowest)] border border-[var(--outline-variant)] text-[var(--on-surface)] px-2.5 py-1 rounded-[var(--radius-md)] label-sm font-bold shadow-ambient hover:bg-[var(--surface-container)] transition-colors">
-          <Plus className="h-3.5 w-3.5 text-[var(--on-surface-variant)]" />
+        {/* Create Button */}
+        <button 
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-colors"
+          style={{ 
+            backgroundColor: "var(--surface-lowest)", 
+            border: "1px solid var(--outline-variant)",
+            color: "var(--on-surface)",
+          }}
+        >
+          <Plus className="h-3.5 w-3.5 opacity-50" />
           Create new
         </button>
 
-        {/* Icons */}
-        <div className="flex items-center gap-2.5 ml-1 text-[var(--on-surface-variant)]">
-          <button className="flex items-center gap-1 label-sm font-bold text-[var(--success)] mx-1 hover:bg-[var(--success-container)] px-2 py-1 rounded-[var(--radius-md)] transition-colors">
+        {/* Utility Icons */}
+        <div className="flex items-center gap-1.5 ml-1" style={{ color: "var(--on-surface-variant)" }}>
+          <button 
+            className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition-colors"
+            style={{ color: "var(--success)" }}
+          >
             <HelpCircle className="h-3.5 w-3.5" />
             Support
           </button>
           
-          <button className="hover:text-[var(--on-surface)] transition-colors"><Sun className="h-4 w-4" /></button>
-          <button className="hover:text-[var(--on-surface)] transition-colors"><Settings className="h-4 w-4" /></button>
-          <button className="hover:text-[var(--on-surface)] transition-colors"><Send className="h-4 w-4" /></button>
-          <button className="hover:text-[var(--on-surface)] transition-colors relative">
+          <button className="p-1.5 rounded-md hover:opacity-80 transition-opacity"><Sun className="h-4 w-4" /></button>
+          <button className="p-1.5 rounded-md hover:opacity-80 transition-opacity"><Settings className="h-4 w-4" /></button>
+          <button className="p-1.5 rounded-md hover:opacity-80 transition-opacity"><Send className="h-4 w-4" /></button>
+          <button className="p-1.5 rounded-md hover:opacity-80 transition-opacity relative">
             <Bell className="h-4 w-4" />
-            <span className="absolute top-0 right-0 h-1.5 w-1.5 bg-[var(--error)] rounded-full"></span>
+            <span 
+              className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: "var(--error)" }}
+            />
           </button>
-          <button className="ml-1 h-7 w-7 rounded-full bg-[var(--surface-container-highest)] flex items-center justify-center ghost-border hover:bg-[var(--surface-variant)] transition-colors text-[var(--on-surface)]">
+          <button 
+            className="ml-1 h-7 w-7 rounded-full flex items-center justify-center transition-colors"
+            style={{ 
+              backgroundColor: "var(--surface-container-highest)", 
+              color: "var(--on-surface)",
+              border: "1px solid var(--outline-variant)" 
+            }}
+          >
             <User className="h-3.5 w-3.5" />
           </button>
         </div>
