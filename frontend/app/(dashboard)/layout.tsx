@@ -2,8 +2,7 @@
 
 /**
  * Dashboard Layout — protected route.
- * Wraps all dashboard pages with AuthProvider + Sidebar + TopBar.
- * Redirects to /login if not authenticated.
+ * Dark sidebar + white topbar + light gray content area.
  */
 
 import { useEffect } from "react";
@@ -24,10 +23,11 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div 
-        className="flex items-center justify-center min-h-screen text-[15px] font-semibold"
-        style={{ backgroundColor: "var(--surface)", color: "var(--on-surface-variant)" }}
-      >
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        minHeight: "100vh", background: "#f8fafc", color: "#64748b",
+        fontSize: 15, fontWeight: 600,
+      }}>
         Loading...
       </div>
     );
@@ -36,17 +36,16 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return null;
 
   return (
-    <div 
-      className="flex min-h-screen"
-      style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}
-    >
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f1f5f9" }}>
       <Sidebar />
-      <div className="flex flex-col flex-1 w-full relative min-w-0">
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
         <TopBar />
-        <main 
-          className="flex-1 w-full overflow-x-hidden p-5"
-          style={{ backgroundColor: "var(--surface-low)" }}
-        >
+        <main style={{
+          flex: 1,
+          padding: 20,
+          background: "#f1f5f9",
+          overflowX: "hidden",
+        }}>
           {children}
         </main>
       </div>
