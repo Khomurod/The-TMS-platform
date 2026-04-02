@@ -1,0 +1,3 @@
+ENVIRONMENT: production
+JWT_SECRET_KEY: KineticTMS_Secret_99
+DATABASE_URL: postgresql+asyncpg://safehaul_tms:SafehaulAdmin123!@/safehaul_tms?host=/cloudsql/tms-service-491512:us-central1:safehaultms
