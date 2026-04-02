@@ -99,7 +99,7 @@ export default function FleetPage() {
     { 
       header: "Unit #", 
       accessorKey: "unit_number",
-      cell: (row) => <div className="text-[#3b82f6] hover:underline cursor-pointer font-medium">{row.unit_number}</div>
+      cell: (row) => <div style={{ color: "var(--primary)" }} className="hover:underline cursor-pointer font-medium">{row.unit_number}</div>
     },
     { header: "Plate #", accessorKey: "license_plate", cell: (r) => r.license_plate || "—" },
     { 
@@ -118,46 +118,30 @@ export default function FleetPage() {
     },
   ];
 
-  const renderSubNav = () => (
-    <div className="flex bg-white items-center gap-6 px-4 pt-4 pb-2 border-b border-[#e5e7eb] overflow-x-auto whitespace-nowrap scrollbar-hide">
-      {tabs.map(t => (
-        <button
-          key={t}
-          onClick={() => handleTabChange(t)}
-          className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
-            activeTab === t 
-              ? "border-[#3b82f6] text-[#3b82f6]" 
-              : "border-transparent text-[#6b7280] hover:text-[#374151]"
-          }`}
-        >
-          {t}
-        </button>
-      ))}
-    </div>
-  );
-
   const renderFooter = () => (
     <div className="flex items-center gap-4 w-full justify-start font-medium text-[11px]">
       {fleetStatus && (
         <div className="flex items-center gap-2">
-          <span className="bg-[#10b981] text-white px-2 py-0.5 rounded-sm">AVAILABLE {fleetStatus.available}</span>
-          <span className="bg-[#f97316] text-white px-2 py-0.5 rounded-sm">IN USE {fleetStatus.in_use}</span>
-          <span className="bg-[#64748b] text-white px-2 py-0.5 rounded-sm">MAINTENANCE {fleetStatus.maintenance}</span>
+          <span className="text-white px-2 py-0.5 rounded-sm" style={{ backgroundColor: "var(--success)" }}>AVAILABLE {fleetStatus.available}</span>
+          <span className="text-white px-2 py-0.5 rounded-sm" style={{ backgroundColor: "var(--warning)" }}>IN USE {fleetStatus.in_use}</span>
+          <span className="text-white px-2 py-0.5 rounded-sm" style={{ backgroundColor: "var(--outline)" }}>MAINTENANCE {fleetStatus.maintenance}</span>
         </div>
       )}
-      <span className="text-gray-500 ml-2">Total: {total}</span>
+      <span style={{ color: "var(--on-surface-variant)" }} className="ml-2">Total: {total}</span>
       {total > pageSize && (
         <div className="ml-auto flex items-center gap-2">
           <button 
             onClick={() => setPage(p => Math.max(1, p - 1))} 
             disabled={page <= 1}
-            className="px-2 py-0.5 border rounded text-xs disabled:opacity-40 hover:bg-gray-50"
+            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
+            style={{ border: "1px solid var(--outline-variant)" }}
           >Prev</button>
-          <span className="text-xs text-gray-500">Page {page} of {Math.ceil(total / pageSize)}</span>
+          <span className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Page {page} of {Math.ceil(total / pageSize)}</span>
           <button 
             onClick={() => setPage(p => p + 1)} 
             disabled={page >= Math.ceil(total / pageSize)}
-            className="px-2 py-0.5 border rounded text-xs disabled:opacity-40 hover:bg-gray-50"
+            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
+            style={{ border: "1px solid var(--outline-variant)" }}
           >Next</button>
         </div>
       )}
@@ -193,24 +177,54 @@ export default function FleetPage() {
   if (loading && trucks.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#3b82f6]" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col p-4">
-      <div className="flex justify-end mb-2 -mt-10 mr-2 z-10 relative">
-        <button onClick={() => setShowCreate(true)} className="bg-[#3b82f6] text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center hover:bg-[#2563eb]">
-          + Create Truck
+    <div className="h-full flex flex-col gap-4 p-4">
+      {/* ── Page Header ── */}
+      <div className="flex items-center justify-between shrink-0">
+        <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
+          Fleet
+        </h1>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1 shadow-ambient"
+        >
+          <span className="text-lg leading-none">+</span> Create Truck
         </button>
       </div>
 
-      <div className="flex-1 rounded-lg border border-[#e5e7eb] bg-white shadow-sm overflow-hidden h-[80vh]">
+      {/* ── Tab Navigation ── */}
+      <div
+        className="flex items-center gap-6 px-1 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
+        style={{ borderBottom: "1px solid var(--outline-variant)" }}
+      >
+        {tabs.map(t => (
+          <button
+            key={t}
+            onClick={() => handleTabChange(t)}
+            className="text-sm font-semibold pb-2 border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === t ? "var(--primary)" : "transparent",
+              color: activeTab === t ? "var(--primary)" : "var(--on-surface-variant)",
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* ── DataTable Wrapper ── */}
+      <div
+        className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
+        style={{ border: "1px solid var(--outline-variant)" }}
+      >
         <DataTable 
           data={trucks}
           columns={columns}
-          renderSubNav={renderSubNav}
           renderFooter={renderFooter}
         />
       </div>
@@ -243,7 +257,7 @@ export default function FleetPage() {
             </select>
           </FormField>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--outline-variant)" }}>
           <button className={btnSecondary} onClick={() => setShowCreate(false)}>Cancel</button>
           <button className={btnPrimary} onClick={handleCreate} disabled={creating || !form.unit_number}>{creating ? "Creating..." : "Create Truck"}</button>
         </div>

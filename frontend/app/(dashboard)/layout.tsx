@@ -43,9 +43,11 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
         <TopBar />
         <main style={{
           flex: 1,
-          padding: 20,
-          background: "#f1f5f9",
-          overflowX: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--surface)",
+          overflow: "hidden",
+          minHeight: 0,
         }}>
           <ErrorBoundary>
             {children}

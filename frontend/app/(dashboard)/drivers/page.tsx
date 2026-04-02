@@ -113,39 +113,23 @@ export default function DriversPage() {
     { header: "CDL Class", accessorKey: "cdl_class", cell: (r) => r.cdl_class || "—" },
   ];
 
-  const renderSubNav = () => (
-    <div className="flex bg-white items-center gap-6 px-4 pt-4 pb-2 border-b border-[#e5e7eb] overflow-x-auto whitespace-nowrap scrollbar-hide">
-      {tabs.map(t => (
-        <button
-          key={t}
-          onClick={() => handleTabChange(t)}
-          className={`text-sm font-semibold pb-2 border-b-2 transition-colors ${
-            activeTab === t 
-              ? "border-[#3b82f6] text-[#3b82f6]" 
-              : "border-transparent text-[#6b7280] hover:text-[#374151]"
-          }`}
-        >
-          {t}
-        </button>
-      ))}
-    </div>
-  );
-
   const renderFooter = () => (
     <div className="flex items-center gap-4 w-full text-[11px]">
-      <span>Showing <span className="text-black font-medium">{drivers.length}</span> of <span className="text-black font-medium">{total}</span> drivers</span>
+      <span>Showing <span className="font-medium" style={{ color: "var(--on-surface)" }}>{drivers.length}</span> of <span className="font-medium" style={{ color: "var(--on-surface)" }}>{total}</span> drivers</span>
       {total > pageSize && (
         <div className="ml-auto flex items-center gap-2">
           <button 
             onClick={() => setPage(p => Math.max(1, p - 1))} 
             disabled={page <= 1}
-            className="px-2 py-0.5 border rounded text-xs disabled:opacity-40 hover:bg-gray-50"
+            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
+            style={{ border: "1px solid var(--outline-variant)" }}
           >Prev</button>
-          <span className="text-xs text-gray-500">Page {page} of {Math.ceil(total / pageSize)}</span>
+          <span className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Page {page} of {Math.ceil(total / pageSize)}</span>
           <button 
             onClick={() => setPage(p => p + 1)} 
             disabled={page >= Math.ceil(total / pageSize)}
-            className="px-2 py-0.5 border rounded text-xs disabled:opacity-40 hover:bg-gray-50"
+            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
+            style={{ border: "1px solid var(--outline-variant)" }}
           >Next</button>
         </div>
       )}
@@ -181,24 +165,54 @@ export default function DriversPage() {
   if (loading && drivers.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#3b82f6]" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col p-4">
-      <div className="flex justify-end mb-2 -mt-10 mr-2 z-10 relative">
-        <button onClick={() => setShowCreate(true)} className="bg-[#3b82f6] text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center gap-2 hover:bg-[#2563eb]">
+    <div className="h-full flex flex-col gap-4 p-4">
+      {/* ── Page Header ── */}
+      <div className="flex items-center justify-between shrink-0">
+        <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
+          Drivers
+        </h1>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-ambient"
+        >
           <span className="text-lg leading-none">+</span> Create driver
         </button>
       </div>
 
-      <div className="flex-1 rounded-lg border border-[#e5e7eb] bg-white shadow-sm overflow-hidden h-[80vh]">
+      {/* ── Tab Navigation ── */}
+      <div
+        className="flex items-center gap-6 px-1 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
+        style={{ borderBottom: "1px solid var(--outline-variant)" }}
+      >
+        {tabs.map(t => (
+          <button
+            key={t}
+            onClick={() => handleTabChange(t)}
+            className="text-sm font-semibold pb-2 border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === t ? "var(--primary)" : "transparent",
+              color: activeTab === t ? "var(--primary)" : "var(--on-surface-variant)",
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* ── DataTable Wrapper ── */}
+      <div
+        className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
+        style={{ border: "1px solid var(--outline-variant)" }}
+      >
         <DataTable 
           data={drivers}
           columns={columns}
-          renderSubNav={renderSubNav}
           renderFooter={renderFooter}
         />
       </div>
@@ -236,7 +250,7 @@ export default function DriversPage() {
             </select>
           </FormField>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--outline-variant)" }}>
           <button className={btnSecondary} onClick={() => setShowCreate(false)}>Cancel</button>
           <button className={btnPrimary} onClick={handleCreate} disabled={creating || !form.first_name || !form.last_name}>{creating ? "Creating..." : "Create Driver"}</button>
         </div>
