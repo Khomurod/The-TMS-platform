@@ -15,6 +15,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 
 
@@ -31,16 +32,44 @@ def upgrade() -> None:
     # ══════════════════════════════════════════════════════════════
 
     # Trip status enum
-    op.execute("CREATE TYPE trip_status_enum AS ENUM ('assigned', 'dispatched', 'in_transit', 'delivered', 'cancelled')")
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'trip_status_enum') THEN
+                CREATE TYPE trip_status_enum AS ENUM ('assigned', 'dispatched', 'in_transit', 'delivered', 'cancelled');
+            END IF;
+        END $$
+    """)
 
     # Invoice batch status enum
-    op.execute("CREATE TYPE invoice_batch_status_enum AS ENUM ('draft', 'submitted', 'partially_paid', 'paid')")
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_batch_status_enum') THEN
+                CREATE TYPE invoice_batch_status_enum AS ENUM ('unposted', 'partial_posted', 'posted', 'paid');
+            END IF;
+        END $$
+    """)
 
     # Settlement batch status enum (replaces old settlement_status_enum)
-    op.execute("CREATE TYPE settlement_batch_status_enum AS ENUM ('unposted', 'posted', 'paid')")
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'settlement_batch_status_enum') THEN
+                CREATE TYPE settlement_batch_status_enum AS ENUM ('unposted', 'posted', 'paid');
+            END IF;
+        END $$
+    """)
 
     # Tax classification enum
-    op.execute("CREATE TYPE tax_classification_enum AS ENUM ('w2', '1099')")
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tax_classification_enum') THEN
+                CREATE TYPE tax_classification_enum AS ENUM ('w2_employee', 'contractor_1099');
+            END IF;
+        END $$
+    """)
+
+    # Add 'bonus' value to settlement_line_type_enum if missing
+    # ALTER TYPE ADD VALUE IF NOT EXISTS is available in PG 9.3+
+    op.execute("ALTER TYPE settlement_line_type_enum ADD VALUE IF NOT EXISTS 'bonus'")
 
     # ══════════════════════════════════════════════════════════════
     #  2. UPDATE EXISTING ENUM TYPES
@@ -127,9 +156,12 @@ def upgrade() -> None:
     # --- settlement_batches (before driver_settlements FK)
     op.create_table('settlement_batches',
         sa.Column('batch_number', sa.String(length=50), nullable=False),
-        sa.Column('period_start', sa.Date(), nullable=False),
-        sa.Column('period_end', sa.Date(), nullable=False),
-        sa.Column('status', sa.Enum('unposted', 'posted', 'paid', name='settlement_batch_status_enum', create_type=False), server_default='unposted', nullable=False),
+        sa.Column('period_start', sa.Date(), nullable=True),
+        sa.Column('period_end', sa.Date(), nullable=True),
+        sa.Column('status', postgresql.ENUM('unposted', 'posted', 'paid', name='settlement_batch_status_enum', create_type=False), server_default='unposted', nullable=False),
+        sa.Column('total_amount', sa.Numeric(precision=12, scale=2), server_default='0', nullable=False),
+        sa.Column('settlement_count', sa.Integer(), server_default='0', nullable=False),
+        sa.Column('created_by_id', sa.UUID(), nullable=True),
         sa.Column('posted_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('paid_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('id', sa.UUID(), nullable=False),
@@ -138,24 +170,30 @@ def upgrade() -> None:
         sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
         sa.Column('company_id', sa.UUID(), nullable=False),
         sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='RESTRICT'),
-        sa.PrimaryKeyConstraint('id')
+        sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ondelete='SET NULL'),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('company_id', 'batch_number', name='uq_settlement_batches_company_number'),
     )
     op.create_index(op.f('ix_settlement_batches_company_id'), 'settlement_batches', ['company_id'], unique=False)
 
     # --- invoice_batches
     op.create_table('invoice_batches',
-        sa.Column('batch_number', sa.String(length=50), nullable=False),
-        sa.Column('broker_id', sa.UUID(), nullable=True),
-        sa.Column('status', sa.Enum('draft', 'submitted', 'partially_paid', 'paid', name='invoice_batch_status_enum', create_type=False), server_default='draft', nullable=False),
-        sa.Column('submitted_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('batch_id', sa.String(length=20), nullable=False),
+        sa.Column('status', postgresql.ENUM('unposted', 'partial_posted', 'posted', 'paid', name='invoice_batch_status_enum', create_type=False), server_default='unposted', nullable=False),
+        sa.Column('total_amount', sa.Numeric(precision=12, scale=2), server_default='0', nullable=False),
+        sa.Column('invoice_count', sa.Integer(), server_default='0', nullable=False),
+        sa.Column('created_by_id', sa.UUID(), nullable=True),
+        sa.Column('posted_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('paid_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
         sa.Column('company_id', sa.UUID(), nullable=False),
-        sa.ForeignKeyConstraint(['broker_id'], ['brokers.id'], ondelete='RESTRICT'),
         sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='RESTRICT'),
-        sa.PrimaryKeyConstraint('id')
+        sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ondelete='SET NULL'),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('company_id', 'batch_id', name='uq_invoice_batches_company_batch'),
     )
     op.create_index(op.f('ix_invoice_batches_company_id'), 'invoice_batches', ['company_id'], unique=False)
 
@@ -167,7 +205,7 @@ def upgrade() -> None:
         sa.Column('truck_id', sa.UUID(), nullable=True),
         sa.Column('trailer_id', sa.UUID(), nullable=True),
         sa.Column('sequence_number', sa.Integer(), server_default='1', nullable=False),
-        sa.Column('status', sa.Enum('assigned', 'dispatched', 'in_transit', 'delivered', 'cancelled', name='trip_status_enum', create_type=False), server_default='assigned', nullable=False),
+        sa.Column('status', postgresql.ENUM('assigned', 'dispatched', 'in_transit', 'delivered', 'cancelled', name='trip_status_enum', create_type=False), server_default='assigned', nullable=False),
         sa.Column('loaded_miles', sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column('empty_miles', sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column('driver_gross', sa.Numeric(precision=10, scale=2), nullable=True),
@@ -190,9 +228,16 @@ def upgrade() -> None:
     # --- commodities
     op.create_table('commodities',
         sa.Column('load_id', sa.UUID(), nullable=False),
-        sa.Column('description', sa.String(length=255), nullable=False),
-        sa.Column('weight', sa.Numeric(precision=10, scale=2), nullable=True),
-        sa.Column('pieces', sa.Integer(), nullable=True),
+        sa.Column('description', sa.String(length=255), server_default='General freight', nullable=False),
+        sa.Column('quantity', sa.Integer(), server_default='1', nullable=False),
+        sa.Column('package_type', sa.String(length=50), server_default='Skid', nullable=False),
+        sa.Column('pieces', sa.String(length=20), server_default='PCS', nullable=False),
+        sa.Column('total_weight', sa.Numeric(precision=10, scale=2), nullable=True),
+        sa.Column('weight_unit', sa.String(length=5), server_default='lb', nullable=False),
+        sa.Column('width', sa.Numeric(precision=8, scale=2), nullable=True),
+        sa.Column('height', sa.Numeric(precision=8, scale=2), nullable=True),
+        sa.Column('length', sa.Numeric(precision=8, scale=2), nullable=True),
+        sa.Column('note', sa.Text(), nullable=True),
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
@@ -206,20 +251,26 @@ def upgrade() -> None:
 
     # --- invoices (depends on invoice_batches, loads)
     op.create_table('invoices',
-        sa.Column('invoice_number', sa.String(length=50), nullable=False),
-        sa.Column('batch_id', sa.UUID(), nullable=True),
+        sa.Column('invoice_number', sa.String(length=20), nullable=False),
+        sa.Column('batch_id', sa.UUID(), nullable=False),
         sa.Column('load_id', sa.UUID(), nullable=False),
-        sa.Column('amount', sa.Numeric(precision=10, scale=2), nullable=False),
-        sa.Column('status', sa.Enum('draft', 'submitted', 'partially_paid', 'paid', name='invoice_batch_status_enum', create_type=False), server_default='draft', nullable=False),
+        sa.Column('customer_id', sa.UUID(), nullable=False),
+        sa.Column('amount', sa.Numeric(precision=12, scale=2), nullable=False),
+        sa.Column('billing_type', sa.String(length=50), server_default='standard', nullable=False),
+        sa.Column('due_date', sa.Date(), nullable=True),
+        sa.Column('paid_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('notes', sa.Text(), nullable=True),
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
         sa.Column('company_id', sa.UUID(), nullable=False),
-        sa.ForeignKeyConstraint(['batch_id'], ['invoice_batches.id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['batch_id'], ['invoice_batches.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='RESTRICT'),
+        sa.ForeignKeyConstraint(['customer_id'], ['brokers.id'], ondelete='RESTRICT'),
         sa.ForeignKeyConstraint(['load_id'], ['loads.id'], ondelete='RESTRICT'),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('company_id', 'invoice_number', name='uq_invoices_company_number'),
     )
     op.create_index(op.f('ix_invoices_company_id'), 'invoices', ['company_id'], unique=False)
 
@@ -239,7 +290,7 @@ def upgrade() -> None:
     # --- drivers: add payment_tariff_type, payment_tariff_value, tax_classification
     op.add_column('drivers', sa.Column('payment_tariff_type', sa.String(length=50), nullable=True))
     op.add_column('drivers', sa.Column('payment_tariff_value', sa.Numeric(precision=10, scale=4), nullable=True))
-    op.add_column('drivers', sa.Column('tax_classification', sa.Enum('w2', '1099', name='tax_classification_enum', create_type=False), nullable=True))
+    op.add_column('drivers', sa.Column('tax_classification', sa.Enum('w2_employee', 'contractor_1099', name='tax_classification_enum', create_type=False), nullable=True))
     op.add_column('drivers', sa.Column('hire_date', sa.Date(), nullable=True))
     op.add_column('drivers', sa.Column('notes', sa.Text(), nullable=True))
 

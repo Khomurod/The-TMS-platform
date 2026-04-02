@@ -147,6 +147,25 @@ class Trip(Base, TenantMixin):
     trailer = relationship("Trailer", back_populates="trips")
     stops = relationship("LoadStop", back_populates="trip", cascade="all, delete-orphan")
 
+    # ── Computed fields for Pydantic serialization ────────────────
+    @property
+    def driver_name(self) -> str | None:
+        if self.driver:
+            return f"{self.driver.first_name} {self.driver.last_name}"
+        return None
+
+    @property
+    def truck_number(self) -> str | None:
+        if self.truck:
+            return self.truck.unit_number
+        return None
+
+    @property
+    def trailer_number(self) -> str | None:
+        if self.trailer:
+            return self.trailer.unit_number
+        return None
+
 
 # ══════════════════════════════════════════════════════════════════
 #   LOAD STOP — pickup/delivery within a trip
