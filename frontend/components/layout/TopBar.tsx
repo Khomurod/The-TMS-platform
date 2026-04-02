@@ -1,39 +1,45 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { 
-  Search, 
-  HelpCircle, 
-  Sun, 
-  Settings, 
-  Send, 
-  Bell, 
-  User, 
-  Plus,
-  ChevronDown,
-  Globe,
-  Columns3,
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
+import {
+  Search, Sun, Settings, Send, Bell, User, Plus,
+  ChevronDown, Globe, Package, Users, Truck,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   TopBar — Clean white header matching Datatruck reference.
-   Breadcrumbs + search + action buttons.
+   TopBar — Phase 6 Enhanced (Blueprint §3.5)
+   Breadcrumbs + Ctrl+K search + "Create new" dropdown + notifications
    ═══════════════════════════════════════════════════════════════ */
 
-export default function TopBar() {
+interface TopBarProps {
+  onSearchClick?: () => void;
+}
+
+export default function TopBar({ onSearchClick }: TopBarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   const getBreadcrumbs = () => {
-    if (pathname.includes("drivers")) return ["HR management", "Drivers", "Active drivers"];
-    if (pathname.includes("loads")) return ["Load management", "All Loads"];
-    if (pathname.includes("fleet")) return ["Fleet management", "Trucks"];
+    if (pathname.includes("/drivers/") && pathname.split("/").length > 2) return ["HR Management", "Drivers", "Driver Profile"];
+    if (pathname.includes("/loads/") && pathname.split("/").length > 2) return ["Load Management", "All Loads", "Load Detail"];
+    if (pathname.includes("drivers")) return ["HR Management", "Drivers", "Active Drivers"];
+    if (pathname.includes("loads")) return ["Load Management", "All Loads"];
+    if (pathname.includes("fleet")) return ["Fleet Management", "Trucks"];
     if (pathname.includes("dashboard")) return ["Dashboard", "Overview"];
     if (pathname.includes("accounting")) return ["Accounting", "Salary", "Batches"];
-    if (pathname.includes("salary")) return ["Accounting", "Salary"];
     return ["Home"];
   };
 
   const breadcrumbs = getBreadcrumbs();
+
+  const createOptions = [
+    { label: "New Load", href: "/loads/new", icon: <Package className="h-3.5 w-3.5" /> },
+    { label: "New Driver", href: "#", icon: <Users className="h-3.5 w-3.5" /> },
+    { label: "New Truck", href: "#", icon: <Truck className="h-3.5 w-3.5" /> },
+  ];
 
   return (
     <header style={{
@@ -69,36 +75,29 @@ export default function TopBar() {
 
       {/* Right: Search + Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {/* Search */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          borderRadius: 8,
-          height: 32,
-          overflow: "hidden",
-        }}>
-          <select style={{
-            background: "#f1f5f9", border: "none",
-            borderRight: "1px solid #e2e8f0",
-            padding: "0 8px", height: "100%",
-            fontSize: 11, color: "#475569",
-            fontWeight: 600, cursor: "pointer", outline: "none",
-          }}>
-            <option>All</option>
-          </select>
-          <div style={{ display: "flex", alignItems: "center", padding: "0 10px", gap: 6 }}>
-            <Search style={{ width: 14, height: 14, color: "#94a3b8" }} />
-            <input
-              type="text"
-              placeholder="Ctrl + K to search"
-              style={{
-                border: "none", background: "transparent", outline: "none",
-                fontSize: 12, color: "#334155", width: 160,
-              }}
-            />
-          </div>
-        </div>
+        {/* Search — clicks open CommandMenu */}
+        <button
+          onClick={onSearchClick}
+          style={{
+            display: "flex", alignItems: "center",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            height: 32,
+            padding: "0 12px",
+            gap: 6,
+            cursor: "pointer",
+          }}
+        >
+          <Search style={{ width: 14, height: 14, color: "#94a3b8" }} />
+          <span style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}>
+            Ctrl + K to search
+          </span>
+          <kbd style={{
+            fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 3,
+            background: "#e2e8f0", color: "#64748b", marginLeft: 8,
+          }}>⌘K</kbd>
+        </button>
 
         {/* Divider */}
         <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
@@ -120,17 +119,53 @@ export default function TopBar() {
           <ChevronDown style={{ width: 12, height: 12, color: "#94a3b8" }} />
         </button>
 
-        {/* Create */}
-        <button style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "5px 12px", borderRadius: 6,
-          background: "#fff", border: "1px solid #e2e8f0",
-          fontSize: 12, fontWeight: 600, color: "#334155",
-          cursor: "pointer",
-        }}>
-          <Plus style={{ width: 14, height: 14, color: "#94a3b8" }} />
-          Create new
-        </button>
+        {/* Create New — with dropdown (§3.5) */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowCreateMenu(!showCreateMenu)}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 12px", borderRadius: 6,
+              background: "#fff", border: "1px solid #e2e8f0",
+              fontSize: 12, fontWeight: 600, color: "#334155",
+              cursor: "pointer",
+            }}
+          >
+            <Plus style={{ width: 14, height: 14, color: "#94a3b8" }} />
+            Create new
+            <ChevronDown style={{ width: 12, height: 12, color: "#94a3b8" }} />
+          </button>
+
+          {showCreateMenu && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setShowCreateMenu(false)} />
+              <div style={{
+                position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 20,
+                background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: 180,
+                padding: "4px 0",
+              }}>
+                {createOptions.map((opt) => (
+                  <Link
+                    key={opt.label}
+                    href={opt.href}
+                    onClick={() => setShowCreateMenu(false)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "8px 14px", fontSize: 12.5, fontWeight: 500,
+                      color: "#334155", textDecoration: "none",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    {opt.icon}
+                    {opt.label}
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Live Support */}
         <button style={{

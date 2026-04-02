@@ -3,23 +3,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
-import DataTable, { ColumnDef } from "@/components/ui/DataTable";
-import StatusPill from "@/components/ui/StatusPill";
-import { ChevronRight, FileText, Loader2 } from "lucide-react";
+import { LOAD_STATUSES } from "@/lib/constants";
+import DataTable, { ColumnDef, TabDef, StickyFooterItem } from "@/components/ui/DataTable";
+import StatusBadge, { statusToIntent } from "@/components/ui/StatusBadge";
+import EntityLink from "@/components/ui/EntityLink";
+import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
+import { Truck, Users, MapPin, Loader2 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Types matching backend LoadListItem schema
+   Loads Board — Phase 4 Enhanced DataTable Integration
    ═══════════════════════════════════════════════════════════════ */
 
 interface LoadItem {
   id: string;
   load_number: string;
+  shipment_id?: string;
   broker_load_id?: string;
   status: string;
   base_rate?: number;
   total_rate?: number;
-  driver_id?: string;
-  truck_id?: string;
   created_at?: string;
   pickup_city?: string;
   pickup_date?: string;
@@ -28,39 +30,40 @@ interface LoadItem {
   broker_name?: string;
   driver_name?: string;
   truck_number?: string;
+  trip_count?: number;
 }
 
-const STATUS_MAP: Record<string, string> = {
-  planned: "PLANNED",
-  dispatched: "DISPATCHED",
-  at_pickup: "AT PICKUP",
-  in_transit: "IN TRANSIT",
-  delivered: "DELIVERED",
-  delayed: "DELAYED",
-  billed: "BILLED",
-  paid: "PAID",
-  cancelled: "CANCELLED",
+/* ── Tab Configuration ─────────────────────────────────────── */
+
+type TabConfig = {
+  key: string;
+  label: string;
+  endpoint: string | null;
+  statusFilter: string | null;
 };
+
+const TAB_CONFIG: TabConfig[] = [
+  { key: "all",       label: "All Loads",  endpoint: null,              statusFilter: null },
+  { key: "upcoming",  label: "Upcoming",   endpoint: "/loads/upcoming",  statusFilter: null },
+  { key: "live",      label: "Live",       endpoint: "/loads/live",      statusFilter: null },
+  { key: "completed", label: "Completed",  endpoint: "/loads/completed", statusFilter: null },
+  { key: "offer",     label: "Offer",      endpoint: null,              statusFilter: "offer" },
+  { key: "booked",    label: "Booked",     endpoint: null,              statusFilter: "booked" },
+  { key: "invoiced",  label: "Invoiced",   endpoint: null,              statusFilter: "invoiced" },
+  { key: "paid",      label: "Paid",       endpoint: null,              statusFilter: "paid" },
+];
 
 export default function LoadsPage() {
   const [loads, setLoads] = useState<LoadItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("All Loads");
+  const [activeTabKey, setActiveTabKey] = useState("all");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(20);
 
-  // Tab → status mapping
-  const tabStatusMap: Record<string, string | null> = {
-    "All Loads": null,
-    "Planned": "planned",
-    "Dispatched": "dispatched",
-    "In-Transit": "in_transit",
-    "Delivered": "delivered",
-    "Billed": "billed",
-    "Paid": "paid",
-  };
+  const activeTabConfig = TAB_CONFIG.find((t) => t.key === activeTabKey) ?? TAB_CONFIG[0];
+
+  /* ── Fetch ──────────────────────────────────────────────── */
 
   const fetchLoads = useCallback(async () => {
     setLoading(true);
@@ -69,8 +72,16 @@ export default function LoadsPage() {
         page: String(page),
         page_size: String(pageSize),
       });
-      if (statusFilter) params.set("status", statusFilter);
-      const res = await api.get(`/loads?${params}`);
+
+      let url: string;
+      if (activeTabConfig.endpoint) {
+        url = `${activeTabConfig.endpoint}?${params}`;
+      } else {
+        if (activeTabConfig.statusFilter) params.set("status", activeTabConfig.statusFilter);
+        url = `/loads?${params}`;
+      }
+
+      const res = await api.get(url);
       setLoads(res.data.items || []);
       setTotal(res.data.total || 0);
     } catch (err) {
@@ -79,108 +90,154 @@ export default function LoadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, pageSize, activeTabKey]);
 
   useEffect(() => { fetchLoads(); }, [fetchLoads]);
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+  const handleTabChange = (key: string) => {
+    setActiveTabKey(key);
     setPage(1);
-    setStatusFilter(tabStatusMap[tab] ?? null);
   };
 
-  // Computed stats from fetched data
+  /* ── Tabs (Phase 4) ─────────────────────────────────────── */
+
+  const tabs: TabDef[] = TAB_CONFIG.map((t) => ({
+    key: t.key,
+    label: t.label,
+    isActive: t.key === activeTabKey,
+  }));
+
+  /* ── Columns ────────────────────────────────────────────── */
+
+  const columns: ColumnDef<LoadItem>[] = [
+    {
+      header: "Load #",
+      accessorKey: "load_number",
+      cell: (row) => (
+        <EntityLink
+          href={`/loads/${row.id}`}
+          label={row.load_number}
+          copyable
+        />
+      ),
+    },
+    {
+      header: "Broker Load ID",
+      accessorKey: "broker_load_id",
+      cell: (row) => (
+        <span style={{ color: "var(--success)" }} className="font-semibold">
+          {row.broker_load_id || "—"}
+        </span>
+      ),
+    },
+    {
+      header: "Broker",
+      accessorKey: "broker_name",
+      cell: (row) => (
+        <span style={{ color: "var(--primary)" }} className="font-medium">
+          {row.broker_name || "—"}
+        </span>
+      ),
+    },
+    {
+      header: "Driver",
+      accessorKey: "driver_name",
+      cell: (r) => (
+        <div
+          className="flex items-center gap-1.5"
+          style={{ color: r.driver_name ? "var(--primary)" : "var(--on-surface-variant)" }}
+        >
+          <Users className="h-3 w-3" />
+          {r.driver_name || "Unassigned"}
+        </div>
+      ),
+    },
+    {
+      header: "Truck",
+      accessorKey: "truck_number",
+      cell: (r) => (
+        <div
+          className="flex items-center gap-1.5"
+          style={{ color: r.truck_number ? "var(--primary)" : "var(--on-surface-variant)" }}
+        >
+          <Truck className="h-3 w-3" />
+          {r.truck_number || "—"}
+        </div>
+      ),
+    },
+    {
+      header: "Route",
+      accessorKey: "pickup_city",
+      cell: (r) => (
+        <div className="flex items-center gap-1 text-xs">
+          <MapPin className="h-3 w-3 shrink-0" style={{ color: "var(--success)" }} />
+          <span>{r.pickup_city || "—"}</span>
+          <span style={{ color: "var(--on-surface-variant)" }}>→</span>
+          <MapPin className="h-3 w-3 shrink-0" style={{ color: "var(--error)" }} />
+          <span>{r.delivery_city || "—"}</span>
+        </div>
+      ),
+    },
+    {
+      header: "Pickup Date",
+      accessorKey: "pickup_date",
+      cell: (r) =>
+        r.pickup_date
+          ? new Date(r.pickup_date).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "—",
+    },
+    {
+      header: "Rate",
+      accessorKey: "total_rate",
+      align: "right",
+      cell: (r) =>
+        r.total_rate
+          ? `$${Number(r.total_rate).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+          : "—",
+    },
+    {
+      header: "Trips",
+      accessorKey: "trip_count",
+      align: "center",
+      cell: (r) => (
+        <span
+          className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full"
+          style={{
+            backgroundColor: (r.trip_count ?? 0) > 0 ? "var(--primary-fixed)" : "var(--surface-container-high)",
+            color: (r.trip_count ?? 0) > 0 ? "var(--primary)" : "var(--on-surface-variant)",
+          }}
+        >
+          {r.trip_count || 0}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      cell: (row) => {
+        const intent = statusToIntent(row.status);
+        const label = LOAD_STATUSES[row.status]?.label || row.status;
+        return <StatusBadge intent={intent}>{label}</StatusBadge>;
+      },
+    },
+  ];
+
+  /* ── Sticky Footer Aggregates ──────────────────────────── */
+
   const totalRate = loads.reduce((s, l) => s + (l.total_rate || 0), 0);
   const totalBase = loads.reduce((s, l) => s + (l.base_rate || 0), 0);
 
-  const tabs = Object.keys(tabStatusMap);
-
-  const columns: ColumnDef<any>[] = [
-    { 
-      header: "Load #", 
-      accessorKey: "load_number",
-      cell: (row) => (
-        <div className="flex items-center gap-1 font-medium">
-          <ChevronRight className="h-3 w-3" style={{ color: "var(--on-surface-variant)" }} />
-          {row.load_number}
-        </div>
-      )
-    },
-    { 
-      header: "Broker Load ID", 
-      accessorKey: "broker_load_id",
-      cell: (row) => <div style={{ color: "var(--success)" }} className="font-semibold">{row.broker_load_id || "—"}</div>
-    },
-    { 
-      header: "Broker", 
-      accessorKey: "broker_name",
-      cell: (row) => <div style={{ color: "var(--primary)" }} className="hover:underline cursor-pointer font-medium">{row.broker_name || "—"}</div>
-    },
-    { 
-      header: "Driver", 
-      accessorKey: "driver_name", 
-      cell: (r) => <div style={{ color: "var(--primary)" }} className="hover:underline cursor-pointer">{r.driver_name || "Unassigned"}</div> 
-    },
-    { 
-      header: "Truck", 
-      accessorKey: "truck_number", 
-      cell: (r) => <div style={{ color: "var(--primary)" }} className="hover:underline cursor-pointer">{r.truck_number || "—"}</div> 
-    },
-    { header: "Pickup", accessorKey: "pickup_city", cell: (r) => r.pickup_city || "—" },
-    { header: "Delivery", accessorKey: "delivery_city", cell: (r) => r.delivery_city || "—" },
-    { 
-      header: "Pickup Date", 
-      accessorKey: "pickup_date", 
-      cell: (r) => r.pickup_date ? new Date(r.pickup_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—" 
-    },
-    { 
-      header: "Rate", 
-      accessorKey: "total_rate",
-      cell: (r) => r.total_rate ? `$${Number(r.total_rate).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"
-    },
-    { 
-      header: "Status", 
-      accessorKey: "status",
-      cell: (row) => <StatusPill status={STATUS_MAP[row.status] || row.status} />
-    },
-    { 
-      header: "Docs", 
-      accessorKey: "doc",
-      cell: () => (
-        <div
-          className="w-6 h-6 rounded flex items-center justify-center cursor-pointer"
-          style={{ backgroundColor: "var(--primary-fixed)", color: "var(--primary)" }}
-        >
-          <FileText className="h-3 w-3" />
-        </div>
-      )
-    }
+  const stickyFooter: StickyFooterItem[] = [
+    { label: "Showing", value: `${loads.length} of ${total}` },
+    { label: "Total rate", value: `$${totalRate.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, format: "currency" },
+    { label: "Base rate", value: `$${totalBase.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, format: "currency" },
   ];
 
-  const renderFooter = () => (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 w-full text-[11px]">
-      <span>Showing <span className="font-medium" style={{ color: "var(--on-surface)" }}>{loads.length}</span> of <span className="font-medium" style={{ color: "var(--on-surface)" }}>{total}</span> loads</span>
-      <span>Total rate: <span className="font-medium" style={{ color: "var(--on-surface)" }}>${totalRate.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></span>
-      <span>Base rate: <span className="font-medium" style={{ color: "var(--on-surface)" }}>${totalBase.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span></span>
-      {total > pageSize && (
-        <div className="ml-auto flex items-center gap-2">
-          <button 
-            onClick={() => setPage(p => Math.max(1, p - 1))} 
-            disabled={page <= 1}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Prev</button>
-          <span className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Page {page} of {Math.ceil(total / pageSize)}</span>
-          <button 
-            onClick={() => setPage(p => p + 1)} 
-            disabled={page >= Math.ceil(total / pageSize)}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Next</button>
-        </div>
-      )}
-    </div>
-  );
+  /* ── Render ─────────────────────────────────────────────── */
 
   if (loading && loads.length === 0) {
     return (
@@ -205,35 +262,38 @@ export default function LoadsPage() {
         </Link>
       </div>
 
-      {/* ── Tab Navigation ── */}
-      <div
-        className="flex items-center gap-6 px-1 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
-        style={{ borderBottom: "1px solid var(--outline-variant)" }}
-      >
-        {tabs.map(t => (
-          <button
-            key={t}
-            onClick={() => handleTabChange(t)}
-            className="text-sm font-semibold pb-2 border-b-2 transition-colors"
-            style={{
-              borderColor: activeTab === t ? "var(--primary)" : "transparent",
-              color: activeTab === t ? "var(--primary)" : "var(--on-surface-variant)",
-            }}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {/* ── DataTable Wrapper ── */}
+      {/* ── Enhanced DataTable ── */}
       <div
         className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
         style={{ border: "1px solid var(--outline-variant)" }}
       >
-        <DataTable 
+        <DataTable
           data={loads}
           columns={columns}
-          renderFooter={renderFooter}
+          tabs={tabs}
+          onTabChange={handleTabChange}
+          selectable
+          columnToggle
+          exportable
+          stickyFooter={stickyFooter}
+          emptyState={MODULE_EMPTY_STATES.loads}
+          getRowId={(row) => row.id}
+          bulkActions={[
+            {
+              label: "Export Selected",
+              onClick: (ids) => console.log("Export:", ids),
+            },
+            {
+              label: "Cancel Selected",
+              variant: "danger",
+              onClick: (ids) => console.log("Cancel:", ids),
+            },
+          ]}
+          totalCount={total}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       </div>
     </div>

@@ -1,4 +1,4 @@
-"""Loads repository — async database queries for loads, stops, and accessorials."""
+"""Loads repository — async database queries for loads, stops, trips, and accessorials."""
 
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.load import Load, LoadStop, LoadStatus
+from app.models.base import LoadStatus
+from app.models.load import Load, LoadStop, Trip
 from app.models.accounting import LoadAccessorial
 from app.models.broker import Broker
 from app.models.driver import Driver
@@ -34,9 +35,10 @@ class LoadRepository:
                 selectinload(Load.stops),
                 selectinload(Load.accessorials),
                 selectinload(Load.broker),
-                selectinload(Load.driver),
-                selectinload(Load.truck),
-                selectinload(Load.trailer),
+                selectinload(Load.trips).selectinload(Trip.driver),
+                selectinload(Load.trips).selectinload(Trip.truck),
+                selectinload(Load.trips).selectinload(Trip.trailer),
+                selectinload(Load.commodities),
             )
         )
 
@@ -63,8 +65,17 @@ class LoadRepository:
             count_query = count_query.where(Load.status == status)
 
         if driver_id:
-            query = query.where(Load.driver_id == driver_id)
-            count_query = count_query.where(Load.driver_id == driver_id)
+            # Filter by driver_id via Trip join
+            query = query.where(
+                Load.id.in_(
+                    select(Trip.load_id).where(Trip.driver_id == driver_id)
+                )
+            )
+            count_query = count_query.where(
+                Load.id.in_(
+                    select(Trip.load_id).where(Trip.driver_id == driver_id)
+                )
+            )
 
         if date_from:
             query = query.where(Load.created_at >= date_from)
@@ -98,12 +109,24 @@ class LoadRepository:
         count = (await self.db.execute(count_query)).scalar() or 0
         return f"LD-{count + 1:05d}"
 
+    async def generate_shipment_id(self) -> str:
+        """Generate next shipment ID (external-facing)."""
+        count_query = (
+            select(func.count())
+            .select_from(Load)
+            .where(Load.company_id == self.company_id)
+        )
+        count = (await self.db.execute(count_query)).scalar() or 0
+        return f"SH-{count + 1:06d}"
+
     async def create(self, stops_data: list, accessorials_data: list, **kwargs) -> Load:
         """Create load with nested stops and accessorials."""
         load_number = await self.get_next_load_number()
+        shipment_id = await self.generate_shipment_id()
         load = Load(
             company_id=self.company_id,
             load_number=load_number,
+            shipment_id=shipment_id,
             **kwargs,
         )
         self.db.add(load)
@@ -148,12 +171,11 @@ class LoadRepository:
     # ── Board Tab Queries ────────────────────────────────────────
 
     async def get_live(self, page: int = 1, page_size: int = 20) -> tuple[list[Load], int]:
-        """Live loads: dispatched, at_pickup, in_transit, delayed."""
+        """Live loads: assigned, dispatched, in_transit."""
         live_statuses = [
+            LoadStatus.assigned,
             LoadStatus.dispatched,
-            LoadStatus.at_pickup,
             LoadStatus.in_transit,
-            LoadStatus.delayed,
         ]
         query = self._base_query().where(Load.status.in_(live_statuses))
         count_query = (
@@ -169,14 +191,15 @@ class LoadRepository:
         return list(result.scalars().unique().all()), total
 
     async def get_upcoming(self, page: int = 1, page_size: int = 20) -> tuple[list[Load], int]:
-        """Upcoming: status = planned."""
-        query = self._base_query().where(Load.status == LoadStatus.planned)
+        """Upcoming: status = offer or booked."""
+        upcoming_statuses = [LoadStatus.offer, LoadStatus.booked]
+        query = self._base_query().where(Load.status.in_(upcoming_statuses))
         count_query = (
             select(func.count())
             .select_from(Load)
             .where(Load.company_id == self.company_id)
             .where(Load.is_active == True)
-            .where(Load.status == LoadStatus.planned)
+            .where(Load.status.in_(upcoming_statuses))
         )
         total = (await self.db.execute(count_query)).scalar() or 0
         query = query.order_by(Load.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -184,10 +207,10 @@ class LoadRepository:
         return list(result.scalars().unique().all()), total
 
     async def get_completed(self, page: int = 1, page_size: int = 20) -> tuple[list[Load], int]:
-        """Completed: delivered, billed, paid."""
+        """Completed: delivered, invoiced, paid."""
         completed_statuses = [
             LoadStatus.delivered,
-            LoadStatus.billed,
+            LoadStatus.invoiced,
             LoadStatus.paid,
         ]
         query = self._base_query().where(Load.status.in_(completed_statuses))

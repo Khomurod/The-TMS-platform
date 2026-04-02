@@ -18,10 +18,11 @@ class SettlementGenerateRequest(BaseModel):
 
 class SettlementLineItemResponse(BaseModel):
     id: UUID
-    type: str  # load_pay | accessorial | deduction
+    type: str  # load_pay | accessorial | deduction | bonus
     description: Optional[str] = None
     amount: Decimal
     load_id: Optional[UUID] = None
+    trip_id: Optional[UUID] = None
 
     model_config = {"from_attributes": True}
 

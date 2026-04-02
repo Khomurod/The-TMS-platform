@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
-import DataTable, { ColumnDef } from "@/components/ui/DataTable";
-import StatusPill from "@/components/ui/StatusPill";
+import DataTable, { ColumnDef, TabDef, StickyFooterItem } from "@/components/ui/DataTable";
+import StatusBadge from "@/components/ui/StatusBadge";
+import EntityLink from "@/components/ui/EntityLink";
+import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
 import Modal, { FormField, inputClass, selectClass, btnPrimary, btnSecondary } from "@/components/ui/Modal";
-import { Loader2 } from "lucide-react";
+import { Loader2, Hash } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Types matching backend TruckResponse schema
+   Fleet Page — Phase 4 Enhanced DataTable Integration
    ═══════════════════════════════════════════════════════════════ */
 
 interface TruckItem {
@@ -31,31 +33,36 @@ interface FleetStatus {
   total: number;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  available: "AVAILABLE",
-  in_use: "IN USE",
-  maintenance: "MAINTENANCE",
+const STATUS_MAP: Record<string, { intent: "good" | "dispatched" | "upcoming"; label: string }> = {
+  available: { intent: "good", label: "Available" },
+  in_use: { intent: "dispatched", label: "In Use" },
+  maintenance: { intent: "upcoming", label: "Maintenance" },
 };
+
+/* ── Tab Configuration ─────────────────────────────────────── */
+
+type TabConfig = { key: string; label: string; statusFilter: string | null };
+
+const TAB_CONFIG: TabConfig[] = [
+  { key: "active",      label: "Active Trucks", statusFilter: null },
+  { key: "all",         label: "All Trucks",    statusFilter: null },
+  { key: "available",   label: "Available",     statusFilter: "available" },
+  { key: "in_use",      label: "In Use",        statusFilter: "in_use" },
+  { key: "maintenance", label: "Maintenance",   statusFilter: "maintenance" },
+];
 
 export default function FleetPage() {
   const [trucks, setTrucks] = useState<TruckItem[]>([]);
   const [fleetStatus, setFleetStatus] = useState<FleetStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Active Trucks");
+  const [activeTabKey, setActiveTabKey] = useState("active");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(20);
 
-  const tabs = ["Active Trucks", "All Trucks", "Available", "In Use", "Maintenance"];
+  const activeTabConfig = TAB_CONFIG.find((t) => t.key === activeTabKey) ?? TAB_CONFIG[0];
 
-  const tabStatusMap: Record<string, string | null> = {
-    "Active Trucks": null,
-    "All Trucks": null,
-    "Available": "available",
-    "In Use": "in_use",
-    "Maintenance": "maintenance",
-  };
+  /* ── Fetch ──────────────────────────────────────────────── */
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -64,7 +71,7 @@ export default function FleetPage() {
         page: String(page),
         page_size: String(pageSize),
       });
-      if (statusFilter) params.set("status", statusFilter);
+      if (activeTabConfig.statusFilter) params.set("status", activeTabConfig.statusFilter);
 
       const [trucksRes, fleetRes] = await Promise.allSettled([
         api.get(`/fleet/trucks?${params}`),
@@ -83,74 +90,100 @@ export default function FleetPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, pageSize, activeTabKey]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+  const handleTabChange = (key: string) => {
+    setActiveTabKey(key);
     setPage(1);
-    setStatusFilter(tabStatusMap[tab] ?? null);
   };
 
-  const columns: ColumnDef<any>[] = [
+  /* ── Tabs ─────────────────────────────────────────────────── */
+
+  const tabs: TabDef[] = TAB_CONFIG.map((t) => ({
+    key: t.key,
+    label: t.label,
+    count: t.key === "available" ? fleetStatus?.available
+         : t.key === "in_use" ? fleetStatus?.in_use
+         : t.key === "maintenance" ? fleetStatus?.maintenance
+         : undefined,
+    isActive: t.key === activeTabKey,
+  }));
+
+  /* ── Columns (Phase 4 Enhanced) ─────────────────────────── */
+
+  const columns: ColumnDef<TruckItem>[] = [
+    {
+      header: "Unit #",
+      accessorKey: "unit_number",
+      cell: (row) => (
+        <EntityLink
+          href={`/fleet/${row.id}`}
+          label={row.unit_number}
+          copyable
+        />
+      ),
+    },
     { header: "Make", accessorKey: "make", cell: (r) => r.make || "—" },
     { header: "Model", accessorKey: "model", cell: (r) => r.model || "—" },
-    { 
-      header: "Unit #", 
-      accessorKey: "unit_number",
-      cell: (row) => <div style={{ color: "var(--primary)" }} className="hover:underline cursor-pointer font-medium">{row.unit_number}</div>
+    {
+      header: "Plate #",
+      accessorKey: "license_plate",
+      cell: (r) => r.license_plate ? (
+        <div className="flex items-center gap-1.5">
+          <Hash className="h-3 w-3" style={{ color: "var(--on-surface-variant)" }} />
+          {r.license_plate}
+        </div>
+      ) : "—",
     },
-    { header: "Plate #", accessorKey: "license_plate", cell: (r) => r.license_plate || "—" },
-    { 
-      header: "VIN", 
-      accessorKey: "vin", 
+    {
+      header: "VIN",
+      accessorKey: "vin",
       cell: (r) => r.vin ? (
-        <div className="max-w-[140px] truncate" title={r.vin}>{r.vin}</div>
-      ) : "—" 
+        <div className="max-w-[140px] truncate font-mono text-[10px]" title={r.vin}>{r.vin}</div>
+      ) : "—",
     },
-    { header: "Year", accessorKey: "year", cell: (r) => r.year || "—" },
-    { header: "Ownership", accessorKey: "ownership_type", cell: (r) => r.ownership_type || "—" },
-    { 
-      header: "Status", 
+    {
+      header: "Year",
+      accessorKey: "year",
+      align: "center",
+      width: "80px",
+      cell: (r) => r.year || "—",
+    },
+    {
+      header: "Ownership",
+      accessorKey: "ownership_type",
+      cell: (r) => r.ownership_type || "—",
+    },
+    {
+      header: "Status",
       accessorKey: "status",
-      cell: (row) => <StatusPill status={STATUS_LABEL[row.status] || row.status} />
+      width: "120px",
+      cell: (row) => {
+        const cfg = STATUS_MAP[row.status] || { intent: "upcoming" as const, label: row.status };
+        return <StatusBadge intent={cfg.intent}>{cfg.label}</StatusBadge>;
+      },
     },
   ];
 
-  const renderFooter = () => (
-    <div className="flex items-center gap-4 w-full justify-start font-medium text-[11px]">
-      {fleetStatus && (
-        <div className="flex items-center gap-2">
-          <span className="text-white px-2 py-0.5 rounded-sm" style={{ backgroundColor: "var(--success)" }}>AVAILABLE {fleetStatus.available}</span>
-          <span className="text-white px-2 py-0.5 rounded-sm" style={{ backgroundColor: "var(--warning)" }}>IN USE {fleetStatus.in_use}</span>
-          <span className="text-white px-2 py-0.5 rounded-sm" style={{ backgroundColor: "var(--outline)" }}>MAINTENANCE {fleetStatus.maintenance}</span>
-        </div>
-      )}
-      <span style={{ color: "var(--on-surface-variant)" }} className="ml-2">Total: {total}</span>
-      {total > pageSize && (
-        <div className="ml-auto flex items-center gap-2">
-          <button 
-            onClick={() => setPage(p => Math.max(1, p - 1))} 
-            disabled={page <= 1}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Prev</button>
-          <span className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Page {page} of {Math.ceil(total / pageSize)}</span>
-          <button 
-            onClick={() => setPage(p => p + 1)} 
-            disabled={page >= Math.ceil(total / pageSize)}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Next</button>
-        </div>
-      )}
-    </div>
-  );
+  /* ── Sticky Footer ─────────────────────────────────────── */
+
+  const stickyFooter: StickyFooterItem[] = [
+    { label: "Total", value: String(fleetStatus?.total || total) },
+    { label: "Available", value: String(fleetStatus?.available || 0) },
+    { label: "In Use", value: String(fleetStatus?.in_use || 0) },
+    { label: "Maintenance", value: String(fleetStatus?.maintenance || 0) },
+  ];
+
+  /* ── Create Truck Modal ─────────────────────────────────── */
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ unit_number: "", year: "", make: "", model: "", vin: "", license_plate: "", ownership_type: "company" });
+  const [form, setForm] = useState({
+    unit_number: "", year: "", make: "", model: "",
+    vin: "", license_plate: "", ownership_type: "company",
+  });
 
   const handleCreate = async () => {
     setCreating(true);
@@ -173,6 +206,8 @@ export default function FleetPage() {
       setCreating(false);
     }
   };
+
+  /* ── Render ─────────────────────────────────────────────── */
 
   if (loading && trucks.length === 0) {
     return (
@@ -197,38 +232,30 @@ export default function FleetPage() {
         </button>
       </div>
 
-      {/* ── Tab Navigation ── */}
-      <div
-        className="flex items-center gap-6 px-1 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
-        style={{ borderBottom: "1px solid var(--outline-variant)" }}
-      >
-        {tabs.map(t => (
-          <button
-            key={t}
-            onClick={() => handleTabChange(t)}
-            className="text-sm font-semibold pb-2 border-b-2 transition-colors"
-            style={{
-              borderColor: activeTab === t ? "var(--primary)" : "transparent",
-              color: activeTab === t ? "var(--primary)" : "var(--on-surface-variant)",
-            }}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {/* ── DataTable Wrapper ── */}
+      {/* ── Enhanced DataTable ── */}
       <div
         className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
         style={{ border: "1px solid var(--outline-variant)" }}
       >
-        <DataTable 
+        <DataTable
           data={trucks}
           columns={columns}
-          renderFooter={renderFooter}
+          tabs={tabs}
+          onTabChange={handleTabChange}
+          selectable
+          columnToggle
+          stickyFooter={stickyFooter}
+          emptyState={MODULE_EMPTY_STATES.fleet}
+          getRowId={(row) => row.id}
+          totalCount={total}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       </div>
 
+      {/* ── Create Truck Modal ── */}
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Truck">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Unit Number" required>

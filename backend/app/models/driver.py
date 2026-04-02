@@ -1,15 +1,15 @@
-"""Driver model — driver management with compliance and pay configuration."""
+"""Driver model — driver management with compliance, pay configuration, and tax info."""
 
 import enum
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Enum, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TenantMixin
+from app.models.base import Base, TenantMixin, DriverStatus
 
 
 class EmploymentType(str, enum.Enum):
@@ -30,14 +30,11 @@ class PayRateType(str, enum.Enum):
     salary = "salary"
 
 
-class DriverStatus(str, enum.Enum):
-    """Current operational status of the driver."""
+class TaxClassification(str, enum.Enum):
+    """Tax filing classification for the driver."""
 
-    available = "available"
-    on_route = "on_route"
-    off_duty = "off_duty"
-    on_leave = "on_leave"
-    terminated = "terminated"
+    w2_employee = "w2_employee"
+    contractor_1099 = "contractor_1099"
 
 
 class Driver(Base, TenantMixin):
@@ -63,6 +60,7 @@ class Driver(Base, TenantMixin):
         Enum(EmploymentType, name="employment_type_enum", create_constraint=True),
         nullable=False,
     )
+    hire_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # ── CDL & Compliance ─────────────────────────────────────────
     cdl_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -77,10 +75,25 @@ class Driver(Base, TenantMixin):
         nullable=True,
     )
     pay_rate_value: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 4), nullable=True  # e.g., 0.65 CPM or 80%
+        Numeric(10, 4), nullable=True  # e.g., 0.65 CPM or 0.80 (80%)
     )
+
+    # ── Payment Tariff (blueprint §1.2) ──────────────────────────
+    payment_tariff_type: Mapped[str | None] = mapped_column(
+        String(50), nullable=True  # e.g., '88% Gross', '70 CPM', 'Custom'
+    )
+    payment_tariff_value: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 4), nullable=True  # Numeric value behind the tariff label
+    )
+
     use_company_defaults: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
+    )
+
+    # ── Tax Configuration ────────────────────────────────────────
+    tax_classification: Mapped[TaxClassification | None] = mapped_column(
+        Enum(TaxClassification, name="tax_classification_enum", create_constraint=True),
+        nullable=True,
     )
 
     # ── Bank Info (encrypted at rest in production) ──────────────
@@ -95,7 +108,10 @@ class Driver(Base, TenantMixin):
         server_default="available",
     )
 
+    # ── Additional Info ──────────────────────────────────────────
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="drivers")
-    loads = relationship("Load", back_populates="driver", lazy="selectin")
+    trips = relationship("Trip", back_populates="driver", lazy="selectin")
     settlements = relationship("DriverSettlement", back_populates="driver", lazy="selectin")

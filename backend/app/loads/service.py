@@ -1,10 +1,10 @@
-"""Loads service — business logic including state machine, assignment validation, and board tabs.
+"""Loads service — business logic including state machine, Trip creation, dispatch, and board tabs.
 
-Phase 4 tasks covered:
-  4.1 — Load CRUD
-  4.2 — Load State Machine (transitions + side effects)
-  4.3 — Load Assignment with Failsafes
-  4.4 — Load Board Tabs (live / upcoming / completed)
+Step 2 tasks covered:
+  - LOAD_TRANSITIONS state machine (8-stage pipeline with guardrails)
+  - advance_load_status with side effects per transition
+  - dispatch_load (Trip creation, compliance validation)
+  - Board tab queries (updated for new statuses)
 """
 
 from datetime import date
@@ -13,7 +13,9 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.loads.repository import LoadRepository
 from app.loads.schemas import (
@@ -24,28 +26,58 @@ from app.loads.schemas import (
     LoadListResponse,
     StopResponse,
     AccessorialResponse,
+    TripResponse,
+    DispatchRequest,
 )
 from app.core.exceptions import NotFoundError
-from app.models.load import LoadStatus
-from app.models.driver import Driver, DriverStatus
+from app.models.base import LoadStatus, TripStatus, DriverStatus
+from app.models.load import Load, Trip, LoadStop
+from app.models.driver import Driver
 from app.models.fleet import Truck, Trailer, EquipmentStatus
+from app.models.company import Company
 
 
-# ── State Machine Transition Map (4.2) ───────────────────────────
+# ══════════════════════════════════════════════════════════════════
+#   STATE MACHINE — 8-Stage Load Lifecycle
+# ══════════════════════════════════════════════════════════════════
 
-VALID_TRANSITIONS: dict[str, list[str]] = {
-    "planned":    ["dispatched", "cancelled"],
-    "dispatched": ["at_pickup", "cancelled"],
-    "at_pickup":  ["in_transit"],
-    "in_transit": ["delivered", "delayed"],
-    "delayed":    ["in_transit", "delivered"],
-    "delivered":  ["billed"],
-    "billed":     ["paid"],
+LOAD_TRANSITIONS: dict[LoadStatus, list[LoadStatus]] = {
+    LoadStatus.offer:       [LoadStatus.booked, LoadStatus.cancelled],
+    LoadStatus.booked:      [LoadStatus.assigned, LoadStatus.cancelled],
+    LoadStatus.assigned:    [LoadStatus.dispatched, LoadStatus.booked, LoadStatus.cancelled],
+    LoadStatus.dispatched:  [LoadStatus.in_transit, LoadStatus.assigned],
+    LoadStatus.in_transit:  [LoadStatus.delivered],
+    LoadStatus.delivered:   [LoadStatus.invoiced],
+    LoadStatus.invoiced:    [LoadStatus.paid],
+    LoadStatus.paid:        [],  # Terminal
+    LoadStatus.cancelled:   [],  # Terminal
+}
+
+
+# Side-effects triggered on specific transitions
+# Each effect is a method name on LoadService
+TRANSITION_SIDE_EFFECTS: dict[tuple[str, str], list[str]] = {
+    ("booked", "assigned"): [
+        "_effect_create_trip",
+    ],
+    ("assigned", "dispatched"): [
+        "_effect_validate_driver_compliance",
+        "_effect_validate_truck_availability",
+        "_effect_set_driver_on_trip",
+        "_effect_set_equipment_in_use",
+    ],
+    ("in_transit", "delivered"): [
+        "_effect_release_driver",
+        "_effect_release_equipment",
+    ],
+    ("delivered", "invoiced"): [
+        "_effect_lock_load_financials",
+    ],
 }
 
 
 class LoadService:
-    """Load business logic — CRUD, state machine, assignment, board tabs."""
+    """Load business logic — CRUD, state machine, dispatch, Trip management, board tabs."""
 
     def __init__(self, db: AsyncSession, company_id: UUID):
         self.db = db
@@ -72,21 +104,27 @@ class LoadService:
                     delivery_date = s.scheduled_date
 
         broker_name = load.broker.name if load.broker else None
-        driver_name = (
-            f"{load.driver.first_name} {load.driver.last_name}"
-            if load.driver else None
-        )
-        truck_number = load.truck.unit_number if load.truck else None
+
+        # Driver/truck info comes from the primary trip (sequence 1)
+        driver_name = None
+        truck_number = None
+        if load.trips:
+            primary_trip = next(
+                (t for t in load.trips if t.sequence_number == 1), load.trips[0]
+            )
+            if primary_trip.driver:
+                driver_name = f"{primary_trip.driver.first_name} {primary_trip.driver.last_name}"
+            if primary_trip.truck:
+                truck_number = primary_trip.truck.unit_number
 
         return LoadListItem(
             id=str(load.id),
             load_number=load.load_number,
+            shipment_id=load.shipment_id,
             broker_load_id=load.broker_load_id,
             status=load.status.value if hasattr(load.status, 'value') else load.status,
             base_rate=load.base_rate,
             total_rate=load.total_rate,
-            driver_id=str(load.driver_id) if load.driver_id else None,
-            truck_id=str(load.truck_id) if load.truck_id else None,
             created_at=load.created_at,
             pickup_city=pickup_city,
             pickup_date=pickup_date,
@@ -95,6 +133,7 @@ class LoadService:
             broker_name=broker_name,
             driver_name=driver_name,
             truck_number=truck_number,
+            trip_count=len(load.trips) if load.trips else 0,
         )
 
     def _calculate_total_rate(self, base_rate, accessorials_data: list) -> Decimal:
@@ -103,7 +142,7 @@ class LoadService:
         acc_total = sum(Decimal(str(a.get("amount", 0))) for a in accessorials_data)
         return base + acc_total
 
-    # ── 4.1 — CRUD ──────────────────────────────────────────────
+    # ── CRUD ─────────────────────────────────────────────────────
 
     async def list_loads(
         self,
@@ -134,12 +173,6 @@ class LoadService:
         load_kwargs = {}
         if data.broker_id:
             load_kwargs["broker_id"] = UUID(data.broker_id)
-        if data.driver_id:
-            load_kwargs["driver_id"] = UUID(data.driver_id)
-        if data.truck_id:
-            load_kwargs["truck_id"] = UUID(data.truck_id)
-        if data.trailer_id:
-            load_kwargs["trailer_id"] = UUID(data.trailer_id)
 
         load_kwargs["broker_load_id"] = data.broker_load_id
         load_kwargs["contact_agent"] = data.contact_agent
@@ -164,6 +197,14 @@ class LoadService:
         load = await self.repo.get_by_id(load_id)
         if not load:
             raise NotFoundError("Load not found")
+
+        # Block edits on locked loads (post-invoiced)
+        if load.is_locked:
+            raise HTTPException(
+                status_code=400,
+                detail="Load is locked (invoiced). Financial fields cannot be edited.",
+            )
+
         updated = await self.repo.update(load, **data.model_dump(exclude_unset=True))
         return LoadResponse.model_validate(updated)
 
@@ -171,120 +212,332 @@ class LoadService:
         load = await self.repo.get_by_id(load_id)
         if not load:
             raise NotFoundError("Load not found")
-        if load.status != LoadStatus.planned:
+        if load.status != LoadStatus.offer:
             raise HTTPException(
                 status_code=400,
-                detail="Only loads with status 'planned' can be deleted",
+                detail="Only loads with status 'offer' can be deleted",
             )
         await self.repo.soft_delete(load)
 
-    # ── 4.2 — State Machine ─────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    #   STATE MACHINE — Advance Load Status
+    # ══════════════════════════════════════════════════════════════
 
-    async def update_status(self, load_id: UUID, new_status: str) -> LoadResponse:
-        """Enforce valid transitions and apply side effects."""
+    async def advance_status(self, load_id: UUID, target_status: str) -> LoadResponse:
+        """Enforce valid transitions, execute side-effects, and update status."""
         load = await self.repo.get_by_id(load_id)
         if not load:
             raise NotFoundError("Load not found")
 
-        current = load.status.value if hasattr(load.status, 'value') else load.status
+        current = LoadStatus(load.status.value if hasattr(load.status, 'value') else load.status)
+        try:
+            target = LoadStatus(target_status)
+        except ValueError:
+            raise HTTPException(400, f"Invalid status: '{target_status}'")
 
-        allowed = VALID_TRANSITIONS.get(current, [])
-        if new_status not in allowed:
+        # 1. Validate transition is allowed
+        allowed = LOAD_TRANSITIONS.get(current, [])
+        if target not in allowed:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid transition: '{current}' → '{new_status}'. Allowed: {allowed}",
+                detail=f"Cannot transition from '{current.value}' to '{target.value}'. Allowed: {[s.value for s in allowed]}",
             )
 
-        # Dispatch requires driver + truck
-        if new_status == "dispatched":
-            errors = []
-            if not load.driver_id:
-                errors.append("Driver must be assigned before dispatching")
-            if not load.truck_id:
-                errors.append("Truck must be assigned before dispatching")
-            if errors:
-                raise HTTPException(status_code=400, detail="; ".join(errors))
+        # 2. Execute side-effects for this transition
+        side_effect_key = (current.value, target.value)
+        if side_effect_key in TRANSITION_SIDE_EFFECTS:
+            for effect_name in TRANSITION_SIDE_EFFECTS[side_effect_key]:
+                effect_fn = getattr(self, effect_name)
+                await effect_fn(load)
 
-        # Apply side effects
-        await self._apply_side_effects(load, new_status)
-
-        load.status = new_status
+        # 3. Update status
+        load.status = target
         await self.db.commit()
         await self.db.refresh(load)
 
         return LoadResponse.model_validate(load)
 
-    async def _apply_side_effects(self, load, new_status: str) -> None:
-        """Side effects when transitioning status."""
-        from sqlalchemy import select
+    # ── Side-Effect Methods ──────────────────────────────────────
 
-        if new_status == "dispatched":
-            # Truck/Trailer → in_use, Driver → on_route
-            if load.truck_id:
+    async def _effect_create_trip(self, load: Load) -> None:
+        """Create a Trip entity when Load transitions booked → assigned.
+        Only creates if no trips exist yet (first assignment).
+        """
+        if load.trips and len(load.trips) > 0:
+            return  # Trip already exists
+
+        # Generate trip number: TR-{load_number suffix}-01
+        load_suffix = load.load_number.replace("LD-", "")
+        seq = 1
+        trip_number = f"TR-{load_suffix}-{seq:02d}"
+
+        trip = Trip(
+            company_id=self.company_id,
+            trip_number=trip_number,
+            load_id=load.id,
+            sequence_number=seq,
+            status=TripStatus.assigned,
+        )
+        self.db.add(trip)
+        await self.db.flush()
+
+    async def _effect_validate_driver_compliance(self, load: Load) -> None:
+        """Validate driver compliance before dispatch (assigned → dispatched)."""
+        if not load.trips:
+            raise HTTPException(400, "No trip exists for this load. Assign a driver first.")
+
+        primary_trip = load.trips[0]
+        if not primary_trip.driver_id:
+            raise HTTPException(400, "Driver must be assigned to the trip before dispatching.")
+
+        driver = (await self.db.execute(
+            select(Driver).where(Driver.id == primary_trip.driver_id)
+        )).scalar_one_or_none()
+
+        if not driver:
+            raise HTTPException(400, "Assigned driver not found.")
+
+        # Check compliance — get company enforcement setting
+        company = (await self.db.execute(
+            select(Company).where(Company.id == self.company_id)
+        )).scalar_one_or_none()
+
+        from app.drivers.service import check_driver_compliance
+        violations = check_driver_compliance(driver)
+
+        if violations and company and company.enforce_compliance:
+            critical = [v for v in violations if v["severity"] == "critical"]
+            if critical:
+                messages = [v["message"] for v in critical]
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "compliance_violations": messages,
+                        "message": "Driver has critical compliance violations. Dispatch blocked.",
+                    },
+                )
+
+    async def _effect_validate_truck_availability(self, load: Load) -> None:
+        """Validate truck is available before dispatch."""
+        if not load.trips:
+            return
+
+        primary_trip = load.trips[0]
+        if not primary_trip.truck_id:
+            raise HTTPException(400, "Truck must be assigned to the trip before dispatching.")
+
+        truck = (await self.db.execute(
+            select(Truck).where(Truck.id == primary_trip.truck_id)
+        )).scalar_one_or_none()
+
+        if not truck:
+            raise HTTPException(400, "Assigned truck not found.")
+
+        if truck.status != EquipmentStatus.available:
+            raise HTTPException(409, f"Truck '{truck.unit_number}' is not available (status: {truck.status.value}).")
+
+    async def _effect_set_driver_on_trip(self, load: Load) -> None:
+        """Set driver status to ON_TRIP when dispatched."""
+        if not load.trips:
+            return
+
+        for trip in load.trips:
+            if trip.driver_id:
+                driver = (await self.db.execute(
+                    select(Driver).where(Driver.id == trip.driver_id)
+                )).scalar_one_or_none()
+                if driver:
+                    driver.status = DriverStatus.on_trip
+                trip.status = TripStatus.dispatched
+
+    async def _effect_set_equipment_in_use(self, load: Load) -> None:
+        """Set truck/trailer status to IN_USE when dispatched."""
+        if not load.trips:
+            return
+
+        for trip in load.trips:
+            if trip.truck_id:
                 truck = (await self.db.execute(
-                    select(Truck).where(Truck.id == load.truck_id)
+                    select(Truck).where(Truck.id == trip.truck_id)
                 )).scalar_one_or_none()
                 if truck:
                     truck.status = EquipmentStatus.in_use
 
-            if load.trailer_id:
+            if trip.trailer_id:
                 trailer = (await self.db.execute(
-                    select(Trailer).where(Trailer.id == load.trailer_id)
+                    select(Trailer).where(Trailer.id == trip.trailer_id)
                 )).scalar_one_or_none()
                 if trailer:
                     trailer.status = EquipmentStatus.in_use
 
-            if load.driver_id:
+    async def _effect_release_driver(self, load: Load) -> None:
+        """Release driver back to AVAILABLE when delivered."""
+        if not load.trips:
+            return
+
+        for trip in load.trips:
+            if trip.driver_id:
                 driver = (await self.db.execute(
-                    select(Driver).where(Driver.id == load.driver_id)
+                    select(Driver).where(Driver.id == trip.driver_id)
                 )).scalar_one_or_none()
                 if driver:
-                    driver.status = DriverStatus.on_route
+                    driver.status = DriverStatus.available
+                trip.status = TripStatus.delivered
 
-        elif new_status in ("delivered", "cancelled"):
-            # Release all assets back to available
-            if load.truck_id:
+    async def _effect_release_equipment(self, load: Load) -> None:
+        """Release truck/trailer back to AVAILABLE when delivered."""
+        if not load.trips:
+            return
+
+        for trip in load.trips:
+            if trip.truck_id:
                 truck = (await self.db.execute(
-                    select(Truck).where(Truck.id == load.truck_id)
+                    select(Truck).where(Truck.id == trip.truck_id)
                 )).scalar_one_or_none()
                 if truck:
                     truck.status = EquipmentStatus.available
-
-            if load.trailer_id:
+            if trip.trailer_id:
                 trailer = (await self.db.execute(
-                    select(Trailer).where(Trailer.id == load.trailer_id)
+                    select(Trailer).where(Trailer.id == trip.trailer_id)
                 )).scalar_one_or_none()
                 if trailer:
                     trailer.status = EquipmentStatus.available
 
-            if load.driver_id:
-                driver = (await self.db.execute(
-                    select(Driver).where(Driver.id == load.driver_id)
-                )).scalar_one_or_none()
-                if driver:
-                    driver.status = DriverStatus.available
+    async def _effect_lock_load_financials(self, load: Load) -> None:
+        """Lock load financial fields when invoiced."""
+        load.is_locked = True
 
-    # ── 4.3 — Assignment with Failsafes ─────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    #   DISPATCH WORKFLOW — Create/Assign Trip in one shot
+    # ══════════════════════════════════════════════════════════════
 
-    async def assign_load(self, load_id: UUID, driver_id: Optional[str],
-                          truck_id: Optional[str], trailer_id: Optional[str]) -> LoadResponse:
-        """Assign driver + truck + trailer with compliance validation."""
-        from sqlalchemy import select
+    async def dispatch_load(self, load_id: UUID, data: DispatchRequest) -> LoadResponse:
+        """Full dispatch workflow: validate → create Trip → assign driver/truck → advance status.
 
+        This is the power-user endpoint that combines Trip creation + dispatch in one call.
+        For granular control, use advance_status + manual trip assignment.
+        """
         load = await self.repo.get_by_id(load_id)
         if not load:
             raise NotFoundError("Load not found")
 
+        current = LoadStatus(load.status.value if hasattr(load.status, 'value') else load.status)
+
+        # Must be in offer, booked, or assigned to dispatch
+        if current not in (LoadStatus.offer, LoadStatus.booked, LoadStatus.assigned):
+            raise HTTPException(
+                400,
+                f"Load cannot be dispatched from status '{current.value}'. Must be offer, booked, or assigned.",
+            )
+
+        driver_id = UUID(data.driver_id)
+        truck_id = UUID(data.truck_id)
+        trailer_id = UUID(data.trailer_id) if data.trailer_id else None
+
+        # 1. Validate driver
+        driver = (await self.db.execute(
+            select(Driver).where(Driver.id == driver_id).where(Driver.company_id == self.company_id)
+        )).scalar_one_or_none()
+        if not driver:
+            raise NotFoundError("Driver not found")
+        if not driver.is_active:
+            raise HTTPException(400, "Driver is not active.")
+        if driver.status != DriverStatus.available:
+            raise HTTPException(409, f"Driver is not available (status: {driver.status.value}).")
+
+        # 2. Validate truck
+        truck = (await self.db.execute(
+            select(Truck).where(Truck.id == truck_id).where(Truck.company_id == self.company_id)
+        )).scalar_one_or_none()
+        if not truck:
+            raise NotFoundError("Truck not found")
+        if truck.status != EquipmentStatus.available:
+            raise HTTPException(409, f"Truck is not available (status: {truck.status.value}).")
+
+        # 3. Validate trailer (optional)
+        if trailer_id:
+            trailer = (await self.db.execute(
+                select(Trailer).where(Trailer.id == trailer_id).where(Trailer.company_id == self.company_id)
+            )).scalar_one_or_none()
+            if not trailer:
+                raise NotFoundError("Trailer not found")
+            if trailer.status != EquipmentStatus.available:
+                raise HTTPException(409, f"Trailer is not available (status: {trailer.status.value}).")
+
+        # 4. Compliance check
+        from app.drivers.service import check_driver_compliance
+        company = (await self.db.execute(
+            select(Company).where(Company.id == self.company_id)
+        )).scalar_one_or_none()
+
+        violations = check_driver_compliance(driver)
+        if violations and company and company.enforce_compliance:
+            critical = [v for v in violations if v["severity"] == "critical"]
+            if critical:
+                raise HTTPException(422, detail={
+                    "compliance_violations": [v["message"] for v in critical],
+                    "message": "Dispatch blocked due to compliance violations.",
+                })
+
+        # 5. Create Trip
+        load_suffix = load.load_number.replace("LD-", "")
+        existing_trips = len(load.trips) if load.trips else 0
+        seq = existing_trips + 1
+        trip_number = f"TR-{load_suffix}-{seq:02d}"
+
+        trip = Trip(
+            company_id=self.company_id,
+            trip_number=trip_number,
+            load_id=load.id,
+            driver_id=driver_id,
+            truck_id=truck_id,
+            trailer_id=trailer_id,
+            sequence_number=seq,
+            status=TripStatus.dispatched,
+        )
+        self.db.add(trip)
+
+        # 6. Cascade status updates
+        load.status = LoadStatus.dispatched
+        driver.status = DriverStatus.on_trip
+        truck.status = EquipmentStatus.in_use
+        if trailer_id:
+            trailer_obj = (await self.db.execute(
+                select(Trailer).where(Trailer.id == trailer_id)
+            )).scalar_one_or_none()
+            if trailer_obj:
+                trailer_obj.status = EquipmentStatus.in_use
+
+        await self.db.commit()
+        await self.db.refresh(load)
+        return LoadResponse.model_validate(load)
+
+    # ══════════════════════════════════════════════════════════════
+    #   TRIP MANAGEMENT — Assign driver/truck to existing trip
+    # ══════════════════════════════════════════════════════════════
+
+    async def assign_trip(
+        self, load_id: UUID, trip_id: UUID,
+        driver_id: Optional[str], truck_id: Optional[str], trailer_id: Optional[str],
+    ) -> LoadResponse:
+        """Assign driver + truck + trailer to an existing Trip."""
+        load = await self.repo.get_by_id(load_id)
+        if not load:
+            raise NotFoundError("Load not found")
+
+        trip = (await self.db.execute(
+            select(Trip).where(Trip.id == trip_id).where(Trip.load_id == load_id)
+        )).scalar_one_or_none()
+        if not trip:
+            raise NotFoundError("Trip not found for this load")
+
         today = date.today()
         errors = []
 
-        # Validate driver
         if driver_id:
             driver = (await self.db.execute(
-                select(Driver).where(Driver.id == UUID(driver_id))
-                .where(Driver.company_id == self.company_id)
+                select(Driver).where(Driver.id == UUID(driver_id)).where(Driver.company_id == self.company_id)
             )).scalar_one_or_none()
-
             if not driver:
                 errors.append("Driver not found")
             elif not driver.is_active:
@@ -293,51 +546,39 @@ class LoadService:
                 errors.append(f"Driver status is '{driver.status.value}', must be 'available'")
             elif driver.cdl_expiry_date and driver.cdl_expiry_date <= today:
                 errors.append(f"Driver CDL expired on {driver.cdl_expiry_date}")
+            else:
+                trip.driver_id = UUID(driver_id)
 
-        # Validate truck
         if truck_id:
             truck = (await self.db.execute(
-                select(Truck).where(Truck.id == UUID(truck_id))
-                .where(Truck.company_id == self.company_id)
+                select(Truck).where(Truck.id == UUID(truck_id)).where(Truck.company_id == self.company_id)
             )).scalar_one_or_none()
-
             if not truck:
                 errors.append("Truck not found")
             elif truck.status != EquipmentStatus.available:
                 errors.append(f"Truck status is '{truck.status.value}', must be 'available'")
-            elif truck.dot_inspection_expiry and truck.dot_inspection_expiry <= today:
-                errors.append(f"Truck DOT inspection expired on {truck.dot_inspection_expiry}")
+            else:
+                trip.truck_id = UUID(truck_id)
 
-        # Validate trailer
         if trailer_id:
             trailer = (await self.db.execute(
-                select(Trailer).where(Trailer.id == UUID(trailer_id))
-                .where(Trailer.company_id == self.company_id)
+                select(Trailer).where(Trailer.id == UUID(trailer_id)).where(Trailer.company_id == self.company_id)
             )).scalar_one_or_none()
-
             if not trailer:
                 errors.append("Trailer not found")
             elif trailer.status != EquipmentStatus.available:
                 errors.append(f"Trailer status is '{trailer.status.value}', must be 'available'")
-            elif trailer.dot_inspection_expiry and trailer.dot_inspection_expiry <= today:
-                errors.append(f"Trailer DOT inspection expired on {trailer.dot_inspection_expiry}")
+            else:
+                trip.trailer_id = UUID(trailer_id)
 
         if errors:
             raise HTTPException(status_code=400, detail="; ".join(errors))
 
-        # Apply assignment
-        update_kwargs = {}
-        if driver_id:
-            update_kwargs["driver_id"] = UUID(driver_id)
-        if truck_id:
-            update_kwargs["truck_id"] = UUID(truck_id)
-        if trailer_id:
-            update_kwargs["trailer_id"] = UUID(trailer_id)
+        await self.db.commit()
+        await self.db.refresh(load)
+        return LoadResponse.model_validate(load)
 
-        updated = await self.repo.update(load, **update_kwargs)
-        return LoadResponse.model_validate(updated)
-
-    # ── 4.4 — Board Tab Queries ──────────────────────────────────
+    # ── Board Tab Queries ────────────────────────────────────────
 
     async def get_live_loads(self, page: int = 1, page_size: int = 20) -> LoadListResponse:
         items, total = await self.repo.get_live(page, page_size)

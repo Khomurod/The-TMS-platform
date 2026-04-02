@@ -1,4 +1,9 @@
-"""Drivers service — business logic for driver CRUD operations."""
+"""Drivers service — business logic for driver CRUD, compliance checking, and availability.
+
+Step 2 tasks covered:
+  - check_driver_compliance() — 3-tier compliance urgency system
+  - Updated delete validation to use Trip (not direct Load FK)
+"""
 
 from datetime import date
 from typing import Optional
@@ -15,15 +20,109 @@ from app.drivers.schemas import (
     DriverListResponse,
     DriverAvailableResponse,
     DriverExpiringResponse,
+    ComplianceResponse,
+    ComplianceViolation,
 )
 from app.core.exceptions import NotFoundError
+from app.models.driver import Driver
+
+
+# ══════════════════════════════════════════════════════════════════
+#   COMPLIANCE ENGINE — Standalone function (used by loads service)
+# ══════════════════════════════════════════════════════════════════
+
+def check_driver_compliance(driver: Driver) -> list[dict]:
+    """Check driver compliance. Returns list of violations (empty = 'Ready to go').
+
+    3-Tier Urgency System:
+      🟢 GOOD     — All docs current, >30 days to expiry
+      🟡 WARNING  — Any doc expiring within 30 days
+      🔴 CRITICAL — Any doc expired OR expiring within 7 days
+
+    This is a pure function — no DB calls, synchronous.
+    """
+    violations = []
+    today = date.today()
+
+    # CDL checks
+    if not driver.cdl_number:
+        violations.append({
+            "field": "cdl",
+            "severity": "critical",
+            "message": "No CDL number on file",
+        })
+    elif driver.cdl_expiry_date:
+        days_until = (driver.cdl_expiry_date - today).days
+        if days_until < 0:
+            violations.append({
+                "field": "cdl",
+                "severity": "critical",
+                "message": f"CDL expired {abs(days_until)} days ago (expired {driver.cdl_expiry_date})",
+            })
+        elif days_until <= 7:
+            violations.append({
+                "field": "cdl",
+                "severity": "critical",
+                "message": f"CDL expires in {days_until} days ({driver.cdl_expiry_date})",
+            })
+        elif days_until <= 30:
+            violations.append({
+                "field": "cdl",
+                "severity": "warning",
+                "message": f"CDL expires in {days_until} days ({driver.cdl_expiry_date})",
+            })
+
+    # Medical card checks
+    if driver.medical_card_expiry_date:
+        days_until = (driver.medical_card_expiry_date - today).days
+        if days_until < 0:
+            violations.append({
+                "field": "medical_card",
+                "severity": "critical",
+                "message": f"Medical card expired {abs(days_until)} days ago (expired {driver.medical_card_expiry_date})",
+            })
+        elif days_until <= 7:
+            violations.append({
+                "field": "medical_card",
+                "severity": "critical",
+                "message": f"Medical card expires in {days_until} days ({driver.medical_card_expiry_date})",
+            })
+        elif days_until <= 30:
+            violations.append({
+                "field": "medical_card",
+                "severity": "warning",
+                "message": f"Medical card expires in {days_until} days ({driver.medical_card_expiry_date})",
+            })
+
+    return violations
+
+
+def get_compliance_urgency(violations: list[dict]) -> str:
+    """Derive the overall compliance urgency from a list of violations.
+
+    Returns: 'good' | 'upcoming' | 'critical' | 'expired'
+    """
+    if not violations:
+        return "good"
+
+    has_critical = any(v["severity"] == "critical" for v in violations)
+    has_expired = any("expired" in v["message"].lower() for v in violations)
+
+    if has_expired:
+        return "expired"
+    elif has_critical:
+        return "critical"
+    else:
+        return "upcoming"
 
 
 class DriverService:
     """Driver business logic with compliance checks."""
 
     def __init__(self, db: AsyncSession, company_id: UUID):
+        self.db = db
         self.repo = DriverRepository(db, company_id)
+        self.company_id = company_id
 
     async def list_drivers(
         self,
@@ -67,15 +166,15 @@ class DriverService:
         return DriverResponse.model_validate(updated)
 
     async def delete_driver(self, driver_id: UUID) -> None:
-        """Soft delete — blocked if driver has active loads (409)."""
+        """Soft delete — blocked if driver has active trips (409)."""
         driver = await self.repo.get_by_id(driver_id)
         if not driver:
             raise NotFoundError("Driver not found")
 
-        if await self.repo.has_active_loads(driver_id):
+        if await self.repo.has_active_trips(driver_id):
             raise HTTPException(
                 status_code=409,
-                detail="Cannot delete driver assigned to an active load",
+                detail="Cannot delete driver assigned to an active trip",
             )
 
         await self.repo.soft_delete(driver)
@@ -111,3 +210,26 @@ class DriverService:
                 )
             )
         return results
+
+    async def get_compliance(self, driver_id: UUID) -> ComplianceResponse:
+        """Get full compliance status for a driver."""
+        driver = await self.repo.get_by_id(driver_id)
+        if not driver:
+            raise NotFoundError("Driver not found")
+
+        violations = check_driver_compliance(driver)
+        urgency = get_compliance_urgency(violations)
+
+        return ComplianceResponse(
+            driver_id=str(driver.id),
+            driver_name=f"{driver.first_name} {driver.last_name}",
+            urgency=urgency,
+            violations=[
+                ComplianceViolation(
+                    field=v["field"],
+                    severity=v["severity"],
+                    message=v["message"],
+                )
+                for v in violations
+            ],
+        )

@@ -24,10 +24,14 @@ class DriverCreate(BaseModel):
     experience_years: Optional[int] = None
     pay_rate_type: Optional[str] = None  # cpm | percentage | fixed_per_load | hourly | salary
     pay_rate_value: Optional[Decimal] = None
+    payment_tariff_type: Optional[str] = None
+    payment_tariff_value: Optional[Decimal] = None
+    tax_classification: Optional[str] = None
     use_company_defaults: bool = False
     bank_name: Optional[str] = None
     bank_routing_number: Optional[str] = None
     bank_account_number: Optional[str] = None
+    hire_date: Optional[date] = None
 
 
 class DriverUpdate(BaseModel):
@@ -45,11 +49,16 @@ class DriverUpdate(BaseModel):
     experience_years: Optional[int] = None
     pay_rate_type: Optional[str] = None
     pay_rate_value: Optional[Decimal] = None
+    payment_tariff_type: Optional[str] = None
+    payment_tariff_value: Optional[Decimal] = None
+    tax_classification: Optional[str] = None
     use_company_defaults: Optional[bool] = None
     status: Optional[str] = None
     bank_name: Optional[str] = None
     bank_routing_number: Optional[str] = None
     bank_account_number: Optional[str] = None
+    hire_date: Optional[date] = None
+    notes: Optional[str] = None
 
 
 # ── Response Schemas ─────────────────────────────────────────────
@@ -70,9 +79,14 @@ class DriverResponse(BaseModel):
     experience_years: Optional[int] = None
     pay_rate_type: Optional[str] = None
     pay_rate_value: Optional[Decimal] = None
+    payment_tariff_type: Optional[str] = None
+    payment_tariff_value: Optional[Decimal] = None
+    tax_classification: Optional[str] = None
     use_company_defaults: bool
     status: str
     is_active: bool
+    hire_date: Optional[date] = None
+    notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -108,3 +122,20 @@ class DriverExpiringResponse(BaseModel):
     days_until_expiry: int
 
     model_config = {"from_attributes": True}
+
+
+# ── Compliance Schemas ───────────────────────────────────────────
+
+class ComplianceViolation(BaseModel):
+    """Single compliance violation."""
+    field: str       # cdl | medical_card
+    severity: str    # critical | warning
+    message: str
+
+
+class ComplianceResponse(BaseModel):
+    """Full compliance status for a driver."""
+    driver_id: str
+    driver_name: str
+    urgency: str     # good | upcoming | critical | expired
+    violations: list[ComplianceViolation] = []

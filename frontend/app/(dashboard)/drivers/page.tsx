@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
-import DataTable, { ColumnDef } from "@/components/ui/DataTable";
-import StatusPill from "@/components/ui/StatusPill";
+import DataTable, { ColumnDef, TabDef } from "@/components/ui/DataTable";
+import StatusBadge from "@/components/ui/StatusBadge";
+import EntityLink from "@/components/ui/EntityLink";
+import ComplianceDot from "@/components/ui/ComplianceDot";
+import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
 import Modal, { FormField, inputClass, selectClass, btnPrimary, btnSecondary } from "@/components/ui/Modal";
-import { Loader2 } from "lucide-react";
+import { Loader2, Phone, Mail } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Types matching backend DriverResponse schema
+   Drivers Page — Phase 4 Enhanced DataTable Integration
    ═══════════════════════════════════════════════════════════════ */
 
 interface DriverItem {
@@ -23,14 +26,16 @@ interface DriverItem {
   status: string;
   is_active: boolean;
   created_at?: string;
+  hire_date?: string;
+  compliance_urgency?: "good" | "upcoming" | "critical" | "expired";
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  available: "AVAILABLE",
-  on_route: "ON ROUTE",
-  off_duty: "OFF DUTY",
-  on_leave: "ON LEAVE",
-  terminated: "TERMINATED",
+const STATUS_MAP: Record<string, { intent: "good" | "dispatched" | "upcoming" | "critical"; label: string }> = {
+  available: { intent: "good", label: "Available" },
+  on_trip: { intent: "dispatched", label: "On Trip" },
+  inactive: { intent: "upcoming", label: "Inactive" },
+  on_leave: { intent: "upcoming", label: "On Leave" },
+  terminated: { intent: "critical", label: "Terminated" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -39,27 +44,30 @@ const TYPE_LABEL: Record<string, string> = {
   lease_operator: "Lease operator",
 };
 
+/* ── Tab Configuration ─────────────────────────────────────── */
+
+type TabConfig = { key: string; label: string; statusFilter: string | null };
+
+const TAB_CONFIG: TabConfig[] = [
+  { key: "active",     label: "Active Drivers", statusFilter: null },
+  { key: "all",        label: "All Drivers",    statusFilter: null },
+  { key: "available",  label: "Available",      statusFilter: "available" },
+  { key: "on_trip",    label: "On Trip",        statusFilter: "on_trip" },
+  { key: "inactive",   label: "Inactive",       statusFilter: "inactive" },
+  { key: "terminated", label: "Terminated",     statusFilter: "terminated" },
+];
+
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<DriverItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Active Drivers");
+  const [activeTabKey, setActiveTabKey] = useState("active");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(20);
 
-  const tabs = [
-    "Active Drivers", "All Drivers", "Available", "On Route", "Off Duty", "Terminated"
-  ];
+  const activeTabConfig = TAB_CONFIG.find((t) => t.key === activeTabKey) ?? TAB_CONFIG[0];
 
-  const tabStatusMap: Record<string, string | null> = {
-    "Active Drivers": null,
-    "All Drivers": null,
-    "Available": "available",
-    "On Route": "on_route",
-    "Off Duty": "off_duty",
-    "Terminated": "terminated",
-  };
+  /* ── Fetch ──────────────────────────────────────────────── */
 
   const fetchDrivers = useCallback(async () => {
     setLoading(true);
@@ -68,7 +76,7 @@ export default function DriversPage() {
         page: String(page),
         page_size: String(pageSize),
       });
-      if (statusFilter) params.set("status", statusFilter);
+      if (activeTabConfig.statusFilter) params.set("status", activeTabConfig.statusFilter);
       const res = await api.get(`/drivers?${params}`);
       setDrivers(res.data.items || []);
       setTotal(res.data.total || 0);
@@ -78,67 +86,112 @@ export default function DriversPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, pageSize, activeTabKey]);
 
   useEffect(() => { fetchDrivers(); }, [fetchDrivers]);
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
+  const handleTabChange = (key: string) => {
+    setActiveTabKey(key);
     setPage(1);
-    setStatusFilter(tabStatusMap[tab] ?? null);
   };
 
-  const columns: ColumnDef<any>[] = [
+  /* ── Tabs ─────────────────────────────────────────────────── */
+
+  const tabs: TabDef[] = TAB_CONFIG.map((t) => ({
+    key: t.key,
+    label: t.label,
+    isActive: t.key === activeTabKey,
+  }));
+
+  /* ── Columns (Phase 4 Enhanced) ─────────────────────────── */
+
+  const columns: ColumnDef<DriverItem>[] = [
     {
       header: "Status",
       accessorKey: "status",
-      cell: (row) => <StatusPill status={STATUS_LABEL[row.status] || row.status} />
+      width: "110px",
+      cell: (row) => {
+        const cfg = STATUS_MAP[row.status] || { intent: "upcoming" as const, label: row.status };
+        return <StatusBadge intent={cfg.intent}>{cfg.label}</StatusBadge>;
+      },
     },
-    { header: "First name", accessorKey: "first_name" },
-    { header: "Last name", accessorKey: "last_name" },
-    { 
-      header: "Driver Type", 
+    {
+      header: "Driver Name",
+      accessorKey: "first_name",
+      cell: (row) => (
+        <EntityLink
+          href={`/drivers/${row.id}`}
+          label={`${row.first_name} ${row.last_name}`}
+          copyable
+        />
+      ),
+    },
+    {
+      header: "Driver Type",
       accessorKey: "employment_type",
-      cell: (row) => TYPE_LABEL[row.employment_type] || row.employment_type
+      cell: (row) => TYPE_LABEL[row.employment_type] || row.employment_type,
     },
-    { header: "Phone", accessorKey: "phone", cell: (r) => r.phone || "—" },
-    { 
-      header: "Email", 
+    {
+      header: "Phone",
+      accessorKey: "phone",
+      cell: (r) => r.phone ? (
+        <div className="flex items-center gap-1.5">
+          <Phone className="h-3 w-3" style={{ color: "var(--on-surface-variant)" }} />
+          {r.phone}
+        </div>
+      ) : "—",
+    },
+    {
+      header: "Email",
       accessorKey: "email",
       cell: (r) => r.email ? (
-        <div className="max-w-[160px] truncate" title={r.email}>{r.email}</div>
-      ) : "—"
+        <div className="flex items-center gap-1.5 max-w-[180px] truncate" title={r.email}>
+          <Mail className="h-3 w-3 shrink-0" style={{ color: "var(--on-surface-variant)" }} />
+          {r.email}
+        </div>
+      ) : "—",
     },
-    { header: "CDL #", accessorKey: "cdl_number", cell: (r) => r.cdl_number || "—" },
-    { header: "CDL Class", accessorKey: "cdl_class", cell: (r) => r.cdl_class || "—" },
+    {
+      header: "CDL #",
+      accessorKey: "cdl_number",
+      cell: (r) => r.cdl_number || "—",
+    },
+    {
+      header: "CDL Class",
+      accessorKey: "cdl_class",
+      width: "90px",
+      align: "center",
+      cell: (r) => r.cdl_class ? (
+        <span
+          className="font-bold text-xs px-2 py-0.5 rounded"
+          style={{ backgroundColor: "var(--surface-container-high)" }}
+        >
+          {r.cdl_class}
+        </span>
+      ) : "—",
+    },
+    {
+      header: "Compliance",
+      accessorKey: "compliance_urgency",
+      width: "100px",
+      align: "center",
+      cell: (r) => (
+        <ComplianceDot
+          urgency={r.compliance_urgency || "good"}
+          showLabel
+        />
+      ),
+    },
   ];
 
-  const renderFooter = () => (
-    <div className="flex items-center gap-4 w-full text-[11px]">
-      <span>Showing <span className="font-medium" style={{ color: "var(--on-surface)" }}>{drivers.length}</span> of <span className="font-medium" style={{ color: "var(--on-surface)" }}>{total}</span> drivers</span>
-      {total > pageSize && (
-        <div className="ml-auto flex items-center gap-2">
-          <button 
-            onClick={() => setPage(p => Math.max(1, p - 1))} 
-            disabled={page <= 1}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Prev</button>
-          <span className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Page {page} of {Math.ceil(total / pageSize)}</span>
-          <button 
-            onClick={() => setPage(p => p + 1)} 
-            disabled={page >= Math.ceil(total / pageSize)}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Next</button>
-        </div>
-      )}
-    </div>
-  );
+  /* ── Create Driver Modal ────────────────────────────────── */
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", employment_type: "company_w2", cdl_number: "", cdl_class: "" });
+  const [form, setForm] = useState({
+    first_name: "", last_name: "", email: "", phone: "",
+    employment_type: "company_w2", cdl_number: "", cdl_class: "",
+  });
 
   const handleCreate = async () => {
     setCreating(true);
@@ -161,6 +214,8 @@ export default function DriversPage() {
       setCreating(false);
     }
   };
+
+  /* ── Render ─────────────────────────────────────────────── */
 
   if (loading && drivers.length === 0) {
     return (
@@ -185,38 +240,29 @@ export default function DriversPage() {
         </button>
       </div>
 
-      {/* ── Tab Navigation ── */}
-      <div
-        className="flex items-center gap-6 px-1 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
-        style={{ borderBottom: "1px solid var(--outline-variant)" }}
-      >
-        {tabs.map(t => (
-          <button
-            key={t}
-            onClick={() => handleTabChange(t)}
-            className="text-sm font-semibold pb-2 border-b-2 transition-colors"
-            style={{
-              borderColor: activeTab === t ? "var(--primary)" : "transparent",
-              color: activeTab === t ? "var(--primary)" : "var(--on-surface-variant)",
-            }}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {/* ── DataTable Wrapper ── */}
+      {/* ── Enhanced DataTable ── */}
       <div
         className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
         style={{ border: "1px solid var(--outline-variant)" }}
       >
-        <DataTable 
+        <DataTable
           data={drivers}
           columns={columns}
-          renderFooter={renderFooter}
+          tabs={tabs}
+          onTabChange={handleTabChange}
+          selectable
+          columnToggle
+          emptyState={MODULE_EMPTY_STATES.drivers}
+          getRowId={(row) => row.id}
+          totalCount={total}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       </div>
 
+      {/* ── Create Driver Modal ── */}
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Driver">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="First Name" required>

@@ -69,7 +69,7 @@ class Truck(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="trucks")
-    loads = relationship("Load", back_populates="truck", lazy="selectin")
+    trips = relationship("Trip", back_populates="truck", lazy="selectin")
 
 
 class Trailer(Base, TenantMixin):
@@ -110,4 +110,4 @@ class Trailer(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="trailers")
-    loads = relationship("Load", back_populates="trailer", lazy="selectin")
+    trips = relationship("Trip", back_populates="trailer", lazy="selectin")

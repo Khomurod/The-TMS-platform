@@ -1,4 +1,4 @@
-"""Loads schemas — Pydantic request/response models for loads, stops, and accessorials."""
+"""Loads schemas — Pydantic request/response models for loads, trips, stops, and accessorials."""
 
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -36,6 +36,7 @@ class StopResponse(BaseModel):
     arrival_date: Optional[datetime] = None
     departure_date: Optional[datetime] = None
     notes: Optional[str] = None
+    trip_id: Optional[UUID] = None
 
     model_config = {"from_attributes": True}
 
@@ -57,6 +58,28 @@ class AccessorialResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Trip Schemas ─────────────────────────────────────────────────
+
+class TripResponse(BaseModel):
+    """Trip detail — bridge between Load and Driver/Truck."""
+    id: UUID
+    trip_number: str
+    sequence_number: int
+    status: str
+    driver_id: Optional[UUID] = None
+    truck_id: Optional[UUID] = None
+    trailer_id: Optional[UUID] = None
+    loaded_miles: Optional[Decimal] = None
+    empty_miles: Optional[Decimal] = None
+    driver_gross: Optional[Decimal] = None
+    # Populated from relationships
+    driver_name: Optional[str] = None
+    truck_number: Optional[str] = None
+    trailer_number: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 # ── Load Request Schemas ─────────────────────────────────────────
 
 class LoadCreate(BaseModel):
@@ -68,9 +91,6 @@ class LoadCreate(BaseModel):
     total_miles: Optional[Decimal] = None
     stops: list[StopCreate]
     accessorials: list[AccessorialCreate] = []
-    driver_id: Optional[str] = None
-    truck_id: Optional[str] = None
-    trailer_id: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -82,9 +102,6 @@ class LoadUpdate(BaseModel):
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
     notes: Optional[str] = None
-    driver_id: Optional[str] = None
-    truck_id: Optional[str] = None
-    trailer_id: Optional[str] = None
 
 
 class StatusUpdateRequest(BaseModel):
@@ -92,8 +109,15 @@ class StatusUpdateRequest(BaseModel):
     status: str
 
 
-class AssignmentRequest(BaseModel):
-    """PATCH /loads/{id}/assign — assign driver + truck + trailer."""
+class DispatchRequest(BaseModel):
+    """POST /loads/{id}/dispatch — full dispatch workflow."""
+    driver_id: str
+    truck_id: str
+    trailer_id: Optional[str] = None
+
+
+class AssignTripRequest(BaseModel):
+    """PATCH /loads/{id}/trips/{trip_id}/assign — assign assets to trip."""
     driver_id: Optional[str] = None
     truck_id: Optional[str] = None
     trailer_id: Optional[str] = None
@@ -105,12 +129,11 @@ class LoadResponse(BaseModel):
     """Full load detail."""
     id: UUID
     load_number: str
+    shipment_id: Optional[str] = None
     broker_load_id: Optional[str] = None
     broker_id: Optional[UUID] = None
-    driver_id: Optional[UUID] = None
-    truck_id: Optional[UUID] = None
-    trailer_id: Optional[UUID] = None
     status: str
+    is_locked: bool = False
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
     total_rate: Optional[Decimal] = None
@@ -121,6 +144,7 @@ class LoadResponse(BaseModel):
     updated_at: Optional[datetime] = None
     stops: list[StopResponse] = []
     accessorials: list[AccessorialResponse] = []
+    trips: list[TripResponse] = []
 
     model_config = {"from_attributes": True}
 
@@ -129,22 +153,22 @@ class LoadListItem(BaseModel):
     """Lightweight load for board listings."""
     id: UUID
     load_number: str
+    shipment_id: Optional[str] = None
     broker_load_id: Optional[str] = None
     status: str
     base_rate: Optional[Decimal] = None
     total_rate: Optional[Decimal] = None
-    driver_id: Optional[UUID] = None
-    truck_id: Optional[UUID] = None
     created_at: Optional[datetime] = None
     # Populated from stops
     pickup_city: Optional[str] = None
     pickup_date: Optional[date] = None
     delivery_city: Optional[str] = None
     delivery_date: Optional[date] = None
-    # Populated from relationships
+    # Populated from relationships (via Trip)
     broker_name: Optional[str] = None
     driver_name: Optional[str] = None
     truck_number: Optional[str] = None
+    trip_count: int = 0
 
     model_config = {"from_attributes": True}
 

@@ -1,6 +1,6 @@
 """Dashboard API — Executive dashboard KPIs, compliance alerts, fleet status, recent events.
 
-Phase 5.6 Endpoints:
+Endpoints:
   GET /dashboard/kpis             — All KPI metrics
   GET /dashboard/compliance-alerts — Expiring docs within 30 days
   GET /dashboard/fleet-status     — Truck distribution
@@ -17,8 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_company_id
-from app.models.load import Load, LoadStatus
-from app.models.driver import Driver, DriverStatus
+from app.models.base import LoadStatus, DriverStatus
+from app.models.load import Load, Trip
+from app.models.driver import Driver
 from app.models.fleet import Truck, EquipmentStatus
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -33,12 +34,12 @@ async def get_kpis(
 ):
     """Executive KPI metrics."""
 
-    # Gross Revenue — SUM(total_rate) for delivered/billed/paid loads
+    # Gross Revenue — SUM(total_rate) for delivered/invoiced/paid loads
     revenue_query = (
         select(func.coalesce(func.sum(Load.total_rate), 0))
         .where(Load.company_id == company_id)
         .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.delivered, LoadStatus.billed, LoadStatus.paid]))
+        .where(Load.status.in_([LoadStatus.delivered, LoadStatus.invoiced, LoadStatus.paid]))
     )
     gross_revenue = (await db.execute(revenue_query)).scalar() or 0
 
@@ -50,34 +51,34 @@ async def get_kpis(
         )
         .where(Load.company_id == company_id)
         .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.delivered, LoadStatus.billed, LoadStatus.paid]))
+        .where(Load.status.in_([LoadStatus.delivered, LoadStatus.invoiced, LoadStatus.paid]))
     )
     rpm_result = (await db.execute(rpm_query)).one()
     total_rate = float(rpm_result[0] or 0)
     total_miles = float(rpm_result[1] or 0)
     avg_rpm = round(total_rate / total_miles, 2) if total_miles > 0 else 0
 
-    # Active Loads — dispatched, at_pickup, in_transit
+    # Active Loads — assigned, dispatched, in_transit
     active_query = (
         select(func.count())
         .select_from(Load)
         .where(Load.company_id == company_id)
         .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.dispatched, LoadStatus.at_pickup, LoadStatus.in_transit]))
+        .where(Load.status.in_([LoadStatus.assigned, LoadStatus.dispatched, LoadStatus.in_transit]))
     )
     active_loads = (await db.execute(active_query)).scalar() or 0
 
-    # Planned loads (for "scheduled for pickup" sub-text)
-    planned_query = (
+    # Upcoming loads (offer + booked)
+    upcoming_query = (
         select(func.count())
         .select_from(Load)
         .where(Load.company_id == company_id)
         .where(Load.is_active == True)
-        .where(Load.status == LoadStatus.planned)
+        .where(Load.status.in_([LoadStatus.offer, LoadStatus.booked]))
     )
-    planned_loads = (await db.execute(planned_query)).scalar() or 0
+    upcoming_loads = (await db.execute(upcoming_query)).scalar() or 0
 
-    # Fleet Effectiveness — on_route drivers / active drivers × 100
+    # Fleet Effectiveness — on_trip drivers / active drivers × 100
     active_drivers_query = (
         select(func.count())
         .select_from(Driver)
@@ -86,25 +87,25 @@ async def get_kpis(
     )
     active_drivers = (await db.execute(active_drivers_query)).scalar() or 0
 
-    on_route_query = (
+    on_trip_query = (
         select(func.count())
         .select_from(Driver)
         .where(Driver.company_id == company_id)
         .where(Driver.is_active == True)
-        .where(Driver.status == DriverStatus.on_route)
+        .where(Driver.status == DriverStatus.on_trip)
     )
-    on_route_drivers = (await db.execute(on_route_query)).scalar() or 0
+    on_trip_drivers = (await db.execute(on_trip_query)).scalar() or 0
 
-    fleet_effectiveness = round((on_route_drivers / active_drivers) * 100, 1) if active_drivers > 0 else 0
+    fleet_effectiveness = round((on_trip_drivers / active_drivers) * 100, 1) if active_drivers > 0 else 0
 
     return {
         "gross_revenue": float(gross_revenue),
         "avg_rpm": avg_rpm,
         "active_loads": active_loads,
-        "planned_loads": planned_loads,
+        "upcoming_loads": upcoming_loads,
         "fleet_effectiveness": fleet_effectiveness,
         "active_drivers": active_drivers,
-        "on_route_drivers": on_route_drivers,
+        "on_trip_drivers": on_trip_drivers,
     }
 
 
@@ -242,7 +243,7 @@ async def get_recent_events(
         .where(Load.company_id == company_id)
         .where(Load.is_active == True)
         .options(
-            selectinload(Load.driver),
+            selectinload(Load.trips).selectinload(Trip.driver),
             selectinload(Load.stops),
         )
         .order_by(func.coalesce(Load.updated_at, Load.created_at).desc())
@@ -253,22 +254,31 @@ async def get_recent_events(
 
     events = []
     for load in loads:
-        driver_name = f"{load.driver.first_name} {load.driver.last_name}" if load.driver else None
+        # Driver info from primary trip
+        driver_name = None
+        if load.trips:
+            primary_trip = next(
+                (t for t in load.trips if t.sequence_number == 1), load.trips[0]
+            ) if load.trips else None
+            if primary_trip and primary_trip.driver:
+                driver_name = f"{primary_trip.driver.first_name} {primary_trip.driver.last_name}"
+
         stops = sorted(load.stops, key=lambda s: s.stop_sequence) if load.stops else []
         origin = stops[0].city if stops else None
         dest = stops[-1].city if stops else None
 
         # Determine event color
         event_color = "blue"
-        if load.status in (LoadStatus.delivered, LoadStatus.billed, LoadStatus.paid):
+        status_val = load.status.value if hasattr(load.status, 'value') else load.status
+        if status_val in ("delivered", "invoiced", "paid"):
             event_color = "green"
-        elif load.status == LoadStatus.delayed:
+        elif status_val == "cancelled":
             event_color = "red"
 
         events.append({
             "load_id": str(load.id),
             "load_number": load.load_number,
-            "status": load.status.value if hasattr(load.status, 'value') else load.status,
+            "status": status_val,
             "description": f"{origin or '—'} → {dest or '—'}",
             "driver_name": driver_name,
             "timestamp": load.updated_at.isoformat() if load.updated_at else None,

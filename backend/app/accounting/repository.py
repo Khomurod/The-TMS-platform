@@ -1,4 +1,4 @@
-"""Accounting repository — async DB queries for settlements, deductions, and invoices."""
+"""Accounting repository — async DB queries for settlements, trips, deductions, and invoices."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ from sqlalchemy.orm import selectinload
 from app.models.accounting import (
     DriverSettlement,
     SettlementLineItem,
-    SettlementStatus,
     CompanyDefaultDeduction,
     LoadAccessorial,
 )
-from app.models.load import Load, LoadStatus
+from app.models.base import LoadStatus, SettlementBatchStatus
+from app.models.load import Load, Trip
 from app.models.driver import Driver
 
 
@@ -94,17 +94,30 @@ class SettlementRepository:
         await self.db.refresh(settlement)
         return await self.get_by_id(settlement.id)
 
-    async def get_driver_loads(self, driver_id: UUID, period_start: date, period_end: date) -> list[Load]:
-        """Get delivered/billed/paid loads for a driver within a period."""
+    async def get_driver_trips(
+        self, driver_id: UUID, period_start: date, period_end: date
+    ) -> list[Trip]:
+        """Get delivered trips for a driver within a period.
+
+        Settlement math operates at Trip level, not Load level.
+        """
         query = (
-            select(Load)
-            .where(Load.company_id == self.company_id)
-            .where(Load.driver_id == driver_id)
-            .where(Load.status.in_([LoadStatus.delivered, LoadStatus.billed, LoadStatus.paid]))
+            select(Trip)
+            .where(Trip.company_id == self.company_id)
+            .where(Trip.driver_id == driver_id)
+            .join(Load, Trip.load_id == Load.id)
+            .where(Load.status.in_([
+                LoadStatus.delivered,
+                LoadStatus.invoiced,
+                LoadStatus.paid,
+            ]))
             .where(Load.is_active == True)
             .where(Load.created_at >= period_start)
             .where(Load.created_at <= period_end)
-            .options(selectinload(Load.accessorials), selectinload(Load.stops))
+            .options(
+                selectinload(Trip.load).selectinload(Load.accessorials),
+                selectinload(Trip.load).selectinload(Load.stops),
+            )
         )
         result = await self.db.execute(query)
         return list(result.scalars().unique().all())

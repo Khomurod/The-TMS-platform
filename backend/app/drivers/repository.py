@@ -9,7 +9,9 @@ from uuid import UUID
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.driver import Driver, DriverStatus
+from app.models.base import DriverStatus, LoadStatus
+from app.models.driver import Driver
+from app.models.load import Trip, Load
 
 
 class DriverRepository:
@@ -117,17 +119,19 @@ class DriverRepository:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def has_active_loads(self, driver_id: UUID) -> bool:
-        """Check if driver is attached to non-completed loads."""
-        from app.models.load import Load, LoadStatus
+    async def has_active_trips(self, driver_id: UUID) -> bool:
+        """Check if driver has active (non-delivered) trips."""
         query = (
             select(func.count())
-            .select_from(Load)
-            .where(Load.driver_id == driver_id)
-            .where(Load.company_id == self.company_id)
+            .select_from(Trip)
+            .where(Trip.driver_id == driver_id)
+            .where(Trip.company_id == self.company_id)
+            .join(Load, Trip.load_id == Load.id)
             .where(Load.status.notin_([
-                LoadStatus.delivered, LoadStatus.billed,
-                LoadStatus.paid, LoadStatus.cancelled,
+                LoadStatus.delivered,
+                LoadStatus.invoiced,
+                LoadStatus.paid,
+                LoadStatus.cancelled,
             ]))
         )
         result = (await self.db.execute(query)).scalar() or 0

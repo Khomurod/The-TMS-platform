@@ -25,9 +25,11 @@ from app.core.security import hash_password
 from app.models.base import Base
 from app.models.broker import Broker
 from app.models.company import Company
-from app.models.driver import Driver, DriverStatus, EmploymentType, PayRateType
+from app.models.base import LoadStatus, DriverStatus
+from app.models.driver import Driver, EmploymentType, PayRateType
 from app.models.fleet import EquipmentStatus, OwnershipType, Trailer, TrailerType, Truck
-from app.models.load import Load, LoadStatus, LoadStop, StopType
+from app.models.load import Load, LoadStop, StopType, Trip
+from app.models.base import TripStatus
 from app.models.user import User, UserRole
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -226,7 +228,7 @@ async def create_drivers(db: AsyncSession, company_id: uuid.UUID) -> dict[str, D
             "email": "robert.w@wenzetrucking.com",
             "pay_rate_type": PayRateType.cpm,
             "pay_rate_value": 0.65,
-            "status": DriverStatus.on_route,
+            "status": DriverStatus.on_trip,
             "experience_years": 12,
         },
         {
@@ -274,7 +276,7 @@ async def create_drivers(db: AsyncSession, company_id: uuid.UUID) -> dict[str, D
             "email": "james.t@wenzetrucking.com",
             "pay_rate_type": PayRateType.fixed_per_load,
             "pay_rate_value": 1200.0,
-            "status": DriverStatus.off_duty,
+            "status": DriverStatus.inactive,
             "experience_years": 15,
         },
     ]
@@ -606,14 +608,14 @@ async def create_loads(
             ],
         },
         {
-            "label": "Creating load: LD-1004 (Planned)...",
+            "label": "Creating load: LD-1004 (Offer)...",
             "load_number": "LD-1004",
             "broker_load_id": "CHR-2026-44599",
             "broker": brokers["CH Robinson"],
             "driver": None,
             "truck": None,
             "trailer": None,
-            "status": LoadStatus.planned,
+            "status": LoadStatus.offer,
             "base_rate": 4100.00,
             "total_miles": 2100,
             "total_rate": 4350.00,
@@ -699,9 +701,6 @@ async def create_loads(
             load_number=spec["load_number"],
             broker_load_id=spec["broker_load_id"],
             broker_id=broker.id,
-            driver_id=driver.id if driver else None,
-            truck_id=truck.id if truck else None,
-            trailer_id=trailer.id if trailer else None,
             status=spec["status"],
             base_rate=spec["base_rate"],
             total_miles=spec["total_miles"],
@@ -709,6 +708,23 @@ async def create_loads(
         )
         db.add(load)
         await db.flush()
+
+        # Create Trip if driver is assigned (new Trip-based architecture)
+        if driver:
+            load_suffix = spec["load_number"].replace("LD-", "")
+            trip = Trip(
+                company_id=company_id,
+                trip_number=f"TR-{load_suffix}-01",
+                load_id=load.id,
+                driver_id=driver.id,
+                truck_id=truck.id if truck else None,
+                trailer_id=trailer.id if trailer else None,
+                sequence_number=1,
+                status=TripStatus.delivered if spec["status"] in (LoadStatus.delivered, LoadStatus.paid) else TripStatus.dispatched,
+                loaded_miles=spec.get("total_miles", 0),
+            )
+            db.add(trip)
+            await db.flush()
 
         for stop_spec in spec["stops"]:
             stop = LoadStop(

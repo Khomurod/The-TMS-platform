@@ -4,75 +4,77 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { 
+import NewBadge from "@/components/ui/NewBadge";
+import {
   Building2, LayoutDashboard, Truck, Map, Users, Settings, Wallet,
-  ChevronDown, ChevronRight, LogOut, Mail, Calendar, MapPin, 
+  ChevronDown, ChevronRight, LogOut, Mail, Calendar, MapPin,
   Shield, UserCog, Wrench, Puzzle, ListTodo, ShoppingBag, BarChart3,
-  Construction,
-  X,
+  Construction, X, Boxes, FileText, Landmark,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Sidebar — Dark navy with Safehaul branding.
-   Non-functional routes show "Under Development" modal.
+   Sidebar — Phase 6 Enhanced (Blueprint §3.3)
+   Dark navy, single-expand accordion, NewBadge integration,
+   Safehaul branding, user identity footer.
    ═══════════════════════════════════════════════════════════════ */
 
 interface NavItem {
   name: string;
   href?: string;
   icon: React.ElementType;
-  badge?: string;
-  badgeColor?: string;
+  badge?: { label: string; variant: "blue" | "green" | "orange"; launchDate?: string };
   implemented?: boolean;
-  children?: { name: string; href: string; implemented?: boolean }[];
+  children?: { name: string; href: string; implemented?: boolean; badge?: { label: string; variant: "blue" | "green" | "orange"; launchDate?: string } }[];
 }
 
 const navItems: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, implemented: true },
-  { name: "Mailbox", href: "/mailbox", icon: Mail, badge: "NEW", badgeColor: "#10b981", implemented: false },
-  { 
+  { name: "Mailbox", href: "/mailbox", icon: Mail, badge: { label: "NEW", variant: "blue", launchDate: "2026-04-01" }, implemented: false },
+  {
     name: "Load Management", icon: Map,
     children: [
       { name: "All Loads", href: "/loads", implemented: true },
+      { name: "Live Loads", href: "/loads?tab=live", implemented: true },
+      { name: "My Loads", href: "/loads?tab=my", implemented: false },
+      { name: "LTL Trips", href: "/loads/ltl", implemented: false },
+      { name: "Loadboard", href: "/loadboard", implemented: false, badge: { label: "NEW", variant: "blue" } },
     ]
   },
-  { name: "Planning Calendar", href: "/calendar", icon: Calendar, implemented: false },
-  { name: "MAP", href: "/map", icon: MapPin, implemented: false },
-  { 
+  {
     name: "Accounting", icon: Wallet,
     children: [
-      { name: "Invoice", href: "/accounting/invoices", implemented: false },
-      { name: "Salary", href: "/accounting/salary", implemented: false },
-      { name: "Bill", href: "/accounting/bills", implemented: false },
+      { name: "Invoices", href: "/accounting?tab=invoices", implemented: true },
+      { name: "Salary", href: "/accounting", implemented: true },
+      { name: "Bills", href: "/accounting/bills", implemented: false },
     ]
   },
-  { name: "Customer Management", href: "/customers", icon: UserCog, implemented: false },
-  { name: "Safety", href: "/safety", icon: Shield, implemented: false },
-  { 
+  {
+    name: "Customer Management", icon: UserCog,
+    children: [
+      { name: "Customers (Brokers)", href: "/customers", implemented: false },
+      { name: "Vendors", href: "/vendors", implemented: false },
+      { name: "Locations", href: "/locations", implemented: false },
+    ]
+  },
+  {
     name: "Fleet Management", icon: Truck,
     children: [
       { name: "Trucks", href: "/fleet", implemented: true },
       { name: "Trailers", href: "/fleet/trailers", implemented: false },
+      { name: "Inspections", href: "/fleet/inspections", implemented: false },
     ]
   },
-  { name: "Maintenance", href: "/maintenance", icon: Wrench, implemented: false },
-  { 
+  {
     name: "HR Management", icon: Users,
     children: [
       { name: "Drivers", href: "/drivers", implemented: true },
       { name: "Users", href: "/users", implemented: false },
     ]
   },
+  { name: "Safety", href: "/safety", icon: Shield, implemented: false },
+  { name: "Maintenance", href: "/maintenance", icon: Wrench, implemented: false },
   { name: "Reports", href: "/reports", icon: BarChart3, implemented: false },
-  { 
-    name: "Integration", icon: Puzzle, 
-    children: [
-      { name: "Connections", href: "/integrations", implemented: false },
-    ]
-  },
-  { name: "Tasks", href: "/tasks", icon: ListTodo, implemented: false },
-  { name: "Apps & Marketplace", href: "/apps", icon: ShoppingBag, badge: "NEW", badgeColor: "#10b981", implemented: false },
-  { name: "Settings", href: "/settings", icon: Settings, implemented: true },
+  { name: "Apps & Marketplace", href: "/apps", icon: ShoppingBag, badge: { label: "NEW", variant: "green" }, implemented: false },
 ];
 
 /* ── Under Development Modal ──────────────────────────────────── */
@@ -134,20 +136,31 @@ function UnderDevModal({ open, onClose }: { open: boolean; onClose: () => void }
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    "Accounting": true,
-    "HR Management": true,
-    "Load Management": true,
-    "Fleet Management": false,
-    "Integration": false,
+
+  // Single-expand accordion — only one section open at a time (§3.3 rule)
+  const [openSection, setOpenSection] = useState<string | null>(() => {
+    // Auto-open the section containing the current path
+    for (const item of navItems) {
+      if (item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+        return item.name;
+      }
+    }
+    return null;
   });
+
   const [showUnderDev, setShowUnderDev] = useState(false);
 
   const toggleExpand = (name: string) => {
-    setExpanded(prev => ({ ...prev, [name]: !prev[name] }));
+    // Single-expand: close current if re-clicking, otherwise switch
+    setOpenSection(prev => prev === name ? null : name);
   };
 
-  const isActivePath = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const isActivePath = (href: string) => {
+    // Handle query params
+    const baseHref = href.split("?")[0];
+    return pathname === baseHref || pathname.startsWith(baseHref + "/");
+  };
+
   const isParentActive = (item: NavItem) => item.children?.some(c => isActivePath(c.href)) ?? false;
 
   const handleNav = (e: React.MouseEvent, implemented?: boolean) => {
@@ -184,14 +197,14 @@ export default function Sidebar() {
           </span>
         </div>
 
-        {/* Nav */}
+        {/* Nav — Blueprint §3.3 Structure */}
         <nav style={{ flex: 1, overflowY: "auto", padding: "6px 8px" }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const hasChildren = !!item.children;
             const parentActive = hasChildren && isParentActive(item);
             const itemActive = item.href ? isActivePath(item.href) : false;
-            const isOpen = expanded[item.name] ?? false;
+            const isOpen = openSection === item.name;
 
             return (
               <div key={item.name}>
@@ -233,9 +246,11 @@ export default function Sidebar() {
                     <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
                     <span style={{ flex: 1 }}>{item.name}</span>
                     {item.badge && (
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: item.badgeColor || "#3b82f6", color: "#fff" }}>
-                        {item.badge}
-                      </span>
+                      <NewBadge
+                        label={item.badge.label}
+                        variant={item.badge.variant}
+                        launchDate={item.badge.launchDate}
+                      />
                     )}
                   </Link>
                 )}
@@ -250,7 +265,8 @@ export default function Sidebar() {
                           href={child.implemented ? child.href : "#"}
                           onClick={(e) => handleNav(e, child.implemented)}
                           style={{
-                            display: "block", padding: "5px 10px", borderRadius: 5,
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "5px 10px", borderRadius: 5,
                             textDecoration: "none",
                             color: childActive ? "#60a5fa" : "#94a3b8",
                             fontSize: 12.5, fontWeight: childActive ? 600 : 400,
@@ -260,7 +276,14 @@ export default function Sidebar() {
                           onMouseEnter={e => { if (!childActive) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                           onMouseLeave={e => { if (!childActive) e.currentTarget.style.background = "transparent"; }}
                         >
-                          {child.name}
+                          <span style={{ flex: 1 }}>{child.name}</span>
+                          {child.badge && (
+                            <NewBadge
+                              label={child.badge.label}
+                              variant={child.badge.variant}
+                              launchDate={child.badge.launchDate}
+                            />
+                          )}
                         </Link>
                       );
                     })}
@@ -271,8 +294,11 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Footer */}
-        <div style={{ padding: 10, borderTop: "1px solid #334155", flexShrink: 0 }}>
+        {/* ── Separator ── */}
+        <div style={{ borderTop: "1px solid #334155", margin: "0 16px" }} />
+
+        {/* Footer — Company + User Identity (§3.3) */}
+        <div style={{ padding: 10, flexShrink: 0 }}>
           <button style={{
             display: "flex", alignItems: "center", gap: 8, width: "100%",
             padding: "8px 10px", borderRadius: 6,

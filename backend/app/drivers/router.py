@@ -1,13 +1,14 @@
 """Drivers router — driver management endpoints.
 
 Endpoints:
-  GET    /drivers           — Paginated list with filters
-  POST   /drivers           — Create driver profile
-  GET    /drivers/available  — Available drivers only
-  GET    /drivers/expiring   — Expiring CDL/medical within 30 days
-  GET    /drivers/{id}       — Full driver profile
-  PUT    /drivers/{id}       — Update driver
-  DELETE /drivers/{id}       — Soft delete (blocked if active loads → 409)
+  GET    /drivers                    — Paginated list with filters
+  POST   /drivers                    — Create driver profile
+  GET    /drivers/available           — Available drivers only
+  GET    /drivers/expiring            — Expiring CDL/medical within 30 days
+  GET    /drivers/{id}                — Full driver profile
+  GET    /drivers/{id}/compliance     — 3-tier compliance check
+  PUT    /drivers/{id}                — Update driver
+  DELETE /drivers/{id}                — Soft delete (blocked if active trips → 409)
 """
 
 from uuid import UUID
@@ -22,6 +23,7 @@ from app.drivers.schemas import (
     DriverListResponse,
     DriverAvailableResponse,
     DriverExpiringResponse,
+    ComplianceResponse,
 )
 from app.drivers.service import DriverService
 from app.core.database import get_db
@@ -96,6 +98,17 @@ async def get_driver(
     return await svc.get_driver(driver_id)
 
 
+# ── Compliance Check ─────────────────────────────────────────────
+
+@router.get("/{driver_id}/compliance", response_model=ComplianceResponse)
+async def check_compliance(
+    driver_id: UUID,
+    svc: DriverService = Depends(_get_service),
+):
+    """3-tier compliance check: good | upcoming | critical | expired."""
+    return await svc.get_compliance(driver_id)
+
+
 # ── Update ───────────────────────────────────────────────────────
 
 @router.put("/{driver_id}", response_model=DriverResponse)
@@ -117,5 +130,5 @@ async def delete_driver(
     svc: DriverService = Depends(_get_service),
     _role=Depends(require_roles("company_admin")),
 ):
-    """Soft delete driver. Returns 409 if attached to active load."""
+    """Soft delete driver. Returns 409 if attached to active trip."""
     await svc.delete_driver(driver_id)

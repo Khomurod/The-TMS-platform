@@ -1,23 +1,26 @@
-"""Loads router — load management, dispatch, assignment, and board tabs.
+"""Loads router — load management, dispatch, Trip assignment, and board tabs.
 
-Phase 4 Endpoints:
-  4.1 — CRUD:
+Endpoints:
+  CRUD:
     GET    /loads              — List with filters
     POST   /loads              — Create load with stops + accessorials
     GET    /loads/{id}         — Full detail
     PUT    /loads/{id}         — Update
-    DELETE /loads/{id}         — Soft delete (only if planned)
+    DELETE /loads/{id}         — Soft delete (only if offer)
 
-  4.2 — State Machine:
-    PATCH  /loads/{id}/status  — Transition status with side effects
+  State Machine:
+    PATCH  /loads/{id}/status  — Advance load status (8-stage pipeline)
 
-  4.3 — Assignment:
-    PATCH  /loads/{id}/assign  — Assign driver + truck + trailer with validation
+  Dispatch:
+    POST   /loads/{id}/dispatch — Create Trip + assign Driver/Truck + dispatch
 
-  4.4 — Board Tabs:
-    GET    /loads/live         — dispatched, at_pickup, in_transit, delayed
-    GET    /loads/upcoming     — planned
-    GET    /loads/completed    — delivered, billed, paid
+  Trip Assignment:
+    PATCH  /loads/{id}/trips/{trip_id}/assign — Assign assets to existing trip
+
+  Board Tabs:
+    GET    /loads/live         — assigned, dispatched, in_transit
+    GET    /loads/upcoming     — offer, booked
+    GET    /loads/completed    — delivered, invoiced, paid
 """
 
 from datetime import date
@@ -32,7 +35,8 @@ from app.loads.schemas import (
     LoadResponse,
     LoadListResponse,
     StatusUpdateRequest,
-    AssignmentRequest,
+    DispatchRequest,
+    AssignTripRequest,
 )
 from app.loads.service import LoadService
 from app.core.database import get_db
@@ -49,7 +53,7 @@ def _get_service(
 
 
 # ══════════════════════════════════════════════════════════════════
-#   4.4 — Board Tab Endpoints (BEFORE /{id} to avoid path conflicts)
+#   Board Tab Endpoints (BEFORE /{id} to avoid path conflicts)
 # ══════════════════════════════════════════════════════════════════
 
 @router.get("/live", response_model=LoadListResponse)
@@ -58,7 +62,7 @@ async def get_live_loads(
     page_size: int = Query(20, ge=1, le=100),
     svc: LoadService = Depends(_get_service),
 ):
-    """Live loads: dispatched, at_pickup, in_transit, delayed."""
+    """Live loads: assigned, dispatched, in_transit."""
     return await svc.get_live_loads(page, page_size)
 
 
@@ -68,7 +72,7 @@ async def get_upcoming_loads(
     page_size: int = Query(20, ge=1, le=100),
     svc: LoadService = Depends(_get_service),
 ):
-    """Upcoming: status = planned."""
+    """Upcoming: offer, booked."""
     return await svc.get_upcoming_loads(page, page_size)
 
 
@@ -78,12 +82,12 @@ async def get_completed_loads(
     page_size: int = Query(20, ge=1, le=100),
     svc: LoadService = Depends(_get_service),
 ):
-    """Completed: delivered, billed, paid."""
+    """Completed: delivered, invoiced, paid."""
     return await svc.get_completed_loads(page, page_size)
 
 
 # ══════════════════════════════════════════════════════════════════
-#   4.1 — CRUD Endpoints
+#   CRUD Endpoints
 # ══════════════════════════════════════════════════════════════════
 
 @router.get("", response_model=LoadListResponse)
@@ -106,7 +110,7 @@ async def create_load(
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin", "dispatcher")),
 ):
-    """Create a new load with stops and accessorials."""
+    """Create a new load with stops and accessorials. Status starts at 'offer'."""
     return await svc.create_load(data)
 
 
@@ -115,7 +119,7 @@ async def get_load(
     load_id: UUID,
     svc: LoadService = Depends(_get_service),
 ):
-    """Get full load detail."""
+    """Get full load detail including trips."""
     return await svc.get_load(load_id)
 
 
@@ -126,7 +130,7 @@ async def update_load(
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin", "dispatcher")),
 ):
-    """Update load info."""
+    """Update load info. Blocked if load is locked (post-invoiced)."""
     return await svc.update_load(load_id, data)
 
 
@@ -136,37 +140,51 @@ async def delete_load(
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin")),
 ):
-    """Soft delete — only status=planned."""
+    """Soft delete — only status=offer."""
     await svc.delete_load(load_id)
 
 
 # ══════════════════════════════════════════════════════════════════
-#   4.2 — Status Transition
+#   State Machine — Status Transition
 # ══════════════════════════════════════════════════════════════════
 
 @router.patch("/{load_id}/status", response_model=LoadResponse)
-async def update_load_status(
+async def advance_load_status(
     load_id: UUID,
     data: StatusUpdateRequest,
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin", "dispatcher")),
 ):
-    """Transition load status — enforces state machine."""
-    return await svc.update_status(load_id, data.status)
+    """Advance load status — enforces 8-stage state machine with side-effects."""
+    return await svc.advance_status(load_id, data.status)
 
 
 # ══════════════════════════════════════════════════════════════════
-#   4.3 — Assignment with Failsafes
+#   Dispatch — Full workflow in one shot
 # ══════════════════════════════════════════════════════════════════
 
-@router.patch("/{load_id}/assign", response_model=LoadResponse)
-async def assign_load(
+@router.post("/{load_id}/dispatch", response_model=LoadResponse)
+async def dispatch_load(
     load_id: UUID,
-    data: AssignmentRequest,
+    data: DispatchRequest,
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin", "dispatcher")),
 ):
-    """Assign driver + truck + trailer — validates compliance."""
-    return await svc.assign_load(
-        load_id, data.driver_id, data.truck_id, data.trailer_id
-    )
+    """Full dispatch: validate compliance → create Trip → assign assets → set dispatched."""
+    return await svc.dispatch_load(load_id, data)
+
+
+# ══════════════════════════════════════════════════════════════════
+#   Trip Assignment
+# ══════════════════════════════════════════════════════════════════
+
+@router.patch("/{load_id}/trips/{trip_id}/assign", response_model=LoadResponse)
+async def assign_trip(
+    load_id: UUID,
+    trip_id: UUID,
+    data: AssignTripRequest,
+    svc: LoadService = Depends(_get_service),
+    _role=Depends(require_roles("company_admin", "dispatcher")),
+):
+    """Assign driver + truck + trailer to an existing Trip."""
+    return await svc.assign_trip(load_id, trip_id, data.driver_id, data.truck_id, data.trailer_id)

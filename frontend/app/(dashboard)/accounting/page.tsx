@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
-import DataTable, { ColumnDef } from "@/components/ui/DataTable";
-import StatusPill from "@/components/ui/StatusPill";
+import DataTable, { ColumnDef, TabDef, StickyFooterItem } from "@/components/ui/DataTable";
+import StatusBadge from "@/components/ui/StatusBadge";
+import EntityLink from "@/components/ui/EntityLink";
+import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
 import { Loader2 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Types matching backend SettlementResponse schema
+   Accounting Page — Phase 4 Enhanced DataTable Integration
    ═══════════════════════════════════════════════════════════════ */
 
 interface SettlementItem {
@@ -23,22 +25,38 @@ interface SettlementItem {
   paid_at?: string;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "DRAFT",
-  ready: "READY",
-  paid: "PAID",
+/* Map settlement status → StatusBadge financial intents */
+const SETTLEMENT_STATUS_MAP: Record<string, { intent: "unposted" | "posted" | "paid"; label: string }> = {
+  draft: { intent: "unposted", label: "Draft" },
+  unposted: { intent: "unposted", label: "Unposted" },
+  ready: { intent: "posted", label: "Ready" },
+  posted: { intent: "posted", label: "Posted" },
+  paid: { intent: "paid", label: "Paid" },
 };
+
+/* ── Tab Configuration ─────────────────────────────────────── */
+
+type TabConfig = { key: string; label: string; statusFilter: string | null };
+
+const TAB_CONFIG: TabConfig[] = [
+  { key: "settlements", label: "Settlements",     statusFilter: null },
+  { key: "unposted",    label: "Unposted",        statusFilter: "unposted" },
+  { key: "posted",      label: "Posted",          statusFilter: "posted" },
+  { key: "paid",        label: "Paid",            statusFilter: "paid" },
+  { key: "invoices",    label: "Invoices",        statusFilter: null },
+];
 
 export default function AccountingPage() {
   const [settlements, setSettlements] = useState<SettlementItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Settlements");
+  const [activeTabKey, setActiveTabKey] = useState("settlements");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(20);
 
-  const tabs = ["Settlements", "Invoices"];
+  const activeTabConfig = TAB_CONFIG.find((t) => t.key === activeTabKey) ?? TAB_CONFIG[0];
+
+  /* ── Fetch ──────────────────────────────────────────────── */
 
   const fetchSettlements = useCallback(async () => {
     setLoading(true);
@@ -47,7 +65,7 @@ export default function AccountingPage() {
         page: String(page),
         page_size: String(pageSize),
       });
-      if (statusFilter) params.set("status", statusFilter);
+      if (activeTabConfig.statusFilter) params.set("status", activeTabConfig.statusFilter);
       const res = await api.get(`/accounting/settlements?${params}`);
       setSettlements(res.data.items || []);
       setTotal(res.data.total || 0);
@@ -57,142 +75,145 @@ export default function AccountingPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, pageSize, activeTabKey]);
 
   useEffect(() => {
-    if (activeTab === "Settlements") {
-      fetchSettlements();
-    }
-  }, [fetchSettlements, activeTab]);
+    if (activeTabKey !== "invoices") fetchSettlements();
+  }, [fetchSettlements, activeTabKey]);
+
+  const handleTabChange = (key: string) => {
+    setActiveTabKey(key);
+    setPage(1);
+  };
+
+  /* ── Formatting Helpers ────────────────────────────────── */
 
   const fmtCurrency = (v: number) => `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
   const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-  const columns: ColumnDef<any>[] = [
-    { 
-      header: "Settlement #", 
+  /* ── Tabs ─────────────────────────────────────────────────── */
+
+  const tabs: TabDef[] = TAB_CONFIG.map((t) => ({
+    key: t.key,
+    label: t.label,
+    isActive: t.key === activeTabKey,
+  }));
+
+  /* ── Columns ────────────────────────────────────────────── */
+
+  const columns: ColumnDef<SettlementItem>[] = [
+    {
+      header: "Settlement #",
       accessorKey: "settlement_number",
-      cell: (row) => <div style={{ color: "var(--primary)" }} className="font-semibold hover:underline cursor-pointer">{row.settlement_number}</div>
+      cell: (row) => (
+        <EntityLink
+          href={`/accounting/${row.id}`}
+          label={row.settlement_number}
+          copyable
+        />
+      ),
     },
-    { header: "Driver", accessorKey: "driver_name", cell: (r) => r.driver_name || "—" },
-    { 
-      header: "Period", 
+    {
+      header: "Driver",
+      accessorKey: "driver_name",
+      cell: (r) => r.driver_name || "—",
+    },
+    {
+      header: "Period",
       accessorKey: "period_start",
-      cell: (r) => `${fmtDate(r.period_start)} – ${fmtDate(r.period_end)}`
+      cell: (r) => `${fmtDate(r.period_start)} – ${fmtDate(r.period_end)}`,
     },
-    { header: "Gross Pay", accessorKey: "gross_pay", cell: (r) => fmtCurrency(r.gross_pay) },
-    { 
-      header: "Deductions", 
-      accessorKey: "total_deductions", 
-      cell: (r) => <span style={{ color: "var(--error)" }}>-{fmtCurrency(r.total_deductions)}</span>
+    {
+      header: "Gross Pay",
+      accessorKey: "gross_pay",
+      align: "right",
+      cell: (r) => (
+        <span className="tabular-nums">{fmtCurrency(r.gross_pay)}</span>
+      ),
     },
-    { 
-      header: "Net Pay", 
-      accessorKey: "net_pay", 
-      cell: (r) => <span style={{ color: "var(--success)" }} className="font-semibold">{fmtCurrency(r.net_pay)}</span>
+    {
+      header: "Deductions",
+      accessorKey: "total_deductions",
+      align: "right",
+      cell: (r) => (
+        <span className="tabular-nums" style={{ color: "var(--error)" }}>
+          -{fmtCurrency(r.total_deductions)}
+        </span>
+      ),
     },
-    { 
-      header: "Status", 
+    {
+      header: "Net Pay",
+      accessorKey: "net_pay",
+      align: "right",
+      cell: (r) => (
+        <span className="tabular-nums font-semibold" style={{ color: "var(--success)" }}>
+          {fmtCurrency(r.net_pay)}
+        </span>
+      ),
+    },
+    {
+      header: "Status",
       accessorKey: "status",
-      cell: (row) => <StatusPill status={STATUS_LABEL[row.status] || row.status} />
+      width: "110px",
+      cell: (row) => {
+        const cfg = SETTLEMENT_STATUS_MAP[row.status] || { intent: "unposted" as const, label: row.status };
+        return <StatusBadge intent={cfg.intent} domain="financial">{cfg.label}</StatusBadge>;
+      },
     },
-    { 
-      header: "Paid At", 
+    {
+      header: "Paid At",
       accessorKey: "paid_at",
-      cell: (r) => r.paid_at ? fmtDate(r.paid_at) : "—"
+      cell: (r) => r.paid_at ? fmtDate(r.paid_at) : "—",
     },
   ];
 
-  const renderFooter = () => (
-    <div className="flex items-center gap-4 w-full text-[11px]">
-      <span>Showing <span className="font-medium" style={{ color: "var(--on-surface)" }}>{settlements.length}</span> of <span className="font-medium" style={{ color: "var(--on-surface)" }}>{total}</span> settlements</span>
-      {total > pageSize && (
-        <div className="ml-auto flex items-center gap-2">
-          <button 
-            onClick={() => setPage(p => Math.max(1, p - 1))} 
-            disabled={page <= 1}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Prev</button>
-          <span className="text-xs" style={{ color: "var(--on-surface-variant)" }}>Page {page} of {Math.ceil(total / pageSize)}</span>
-          <button 
-            onClick={() => setPage(p => p + 1)} 
-            disabled={page >= Math.ceil(total / pageSize)}
-            className="px-2 py-0.5 rounded text-xs disabled:opacity-40 transition-colors"
-            style={{ border: "1px solid var(--outline-variant)" }}
-          >Next</button>
-        </div>
-      )}
-    </div>
-  );
+  /* ── Sticky Footer ─────────────────────────────────────── */
 
-  /* ── Tab Navigation (rendered by page, not DataTable) ── */
-  const tabBar = (
-    <div
-      className="flex items-center gap-6 px-1 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
-      style={{ borderBottom: "1px solid var(--outline-variant)" }}
-    >
-      {tabs.map(t => (
-        <button
-          key={t}
-          onClick={() => setActiveTab(t)}
-          className="text-sm font-semibold pb-2 border-b-2 transition-colors"
-          style={{
-            borderColor: activeTab === t ? "var(--primary)" : "transparent",
-            color: activeTab === t ? "var(--primary)" : "var(--on-surface-variant)",
-          }}
-        >
-          {t}
-        </button>
-      ))}
-      <div className="ml-auto flex items-center gap-2 pb-2">
-        <select
-          value={statusFilter || ""}
-          onChange={(e) => { setStatusFilter(e.target.value || null); setPage(1); }}
-          className="text-xs rounded px-2 py-1"
-          style={{
-            border: "1px solid var(--outline-variant)",
-            backgroundColor: "var(--surface-lowest)",
-            color: "var(--on-surface)",
-          }}
-        >
-          <option value="">All Statuses</option>
-          <option value="draft">Draft</option>
-          <option value="ready">Ready</option>
-          <option value="paid">Paid</option>
-        </select>
-      </div>
-    </div>
-  );
+  const totalGross = settlements.reduce((s, r) => s + r.gross_pay, 0);
+  const totalDeductions = settlements.reduce((s, r) => s + r.total_deductions, 0);
+  const totalNet = settlements.reduce((s, r) => s + r.net_pay, 0);
 
-  if (activeTab === "Invoices") {
+  const stickyFooter: StickyFooterItem[] = [
+    { label: "Showing", value: `${settlements.length} of ${total}` },
+    { label: "Gross Pay", value: fmtCurrency(totalGross), format: "currency" },
+    { label: "Deductions", value: `-${fmtCurrency(totalDeductions)}`, format: "currency" },
+    { label: "Net Pay", value: fmtCurrency(totalNet), format: "currency" },
+  ];
+
+  /* ── Invoices Tab (placeholder) ─────────────────────────── */
+
+  if (activeTabKey === "invoices") {
     return (
       <div className="h-full flex flex-col gap-4 p-4">
-        {/* ── Page Header ── */}
         <div className="flex items-center justify-between shrink-0">
           <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
             Accounting
           </h1>
-          <button
-            className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold shadow-ambient"
-          >
+          <button className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold shadow-ambient">
             Export Data
           </button>
         </div>
-        {tabBar}
         <div
-          className="flex items-center justify-center h-64 rounded-lg"
-          style={{
-            color: "var(--on-surface-variant)",
-            backgroundColor: "var(--surface-low)",
-            border: "1px solid var(--outline-variant)",
-          }}
+          className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
+          style={{ border: "1px solid var(--outline-variant)" }}
         >
-          Invoices module — coming soon
+          <DataTable
+            data={[]}
+            columns={[]}
+            tabs={tabs}
+            onTabChange={handleTabChange}
+            emptyState={{
+              icon: MODULE_EMPTY_STATES.settlements.icon,
+              title: "Invoices module",
+              description: "Invoice batching and billing management coming soon.",
+            }}
+          />
         </div>
       </div>
     );
   }
+
+  /* ── Render ─────────────────────────────────────────────── */
 
   if (loading && settlements.length === 0) {
     return (
@@ -209,25 +230,31 @@ export default function AccountingPage() {
         <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
           Accounting
         </h1>
-        <button
-          className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold shadow-ambient"
-        >
+        <button className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold shadow-ambient">
           Export Data
         </button>
       </div>
 
-      {/* ── Tab Navigation ── */}
-      {tabBar}
-
-      {/* ── DataTable Wrapper ── */}
+      {/* ── Enhanced DataTable ── */}
       <div
         className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
         style={{ border: "1px solid var(--outline-variant)" }}
       >
-        <DataTable 
+        <DataTable
           data={settlements}
           columns={columns}
-          renderFooter={renderFooter}
+          tabs={tabs}
+          onTabChange={handleTabChange}
+          selectable
+          columnToggle
+          stickyFooter={stickyFooter}
+          emptyState={MODULE_EMPTY_STATES.settlements}
+          getRowId={(row) => row.id}
+          totalCount={total}
+          currentPage={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       </div>
     </div>

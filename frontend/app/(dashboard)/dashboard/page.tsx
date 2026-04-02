@@ -23,9 +23,9 @@ interface KpiData {
   gross_revenue: number;
   active_loads: number;
   active_drivers: number;
-  on_route_drivers: number;
+  on_trip_drivers: number;
   fleet_effectiveness: number;
-  planned_loads: number;
+  offer_loads: number;
   avg_rpm: number;
 }
 
@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   /* Driver coverage gauge — use real data */
   const driverCoverage = kpis 
-    ? (kpis.active_drivers > 0 ? Math.round((kpis.on_route_drivers / kpis.active_drivers) * 1000) / 10 : 0) 
+    ? (kpis.active_drivers > 0 ? Math.round((kpis.on_trip_drivers / kpis.active_drivers) * 1000) / 10 : 0) 
     : 0;
   const gaugeData = [
     { name: "Covered", value: driverCoverage || 0.1, color: COLORS.green },
@@ -127,8 +127,8 @@ export default function DashboardPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
         {[
           { label: "Total Revenue", value: fmtCurrency(kpis?.gross_revenue), sub: `RPM: $${kpis?.avg_rpm?.toFixed(2) ?? "—"}`, icon: DollarSign, color: COLORS.green },
-          { label: "Active Loads", value: fmt(kpis?.active_loads), sub: `${fmt(kpis?.planned_loads)} planned`, icon: Package, color: COLORS.blue },
-          { label: "Active Drivers", value: fmt(kpis?.active_drivers), sub: `${fmt(kpis?.on_route_drivers)} on route`, icon: Users, color: COLORS.indigo },
+          { label: "Active Loads", value: fmt(kpis?.active_loads), sub: `${fmt(kpis?.offer_loads)} offers`, icon: Package, color: COLORS.blue },
+          { label: "Active Drivers", value: fmt(kpis?.active_drivers), sub: `${fmt(kpis?.on_trip_drivers)} on trip`, icon: Users, color: COLORS.indigo },
           { label: "Fleet Size", value: fmt(fleetTotal), sub: `${fleet?.utilization_rate ?? 0}% utilized`, icon: Truck, color: COLORS.cyan },
         ].map((kpi) => (
           <div key={kpi.label} style={{
@@ -212,8 +212,8 @@ export default function DashboardPage() {
             const tasks: { text: string; href: string }[] = [];
             if (kpis) {
               if (kpis.active_loads > 0) tasks.push({ text: `Mark ${kpis.active_loads} active loads as delivered`, href: "/loads" });
-              if (kpis.planned_loads > 0) tasks.push({ text: `Dispatch ${kpis.planned_loads} planned loads`, href: "/loads" });
-              if (kpis.active_drivers > 0 && kpis.on_route_drivers < kpis.active_drivers) tasks.push({ text: `Assign loads to ${kpis.active_drivers - kpis.on_route_drivers} available drivers`, href: "/drivers" });
+              if (kpis.offer_loads > 0) tasks.push({ text: `Dispatch ${kpis.offer_loads} offer loads`, href: "/loads" });
+              if (kpis.active_drivers > 0 && kpis.on_trip_drivers < kpis.active_drivers) tasks.push({ text: `Assign loads to ${kpis.active_drivers - kpis.on_trip_drivers} available drivers`, href: "/drivers" });
             }
             if (fleetAvailable > 0) tasks.push({ text: `${fleetAvailable} trucks available for dispatch`, href: "/fleet" });
             if (tasks.length === 0) tasks.push({ text: "No pending tasks \u2014 all caught up!", href: "" });
@@ -249,8 +249,8 @@ export default function DashboardPage() {
           {kpis && kpis.active_drivers > 0 ? (
             <>
               {[
-                { name: "ON ROUTE", color: COLORS.blue, qty: kpis.on_route_drivers, pct: ((kpis.on_route_drivers / kpis.active_drivers) * 100).toFixed(1) },
-                { name: "AVAILABLE", color: COLORS.green, qty: kpis.active_drivers - kpis.on_route_drivers, pct: (((kpis.active_drivers - kpis.on_route_drivers) / kpis.active_drivers) * 100).toFixed(1) },
+                { name: "ON TRIP", color: COLORS.blue, qty: kpis.on_trip_drivers, pct: ((kpis.on_trip_drivers / kpis.active_drivers) * 100).toFixed(1) },
+                { name: "AVAILABLE", color: COLORS.green, qty: kpis.active_drivers - kpis.on_trip_drivers, pct: (((kpis.active_drivers - kpis.on_trip_drivers) / kpis.active_drivers) * 100).toFixed(1) },
               ].map((s, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 60px", padding: "8px 0", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

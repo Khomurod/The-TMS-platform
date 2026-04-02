@@ -74,6 +74,42 @@
 
   /* Sidebar */
   --sidebar-width: 230px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-bg: var(--surface-lowest);
+  --sidebar-active-bg: rgba(79, 70, 229, 0.08);
+  --sidebar-active-text: var(--primary);
+  --sidebar-hover-bg: var(--surface-container);
+
+  /* TopBar */
+  --topbar-height: 52px;
+
+  /* ── Logistics Status Colors (Warm Palette) ──────────────── */
+  --status-offer: #FF5722;
+  --status-booked: #7C4DFF;
+  --status-assigned: #26A69A;
+  --status-dispatched: #1E88E5;
+  --status-in-transit: #FF9800;
+  --status-delivered: #43A047;
+
+  /* ── Financial Status Colors (Cool Palette) ──────────────── */
+  --status-unposted: #FF9800;
+  --status-posted: #5C6BC0;
+  --status-partial-posted: #78909C;
+  --status-invoiced: #E91E63;
+  --status-paid: #43A047;
+
+  /* ── Compliance Colors (Semantic) ────────────────────────── */
+  --compliance-good: #43A047;
+  --compliance-upcoming: #FFC107;
+  --compliance-critical: #F44336;
+  --compliance-expired: #B71C1C;
+
+  /* ── Canvas and Card ─────────────────────────────────────── */
+  --canvas-bg: var(--surface);
+  --card-bg: var(--surface-lowest);
+  --card-border: var(--outline-variant);
+  --card-radius: var(--radius-xl);
+  --card-padding: 20px;
 }
 
 /* ── Dark Mode — Surface Architecture ────────────────────────── */

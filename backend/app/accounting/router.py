@@ -1,15 +1,16 @@
 """Accounting router — settlements, invoices, and PDF generation.
 
-Phase 5 Endpoints:
-  5.2 — Settlement Management:
-    POST   /settlements/generate         — Generate draft settlement
+Endpoints:
+  Settlement Management:
+    POST   /settlements/generate         — Generate draft settlement (Trip-level math)
     GET    /settlements                  — List settlements
     GET    /settlements/{id}             — Full detail with line items
-    PATCH  /settlements/{id}/approve     — Mark as ready
-    PATCH  /settlements/{id}/pay         — Mark as paid
-  5.3 — PDF:
+    PATCH  /settlements/{id}/post        — Post (freeze line items)
+    PATCH  /settlements/{id}/undo        — Undo post (unfreeze)
+    PATCH  /settlements/{id}/pay         — Mark as paid (terminal)
+  PDF:
     GET    /settlements/{id}/pdf         — Download PDF paystub
-  5.4 — Invoicing:
+  Invoicing:
     POST   /loads/{load_id}/invoice      — Generate broker invoice
 """
 
@@ -39,7 +40,7 @@ def _get_service(
 
 
 # ══════════════════════════════════════════════════════════════════
-#   5.2 — Settlement Management
+#   Settlement Management
 # ══════════════════════════════════════════════════════════════════
 
 @router.post("/settlements/generate", response_model=SettlementResponse, status_code=201)
@@ -48,7 +49,7 @@ async def generate_settlement(
     svc: AccountingService = Depends(_get_service),
     _role=Depends(require_roles("company_admin")),
 ):
-    """Generate a draft settlement for a driver over a date range."""
+    """Generate a draft settlement for a driver over a date range (Trip-level math)."""
     return await svc.generate_settlement(data)
 
 
@@ -75,14 +76,24 @@ async def get_settlement(
     return await svc.get_settlement(settlement_id)
 
 
-@router.patch("/settlements/{settlement_id}/approve", response_model=SettlementResponse)
-async def approve_settlement(
+@router.patch("/settlements/{settlement_id}/post", response_model=SettlementResponse)
+async def post_settlement(
     settlement_id: UUID,
     svc: AccountingService = Depends(_get_service),
     _role=Depends(require_roles("company_admin")),
 ):
-    """Approve draft → ready."""
-    return await svc.approve_settlement(settlement_id)
+    """Post settlement — freeze line items (unposted → posted)."""
+    return await svc.post_settlement(settlement_id)
+
+
+@router.patch("/settlements/{settlement_id}/undo", response_model=SettlementResponse)
+async def unpost_settlement(
+    settlement_id: UUID,
+    svc: AccountingService = Depends(_get_service),
+    _role=Depends(require_roles("company_admin")),
+):
+    """Undo post — revert to editable (posted → unposted)."""
+    return await svc.unpost_settlement(settlement_id)
 
 
 @router.patch("/settlements/{settlement_id}/pay", response_model=SettlementResponse)
@@ -91,12 +102,12 @@ async def pay_settlement(
     svc: AccountingService = Depends(_get_service),
     _role=Depends(require_roles("company_admin")),
 ):
-    """Mark ready → paid."""
+    """Mark as paid — terminal state (posted → paid)."""
     return await svc.pay_settlement(settlement_id)
 
 
 # ══════════════════════════════════════════════════════════════════
-#   5.3 — PDF Generation
+#   PDF Generation
 # ══════════════════════════════════════════════════════════════════
 
 @router.get("/settlements/{settlement_id}/pdf")
@@ -110,7 +121,7 @@ async def download_settlement_pdf(
 
 
 # ══════════════════════════════════════════════════════════════════
-#   5.4 — Broker Invoicing
+#   Broker Invoicing
 # ══════════════════════════════════════════════════════════════════
 
 @router.post("/loads/{load_id}/invoice", response_model=InvoiceResponse)

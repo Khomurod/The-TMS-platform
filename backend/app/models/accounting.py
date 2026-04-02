@@ -1,4 +1,4 @@
-"""Accounting models — accessorials, deductions, settlements, and line items."""
+"""Accounting models — accessorials, deductions, settlements, invoices, and line items."""
 
 import enum
 import uuid
@@ -6,12 +6,13 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func,
+    Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String,
+    Text, UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TenantMixin
+from app.models.base import Base, TenantMixin, SettlementBatchStatus, InvoiceBatchStatus
 
 
 # ── ENUMs ────────────────────────────────────────────────────────
@@ -36,20 +37,13 @@ class DeductionFrequency(str, enum.Enum):
     monthly = "monthly"
 
 
-class SettlementStatus(str, enum.Enum):
-    """Settlement lifecycle status."""
-
-    draft = "draft"
-    ready = "ready"
-    paid = "paid"
-
-
 class SettlementLineType(str, enum.Enum):
     """Type of line item in a settlement."""
 
     load_pay = "load_pay"
     accessorial = "accessorial"
     deduction = "deduction"
+    bonus = "bonus"
 
 
 # ── Models ───────────────────────────────────────────────────────
@@ -89,6 +83,39 @@ class CompanyDefaultDeduction(Base, TenantMixin):
     )
 
 
+# ══════════════════════════════════════════════════════════════════
+#   SETTLEMENT BATCH & LINE ITEMS
+# ══════════════════════════════════════════════════════════════════
+
+
+class SettlementBatch(Base, TenantMixin):
+    """A batch of driver settlements — supports post/unpost workflow."""
+
+    __tablename__ = "settlement_batches"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'batch_number', name='uq_settlement_batches_company_number'),
+    )
+
+    batch_number: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., 'SB-000100'
+    status: Mapped[SettlementBatchStatus] = mapped_column(
+        Enum(SettlementBatchStatus, name="settlement_batch_status_enum", create_constraint=True),
+        default=SettlementBatchStatus.unposted,
+        server_default="unposted",
+    )
+    period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    settlement_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ── Relationships ────────────────────────────────────────────
+    settlements = relationship("DriverSettlement", back_populates="batch", lazy="selectin", cascade="all, delete-orphan")
+
+
 class DriverSettlement(Base, TenantMixin):
     """A settlement period for a driver — aggregates load pay, accessorials, and deductions."""
 
@@ -102,6 +129,11 @@ class DriverSettlement(Base, TenantMixin):
         ForeignKey("drivers.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("settlement_batches.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     settlement_number: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "TMS-49202"
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
@@ -111,17 +143,19 @@ class DriverSettlement(Base, TenantMixin):
     gross_pay: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     total_accessorials: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     total_deductions: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    total_bonus: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     net_pay: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
 
-    status: Mapped[SettlementStatus] = mapped_column(
-        Enum(SettlementStatus, name="settlement_status_enum", create_constraint=True),
-        default=SettlementStatus.draft,
-        server_default="draft",
+    status: Mapped[SettlementBatchStatus] = mapped_column(
+        Enum(SettlementBatchStatus, name="settlement_batch_status_enum", create_constraint=True),
+        default=SettlementBatchStatus.unposted,
+        server_default="unposted",
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # ── Relationships ────────────────────────────────────────────
     driver = relationship("Driver", back_populates="settlements")
+    batch = relationship("SettlementBatch", back_populates="settlements")
     line_items = relationship("SettlementLineItem", back_populates="settlement", lazy="selectin", cascade="all, delete-orphan")
 
 
@@ -140,6 +174,11 @@ class SettlementLineItem(Base, TenantMixin):
         ForeignKey("loads.id", ondelete="RESTRICT"),
         nullable=True,
     )
+    trip_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("trips.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
 
     type: Mapped[SettlementLineType] = mapped_column(
         Enum(SettlementLineType, name="settlement_line_type_enum", create_constraint=True),
@@ -150,3 +189,62 @@ class SettlementLineItem(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     settlement = relationship("DriverSettlement", back_populates="line_items")
+
+
+# ══════════════════════════════════════════════════════════════════
+#   INVOICE BATCH & INVOICES
+# ══════════════════════════════════════════════════════════════════
+
+
+class InvoiceBatch(Base, TenantMixin):
+    """Invoice batch — groups invoices for bulk posting to customers."""
+
+    __tablename__ = "invoice_batches"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'batch_id', name='uq_invoice_batches_company_batch'),
+    )
+
+    batch_id: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g., 'IB-000095'
+    status: Mapped[InvoiceBatchStatus] = mapped_column(
+        Enum(InvoiceBatchStatus, name="invoice_batch_status_enum", create_constraint=True),
+        default=InvoiceBatchStatus.unposted,
+        server_default="unposted",
+    )
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    invoice_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ── Relationships ────────────────────────────────────────────
+    invoices = relationship("Invoice", back_populates="batch", lazy="selectin", cascade="all, delete-orphan")
+
+
+class Invoice(Base, TenantMixin):
+    """Individual invoice — bills a customer/broker for a delivered load."""
+
+    __tablename__ = "invoices"
+    __table_args__ = (
+        UniqueConstraint('company_id', 'invoice_number', name='uq_invoices_company_number'),
+    )
+
+    invoice_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    batch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("invoice_batches.id", ondelete="CASCADE"), nullable=False
+    )
+    load_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("loads.id", ondelete="RESTRICT"), nullable=False
+    )
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("brokers.id", ondelete="RESTRICT"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    billing_type: Mapped[str] = mapped_column(String(50), default="standard")
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ── Relationships ────────────────────────────────────────────
+    batch = relationship("InvoiceBatch", back_populates="invoices")

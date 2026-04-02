@@ -57,7 +57,7 @@ export default function SettingsPage() {
 
           <div className="border border-[#e5e7eb] rounded-xl p-5 bg-white">
             <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider">Company Details</h3>
-            <InfoRow icon={Building2} label="Company Name" value={user?.company_name} />
+            <InfoRow icon={Building2} label="Company Name" value={user?.company_name ?? undefined} />
             <InfoRow icon={Mail} label="Admin Email" value={user?.email} />
             <InfoRow icon={Shield} label="Your Role" value={user?.role} />
             <InfoRow icon={Hash} label="Account Status" value="Active" />
