@@ -34,6 +34,15 @@ class Settings(BaseSettings):
         "https://kinetic-frontend-1065403267999.us-central1.run.app",
     ]
 
+    @property
+    def effective_cors_origins(self) -> List[str]:
+        """Returns CORS origins filtered for the current environment.
+        Production excludes localhost origins for hardened security.
+        """
+        if self.environment == "production":
+            return [o for o in self.cors_origins if not o.startswith("http://localhost")]
+        return self.cors_origins
+
     # ── Google Cloud Storage (Phase 3) ───────────────────────────
     gcs_bucket_name: str = ""
     gcs_credentials_path: str = ""  # legacy — prefer gcs_credentials_json

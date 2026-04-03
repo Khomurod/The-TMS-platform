@@ -1,6 +1,9 @@
 """Safehaul TMS — FastAPI Application Entry Point."""
 
-from fastapi import FastAPI, Depends
+import logging
+import uuid
+
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -42,7 +45,7 @@ app = FastAPI(
 # ── CORS Middleware ──────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.effective_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
@@ -86,7 +89,38 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         )
 
 
-# ── Root ─────────────────────────────────────────────────────────
+# ── Structured Exception Handler ─────────────────────────────
+
+logger = logging.getLogger("safehaul")
+logging.basicConfig(
+    level=logging.INFO if _is_prod else logging.DEBUG,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all exception handler — logs the error with a correlation ID."""
+    request_id = str(uuid.uuid4())[:8]
+    logger.error(
+        "[%s] Unhandled %s on %s %s: %s",
+        request_id,
+        type(exc).__name__,
+        request.method,
+        request.url.path,
+        str(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error",
+            "request_id": request_id,
+        },
+    )
+
+
+# ── Root ─────────────────────────────────────────────────────
 @app.get("/", tags=["System"])
 async def root():
     """Root endpoint."""

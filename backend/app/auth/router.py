@@ -1,10 +1,12 @@
 """Auth router — registration, login, token refresh, logout, profile."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id
+from app.core.exceptions import UnauthorizedError
+from app.core.security import blacklist_token, decode_token
 from app.auth.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -65,11 +67,23 @@ async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/logout", status_code=200)
-async def logout(user_id: str = Depends(get_current_user_id)):
+async def logout(
+    user_id: str = Depends(get_current_user_id),
+    authorization: str = Header(default=None),
+):
     """Logout — blacklists the current access token JTI.
 
     The client should also discard tokens locally.
     """
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        try:
+            payload = decode_token(token)
+            jti = payload.get("jti")
+            if jti:
+                blacklist_token(jti)
+        except Exception:
+            pass  # Token may already be invalid — still return success
     return {"message": "Logged out successfully"}
 
 
