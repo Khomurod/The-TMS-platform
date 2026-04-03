@@ -4,14 +4,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { getBreadcrumbs } from "@/lib/breadcrumb-config";
 import {
-  Search, Sun, Moon, Settings, Send, Bell, User, Plus,
-  ChevronDown, Globe, Package, Users, Truck,
+  Search, Sun, Moon, Settings, Bell, Plus,
+  ChevronDown, ChevronRight, Package, Users, Truck,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
    TopBar — Enterprise Operations Header
-   54px height, white bg, breadcrumbs + compact action controls.
+   Route-metadata-driven breadcrumbs, compact action controls.
    ═══════════════════════════════════════════════════════════════ */
 
 interface TopBarProps {
@@ -27,18 +28,12 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
 
   useEffect(() => setMounted(true), []);
 
-  const getBreadcrumbs = () => {
-    if (pathname.includes("/drivers/") && pathname.split("/").length > 2) return ["HR Management", "Drivers", "Driver Profile"];
-    if (pathname.includes("/loads/") && pathname.split("/").length > 2) return ["Load Management", "All Loads", "Load Detail"];
-    if (pathname.includes("drivers")) return ["HR Management", "Drivers", "Active Drivers"];
-    if (pathname.includes("loads")) return ["Load Management", "All Loads"];
-    if (pathname.includes("fleet")) return ["Fleet Management", "Trucks"];
-    if (pathname.includes("dashboard")) return ["Dashboard", "Overview"];
-    if (pathname.includes("accounting")) return ["Accounting", "Salary", "Batches"];
-    return ["Home"];
-  };
+  // Platform-aware shortcut label
+  const isMac = mounted && typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+  const shortcutLabel = isMac ? "⌘K" : "Ctrl+K";
 
-  const breadcrumbs = getBreadcrumbs();
+  // Route-metadata-driven breadcrumbs (replaces hardcoded string matching)
+  const breadcrumbs = getBreadcrumbs(pathname);
 
   const createOptions = [
     { label: "New Load", href: "/loads/new", icon: <Package className="h-3.5 w-3.5" /> },
@@ -47,50 +42,53 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
   ];
 
   return (
-    <header
-      className="flex items-center justify-between sticky top-0 z-10 shrink-0"
-      style={{
-        height: "var(--topbar-height)",
-        backgroundColor: "var(--surface-lowest)",
-        borderBottom: "1px solid var(--outline-variant)",
-        padding: "0 20px",
-      }}
-    >
+    <header className="topbar">
       {/* Left: Breadcrumbs */}
       <nav className="flex items-center" aria-label="Breadcrumb">
         {breadcrumbs.map((crumb, i) => (
-          <span key={crumb} className="flex items-center">
+          <span key={`${crumb.label}-${i}`} className="flex items-center">
             {i > 0 && (
-              <span
-                className="mx-2 text-[11px]"
+              <ChevronRight
+                className="mx-1.5 w-3 h-3"
                 style={{ color: "var(--outline)" }}
+              />
+            )}
+            {crumb.href ? (
+              <Link
+                href={crumb.href}
+                className="body-md"
+                style={{
+                  color: "var(--on-surface-variant)",
+                  textDecoration: "none",
+                }}
               >
-                /
+                {crumb.label}
+              </Link>
+            ) : (
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
+                  color: i === breadcrumbs.length - 1 ? "var(--on-surface)" : "var(--on-surface-variant)",
+                }}
+              >
+                {crumb.label}
               </span>
             )}
-            <span
-              style={{
-                fontSize: "13px",
-                fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
-                color: i === breadcrumbs.length - 1 ? "var(--on-surface)" : "var(--on-surface-variant)",
-              }}
-            >
-              {crumb}
-            </span>
           </span>
         ))}
       </nav>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         {/* Search */}
         <button
           onClick={onSearchClick}
-          className="btn-enterprise"
+          className="btn btn-secondary btn-sm"
           style={{ gap: "6px" }}
         >
           <Search className="w-3.5 h-3.5" style={{ color: "var(--on-surface-variant)" }} />
-          <span style={{ color: "var(--on-surface-variant)", fontSize: "11px" }}>
+          <span style={{ color: "var(--on-surface-variant)", fontSize: "12px" }}>
             Search
           </span>
           <kbd
@@ -105,46 +103,19 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
               border: "1px solid var(--outline-variant)",
             }}
           >
-            ⌘K
+            {shortcutLabel}
           </kbd>
         </button>
 
-        {/* Divider */}
-        <div
-          style={{
-            width: "1px",
-            height: "20px",
-            backgroundColor: "var(--outline-variant)",
-          }}
-        />
-
-        {/* Version Selector */}
-        <button
-          className="btn-enterprise"
-          style={{ border: "none", backgroundColor: "transparent" }}
-        >
-          <span
-            className="flex items-center justify-center"
-            style={{
-              width: "20px",
-              height: "20px",
-              borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--primary-fixed)",
-            }}
-          >
-            <Globe className="w-[11px] h-[11px]" style={{ color: "var(--primary)" }} />
-          </span>
-          <span style={{ fontWeight: 600, color: "var(--on-surface)" }}>
-            Safehaul 2.0
-          </span>
-          <ChevronDown className="w-3 h-3" style={{ color: "var(--on-surface-variant)" }} />
-        </button>
+        <div className="topbar-divider" />
 
         {/* Create New */}
         <div className="relative">
           <button
             onClick={() => setShowCreateMenu(!showCreateMenu)}
-            className="btn-enterprise"
+            className="btn btn-secondary btn-sm"
+            aria-expanded={showCreateMenu}
+            aria-haspopup="true"
           >
             <Plus className="w-3.5 h-3.5" style={{ color: "var(--on-surface-variant)" }} />
             Create new
@@ -154,28 +125,13 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
           {showCreateMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowCreateMenu(false)} />
-              <div
-                className="absolute right-0 top-full mt-1 z-20 rounded-md py-1 min-w-[180px]"
-                style={{
-                  backgroundColor: "var(--surface-lowest)",
-                  border: "1px solid var(--outline-variant)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                }}
-              >
+              <div className="absolute right-0 top-full mt-1 z-20 dropdown-menu">
                 {createOptions.map((opt) => (
                   <Link
                     key={opt.label}
                     href={opt.href}
                     onClick={() => setShowCreateMenu(false)}
-                    className="flex items-center gap-2 no-underline rounded-[4px] mx-1 transition-colors"
-                    style={{
-                      padding: "7px 12px",
-                      fontSize: "12px",
-                      fontWeight: 500,
-                      color: "var(--on-surface)",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                    className="dropdown-item"
                   >
                     {opt.icon}
                     {opt.label}
@@ -186,54 +142,14 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
           )}
         </div>
 
-        {/* Live Support */}
-        <button
-          className="flex items-center gap-1.5 border-none cursor-pointer"
-          style={{
-            background: "transparent",
-            fontSize: "11px",
-            fontWeight: 600,
-            color: "var(--success)",
-          }}
-        >
-          <span
-            style={{
-              width: "6px",
-              height: "6px",
-              borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--success)",
-              display: "inline-block",
-            }}
-          />
-          Live Support
-        </button>
-
-        {/* Divider */}
-        <div
-          style={{
-            width: "1px",
-            height: "20px",
-            backgroundColor: "var(--outline-variant)",
-          }}
-        />
+        <div className="topbar-divider" />
 
         {/* Icon Actions */}
         <div className="flex items-center gap-0.5">
           {/* Dark Mode Toggle */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="focus-ring"
-            style={{
-              padding: "5px",
-              borderRadius: "var(--radius-md)",
-              color: "var(--on-surface-variant)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              transition: "background-color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+            className="topbar-icon-btn focus-ring"
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
             {mounted && theme === "dark" ? (
@@ -246,78 +162,18 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
           {/* Settings */}
           <button
             onClick={() => router.push("/settings")}
-            className="focus-ring"
-            style={{
-              padding: "5px",
-              borderRadius: "var(--radius-md)",
-              color: "var(--on-surface-variant)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              transition: "background-color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+            className="topbar-icon-btn focus-ring"
             aria-label="Settings"
           >
             <Settings className="w-4 h-4" />
           </button>
 
-          {/* Messages */}
-          <button
-            className="focus-ring"
-            style={{
-              padding: "5px",
-              borderRadius: "var(--radius-md)",
-              color: "var(--on-surface-variant)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              transition: "background-color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
-            aria-label="Messages"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-
           {/* Notifications */}
           <button
-            className="focus-ring relative"
-            style={{
-              padding: "5px",
-              borderRadius: "var(--radius-md)",
-              color: "var(--on-surface-variant)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              transition: "background-color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+            className="topbar-icon-btn focus-ring relative"
             aria-label="Notifications"
           >
             <Bell className="w-4 h-4" />
-          </button>
-
-          {/* User Avatar */}
-          <button
-            className="flex items-center justify-center cursor-pointer ml-1 focus-ring"
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--surface-container)",
-              border: "1px solid var(--outline-variant)",
-              color: "var(--on-surface-variant)",
-              transition: "border-color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--outline)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--outline-variant)"; }}
-            aria-label="User menu"
-          >
-            <User className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

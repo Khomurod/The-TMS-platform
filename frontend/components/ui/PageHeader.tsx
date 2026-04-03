@@ -124,7 +124,7 @@ export default function PageHeader({
           <button
             onClick={primaryAction.onClick}
             disabled={primaryAction.loading}
-            className="gradient-primary px-4 py-1.5 rounded-lg text-xs font-semibold shadow-ambient disabled:opacity-60 flex items-center gap-1.5"
+            className="btn btn-primary btn-sm disabled:opacity-60 flex items-center gap-1.5"
           >
             {primaryAction.loading && (
               <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />

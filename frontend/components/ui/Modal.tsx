@@ -1,8 +1,14 @@
 "use client";
 
-import React, { ReactNode, useEffect, Fragment } from "react";
+import React, { ReactNode, useEffect, useRef, Fragment, useId } from "react";
 import { X } from "lucide-react";
-import { Transition } from "@headlessui/react";
+import { Transition, TransitionChild } from "@headlessui/react";
+
+/* ═══════════════════════════════════════════════════════════════
+   Modal — Accessible Dialog Component
+   ARIA compliant: role="dialog", aria-modal, aria-labelledby
+   Focus trapping: Tab/Shift+Tab cycle within modal
+   ═══════════════════════════════════════════════════════════════ */
 
 interface ModalProps {
   isOpen: boolean;
@@ -12,18 +18,81 @@ interface ModalProps {
   size?: "sm" | "md" | "lg";
 }
 
+/** Get all focusable elements within a container */
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  const selector = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(', ');
+  return Array.from(container.querySelectorAll<HTMLElement>(selector));
+}
+
 export default function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+
   // Lock body scroll when open
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Close on Escape
+  // Save and restore focus
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    if (isOpen) window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      // Focus first focusable element after render
+      requestAnimationFrame(() => {
+        if (modalRef.current) {
+          const focusable = getFocusableElements(modalRef.current);
+          if (focusable.length > 0) {
+            focusable[0].focus();
+          }
+        }
+      });
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
+  }, [isOpen]);
+
+  // Close on Escape + Focus trapping
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      // Focus trap
+      if (e.key === "Tab" && modalRef.current) {
+        const focusable = getFocusableElements(modalRef.current);
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    if (isOpen) window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   const widthClass = size === "sm" ? "max-w-md" : size === "lg" ? "max-w-3xl" : "max-w-xl";
@@ -32,7 +101,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     <Transition show={isOpen} as={Fragment}>
       <div className="fixed inset-0 z-50">
         {/* Overlay */}
-        <Transition.Child
+        <TransitionChild
           as={Fragment}
           enter="ease-out duration-200"
           enterFrom="opacity-0"
@@ -42,14 +111,14 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
           leaveTo="opacity-0"
         >
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            className="modal-overlay"
             onClick={onClose}
           />
-        </Transition.Child>
+        </TransitionChild>
 
         {/* Content */}
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-          <Transition.Child
+        <div className="modal-container">
+          <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
             enterFrom="opacity-0 scale-95"
@@ -58,55 +127,32 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div className={`${widthClass} w-full mx-4 bg-[var(--surface-lowest)] rounded-xl shadow-2xl border border-[var(--outline-variant)] pointer-events-auto`}>
+            <div
+              ref={modalRef}
+              className={`${widthClass} w-full mx-4 modal-content`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+            >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--surface-container)]">
-                <h2 className="text-lg font-bold text-[var(--on-surface)]">{title}</h2>
+              <div className="modal-header">
+                <h2 id={titleId} className="modal-title">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--on-surface-variant)] hover:text-[var(--on-surface)] hover:bg-[var(--surface-container)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                  className="topbar-icon-btn focus-ring"
                   aria-label="Close modal"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
               {/* Body */}
-              <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+              <div className="modal-body">
                 {children}
               </div>
             </div>
-          </Transition.Child>
+          </TransitionChild>
         </div>
       </div>
     </Transition>
   );
 }
-
-/* Reusable Form Field Component */
-
-interface FormFieldProps {
-  label: string;
-  required?: boolean;
-  children: ReactNode;
-}
-
-export function FormField({ label, required, children }: FormFieldProps) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-xs font-semibold text-[var(--on-surface-variant)] uppercase tracking-wider">
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-/* ── Legacy utility class exports ────────────────────────────────
-   These are still imported by fleet/page.tsx and drivers/page.tsx.
-   TODO: Migrate those pages to use <Input /> and <Button /> components,
-   then delete these exports.
-   ───────────────────────────────────────────────────────────────── */
-export const inputClass = "w-full px-3.5 py-2.5 border border-[var(--outline-variant)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-[var(--surface-lowest)] text-[var(--on-surface)] placeholder:text-[var(--on-surface-variant)] shadow-sm hover:border-[var(--outline)] disabled:opacity-50 disabled:cursor-not-allowed";
-export const selectClass = "w-full px-3.5 py-2.5 border border-[var(--outline-variant)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-[var(--surface-lowest)] text-[var(--on-surface)]";
-export const btnPrimary = "bg-gradient-to-r from-[var(--primary)] to-[var(--primary-container)] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:brightness-110 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40";
-export const btnSecondary = "bg-[var(--surface-lowest)] text-[var(--on-surface)] border border-[var(--outline-variant)] px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--surface-container)] hover:border-[var(--outline)] transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40";

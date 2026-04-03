@@ -143,6 +143,9 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
       {/* Command Palette */}
       <div
         className="fixed z-50 w-full max-w-[640px] rounded-xl overflow-hidden shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command menu — search and navigate"
         style={{
           top: "20%",
           left: "50%",

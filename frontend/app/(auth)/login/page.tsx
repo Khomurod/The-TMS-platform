@@ -1,12 +1,15 @@
 "use client";
 
 /**
- * Login Page — Safehaul Precision Framework aesthetic.
- * Uses correct design tokens from globals.css.
+ * Login Page — Safehaul Design System.
+ * Uses design system tokens and CSS classes exclusively.
+ * No inline styles for focus/blur — CSS handles it.
  */
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { Truck } from "lucide-react";
+import Button from "@/components/ui/Button";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -30,80 +33,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--surface)",
-        padding: "var(--spacing-8)",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "440px",
-          background: "var(--surface-low)",
-          borderRadius: "var(--radius-xl)",
-          padding: "var(--spacing-10)",
-          boxShadow: "0 8px 32px var(--shadow-ambient)",
-        }}
-        className="ghost-border"
-      >
+    <div className="auth-container">
+      <div className="auth-card">
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "var(--spacing-8)" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "2rem",
-              fontWeight: 800,
-              letterSpacing: "-0.03em",
-              background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              marginBottom: "4px",
-            }}
-          >
-            Safehaul
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              <Truck className="w-5 h-5 text-white" />
+            </div>
           </div>
-          <p
-            style={{
-              fontSize: "0.75rem",
-              color: "var(--on-surface-variant)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Transportation Management System
-          </p>
+          <div className="auth-logo">Safehaul</div>
+          <p className="auth-subtitle">Transportation Management System</p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit}>
-          <h2
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.25rem",
-              fontWeight: 700,
-              color: "var(--on-surface)",
-              marginBottom: "var(--spacing-6)",
-            }}
-          >
+          <h2 className="headline-md" style={{ marginBottom: "var(--spacing-6)", color: "var(--on-surface)" }}>
             Sign in to your account
           </h2>
 
           {error && (
             <div
+              className="body-md"
               style={{
                 background: "var(--error-container)",
                 border: "1px solid var(--error)",
                 borderRadius: "var(--radius-md)",
                 padding: "var(--spacing-2) var(--spacing-3)",
                 color: "var(--error)",
-                fontSize: "0.85rem",
                 marginBottom: "var(--spacing-4)",
               }}
+              role="alert"
             >
               {error}
             </div>
@@ -111,16 +74,7 @@ export default function LoginPage() {
 
           {/* Email */}
           <div style={{ marginBottom: "var(--spacing-4)" }}>
-            <label
-              htmlFor="login-email"
-              style={{
-                display: "block",
-                fontSize: "0.8rem",
-                fontWeight: 500,
-                color: "var(--on-surface-variant)",
-                marginBottom: "6px",
-              }}
-            >
+            <label htmlFor="login-email" className="form-label">
               Email Address
             </label>
             <input
@@ -131,43 +85,13 @@ export default function LoginPage() {
               placeholder="you@company.com"
               required
               autoComplete="email"
-              style={{
-                width: "100%",
-                padding: "var(--spacing-3) var(--spacing-4)",
-                background: "var(--surface-container-high)",
-                border: "1px solid var(--outline-variant)",
-                borderRadius: "var(--radius-lg)",
-                color: "var(--on-surface)",
-                fontSize: "0.9rem",
-                outline: "none",
-                transition: "all 0.2s ease",
-                fontFamily: "var(--font-body)",
-              }}
-              onFocus={(e) => {
-                e.target.style.background = "var(--surface-lowest)";
-                e.target.style.borderColor = "var(--primary)";
-                e.target.style.boxShadow = "0 0 0 3px var(--primary-fixed)";
-              }}
-              onBlur={(e) => {
-                e.target.style.background = "var(--surface-container-high)";
-                e.target.style.borderColor = "var(--outline-variant)";
-                e.target.style.boxShadow = "none";
-              }}
+              className="input-base"
             />
           </div>
 
           {/* Password */}
           <div style={{ marginBottom: "var(--spacing-6)" }}>
-            <label
-              htmlFor="login-password"
-              style={{
-                display: "block",
-                fontSize: "0.8rem",
-                fontWeight: 500,
-                color: "var(--on-surface-variant)",
-                marginBottom: "6px",
-              }}
-            >
+            <label htmlFor="login-password" className="form-label">
               Password
             </label>
             <input
@@ -179,72 +103,29 @@ export default function LoginPage() {
               required
               minLength={8}
               autoComplete="current-password"
-              style={{
-                width: "100%",
-                padding: "var(--spacing-3) var(--spacing-4)",
-                background: "var(--surface-container-high)",
-                border: "1px solid var(--outline-variant)",
-                borderRadius: "var(--radius-lg)",
-                color: "var(--on-surface)",
-                fontSize: "0.9rem",
-                outline: "none",
-                transition: "all 0.2s ease",
-                fontFamily: "var(--font-body)",
-              }}
-              onFocus={(e) => {
-                e.target.style.background = "var(--surface-lowest)";
-                e.target.style.borderColor = "var(--primary)";
-                e.target.style.boxShadow = "0 0 0 3px var(--primary-fixed)";
-              }}
-              onBlur={(e) => {
-                e.target.style.background = "var(--surface-container-high)";
-                e.target.style.borderColor = "var(--outline-variant)";
-                e.target.style.boxShadow = "none";
-              }}
+              className="input-base"
             />
           </div>
 
           {/* Submit Button */}
-          <button
+          <Button
             id="login-submit"
             type="submit"
-            disabled={isLoading}
-            className="gradient-primary"
-            style={{
-              width: "100%",
-              padding: "var(--spacing-3) var(--spacing-4)",
-              border: "none",
-              borderRadius: "var(--radius-lg)",
-              fontSize: "0.9rem",
-              fontWeight: 600,
-              cursor: isLoading ? "not-allowed" : "pointer",
-              opacity: isLoading ? 0.7 : 1,
-              transition: "all 0.2s ease",
-              letterSpacing: "0.02em",
-              fontFamily: "var(--font-body)",
-            }}
+            variant="primary"
+            size="lg"
+            loading={isLoading}
+            className="w-full"
           >
             {isLoading ? "Signing in..." : "Sign In"}
-          </button>
+          </Button>
         </form>
 
         {/* Footer */}
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: "var(--spacing-6)",
-            fontSize: "0.85rem",
-            color: "var(--on-surface-variant)",
-          }}
-        >
+        <p className="body-md" style={{ textAlign: "center", marginTop: "var(--spacing-6)", color: "var(--on-surface-variant)" }}>
           Don&apos;t have an account?{" "}
           <a
             href="/register"
-            style={{
-              color: "var(--primary)",
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
+            style={{ color: "var(--primary)", textDecoration: "none", fontWeight: 500 }}
           >
             Register your company
           </a>

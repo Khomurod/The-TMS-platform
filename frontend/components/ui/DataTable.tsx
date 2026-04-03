@@ -292,11 +292,7 @@ export default function DataTable<T>({
               <button
                 key={i}
                 onClick={() => action.onClick(selectedIds)}
-                className="btn-enterprise"
-                style={{
-                  borderColor: action.variant === "danger" ? "var(--error)" : undefined,
-                  color: action.variant === "danger" ? "var(--error)" : undefined,
-                }}
+                className={action.variant === "danger" ? "btn btn-danger btn-sm" : "btn btn-secondary btn-sm"}
               >
                 {action.icon}
                 {action.label}
@@ -331,7 +327,7 @@ export default function DataTable<T>({
           }}
         >
           <div className="flex items-center gap-2">
-            <button className="btn-enterprise">
+            <button className="btn btn-secondary btn-sm">
               <Filter className="h-3.5 w-3.5" />
               Filter
             </button>
@@ -340,19 +336,14 @@ export default function DataTable<T>({
 
           <div className="flex items-center gap-2">
             {exportable && (
-              <button className="btn-enterprise">
+              <button className="btn btn-secondary btn-sm">
                 <Download className="h-3.5 w-3.5" />
                 Export
               </button>
             )}
 
             <button
-              className="btn-enterprise"
-              style={{
-                borderColor: "var(--primary)",
-                color: "var(--primary)",
-                backgroundColor: "var(--primary-fixed)",
-              }}
+              className="btn btn-soft btn-sm"
             >
               <Bookmark className="h-3.5 w-3.5" />
               Save view
@@ -360,7 +351,7 @@ export default function DataTable<T>({
 
             {/* Density Toggle */}
             <button
-              className="btn-enterprise"
+              className="btn btn-secondary btn-sm"
               onClick={() => setDensity(d => d === "compact" ? "comfortable" : "compact")}
               title={`Switch to ${isCompact ? "comfortable" : "compact"} density`}
             >
@@ -372,7 +363,7 @@ export default function DataTable<T>({
               <div className="relative">
                 <button
                   onClick={() => setShowColumnMenu(!showColumnMenu)}
-                  className="btn-enterprise"
+                  className="btn btn-secondary btn-sm"
                 >
                   <Columns className="h-3.5 w-3.5" />
                   Columns

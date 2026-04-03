@@ -269,13 +269,7 @@ export default function AccountingPage() {
   return (
     <div className="h-full flex flex-col" style={{ padding: "16px" }}>
       {/* ── Sub-Navigation Tabs ── */}
-      <div
-        className="flex items-center gap-0 overflow-x-auto shrink-0"
-        style={{
-          borderBottom: "1px solid var(--outline-variant)",
-          marginBottom: "16px",
-        }}
-      >
+      <div className="tab-bar shrink-0" style={{ marginBottom: "16px" }}>
         {SUB_NAV_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -284,20 +278,8 @@ export default function AccountingPage() {
               setShowDetail(false);
               setSelectedSettlement(null);
             }}
-            style={{
-              padding: "8px 16px",
-              fontSize: "12px",
-              fontWeight: activeSubNav === tab.key ? 600 : 500,
-              color: activeSubNav === tab.key ? "var(--primary)" : "var(--on-surface-variant)",
-              borderBottom: activeSubNav === tab.key ? "2px solid var(--primary)" : "2px solid transparent",
-              background: "transparent",
-              border: "none",
-              borderBottomWidth: "2px",
-              borderBottomStyle: "solid",
-              borderBottomColor: activeSubNav === tab.key ? "var(--primary)" : "transparent",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
+            className={`tab-item ${activeSubNav === tab.key ? "tab-item--active" : ""}`}
+            style={{ fontSize: "12px" }}
           >
             {tab.label}
           </button>
@@ -468,8 +450,7 @@ function SettlementDetail({
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="btn-enterprise"
-            style={{ padding: "0 8px" }}
+            className="btn btn-secondary btn-xs"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -485,12 +466,12 @@ function SettlementDetail({
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="btn-enterprise-primary">
+          <button className="btn btn-primary btn-sm">
             <Send className="h-3.5 w-3.5" />
             Send to driver
           </button>
           <button
-            className="btn-enterprise"
+            className="btn btn-secondary btn-sm"
             style={{
               opacity: settlement.status === "unposted" || settlement.status === "draft" ? 0.5 : 1,
               cursor: settlement.status === "unposted" || settlement.status === "draft" ? "not-allowed" : "pointer",
@@ -499,14 +480,14 @@ function SettlementDetail({
           >
             Post
           </button>
-          <button className="btn-enterprise">
+          <button className="btn btn-secondary btn-sm">
             Deduction tariff
           </button>
-          <button className="btn-enterprise">
+          <button className="btn btn-secondary btn-sm">
             <FileDown className="h-3.5 w-3.5" />
             Export PDF
           </button>
-          <button className="btn-enterprise" style={{ padding: "0 8px" }}>
+          <button className="btn btn-secondary btn-xs">
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
@@ -627,21 +608,20 @@ function SettlementDetail({
           }}
           toolbarLeft={
             <div className="flex items-center gap-2">
-              <button className="btn-enterprise">
+              <button className="btn btn-secondary btn-sm">
                 <Plus className="h-3.5 w-3.5" />
                 Add charges
               </button>
-              <button className="btn-enterprise">
+              <button className="btn btn-secondary btn-sm">
                 <Plus className="h-3.5 w-3.5" />
                 Add trips
               </button>
-              <button className="btn-enterprise">
+              <button className="btn btn-secondary btn-sm">
                 <RefreshCcw className="h-3.5 w-3.5" />
                 Recalculate
               </button>
               <button
-                className="btn-enterprise"
-                style={{ color: "var(--error)", borderColor: "var(--error)" }}
+                className="btn btn-danger btn-sm"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete
@@ -680,7 +660,7 @@ function SettlementDetail({
           <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--on-surface)" }}>
             Other Pay
           </span>
-          <button className="btn-enterprise" style={{ height: "28px", fontSize: "11px" }}>
+          <button className="btn btn-secondary btn-xs">
             <Plus className="h-3 w-3" />
             Add line item
           </button>

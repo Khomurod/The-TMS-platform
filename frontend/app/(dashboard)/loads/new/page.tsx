@@ -4,8 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
-import { FormField } from "@/components/ui/Modal";
-import { inputClass, selectClass } from "@/components/ui/Modal";
+import { FormField } from "@/components/ui/Input";
 import {
   ArrowLeft,
   MapPin,
@@ -140,7 +139,7 @@ export default function CreateLoadPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <FormField label="Broker Load ID">
                   <input
-                    className={inputClass}
+                    className="input-base"
                     placeholder="e.g. 445884"
                     value={brokerLoadId}
                     onChange={(e) => setBrokerLoadId(e.target.value)}
@@ -148,7 +147,7 @@ export default function CreateLoadPage() {
                 </FormField>
                 <FormField label="Broker Name">
                   <input
-                    className={inputClass}
+                    className="input-base"
                     placeholder="e.g. CH Robinson"
                     value={brokerName}
                     onChange={(e) => setBrokerName(e.target.value)}
@@ -156,7 +155,7 @@ export default function CreateLoadPage() {
                 </FormField>
                 <FormField label="Broker Contact">
                   <input
-                    className={inputClass}
+                    className="input-base"
                     placeholder="Phone or email"
                     value={brokerContact}
                     onChange={(e) => setBrokerContact(e.target.value)}
@@ -202,7 +201,7 @@ export default function CreateLoadPage() {
                     <div className="flex-1 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--surface-low)] border border-[var(--outline-variant)]">
                       <FormField label="Stop Type">
                         <select
-                          className={selectClass}
+                          className="select-base"
                           value={stop.stop_type}
                           onChange={(e) =>
                             updateStop(
@@ -218,7 +217,7 @@ export default function CreateLoadPage() {
                       </FormField>
                       <FormField label="City">
                         <input
-                          className={inputClass}
+                          className="input-base"
                           placeholder="City"
                           value={stop.city}
                           onChange={(e) =>
@@ -228,7 +227,7 @@ export default function CreateLoadPage() {
                       </FormField>
                       <FormField label="State">
                         <input
-                          className={inputClass}
+                          className="input-base"
                           placeholder="ST"
                           maxLength={2}
                           value={stop.state}
@@ -266,7 +265,7 @@ export default function CreateLoadPage() {
               <div className="flex flex-col gap-4">
                 <FormField label="Base Rate ($)" required>
                   <input
-                    className={inputClass}
+                    className="input-base"
                     type="number"
                     placeholder="0.00"
                     value={baseRate}
@@ -275,7 +274,7 @@ export default function CreateLoadPage() {
                 </FormField>
                 <FormField label="Total Miles">
                   <input
-                    className={inputClass}
+                    className="input-base"
                     type="number"
                     placeholder="0"
                     value={totalMiles}
@@ -301,7 +300,7 @@ export default function CreateLoadPage() {
                 Notes
               </h2>
               <textarea
-                className={`${inputClass} min-h-[120px] resize-y`}
+                className="input-base min-h-[120px] resize-y"
                 placeholder="Add any special instructions, detention alerts, etc..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -322,7 +321,7 @@ export default function CreateLoadPage() {
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="gradient-primary px-6 py-2 rounded-lg text-sm font-semibold shadow-ambient transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+          className="btn btn-primary btn-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {creating && <Loader2 className="h-4 w-4 animate-spin" />}
           {creating ? "Creating..." : "Create Load"}

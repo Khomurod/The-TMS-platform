@@ -213,8 +213,8 @@ export default function DriverDetailPage() {
                       key={i}
                       className="h-4 w-4"
                       style={{
-                        color: i <= (driver.rating || 0) ? "#f59e0b" : "var(--outline-variant)",
-                        fill: i <= (driver.rating || 0) ? "#f59e0b" : "none",
+                        color: i <= (driver.rating || 0) ? "var(--warning)" : "var(--outline-variant)",
+                        fill: i <= (driver.rating || 0) ? "var(--warning)" : "none",
                       }}
                     />
                   ))}
@@ -306,7 +306,7 @@ export default function DriverDetailPage() {
               <p className="text-xs mb-3" style={{ color: "var(--on-surface-variant)" }}>
                 Upload CDL, Medical Card, MVR, Drug Test and more
               </p>
-              <button className="gradient-primary px-4 py-2 rounded-lg text-xs font-semibold">
+              <button className="btn btn-primary btn-sm">
                 Bulk Upload
               </button>
             </div>

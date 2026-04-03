@@ -425,7 +425,7 @@ export default function LoadDetailPage() {
                   <p className="text-xs" style={{ color: "var(--on-surface-variant)" }}>
                     Upload BOL, POD, or rate confirmations
                   </p>
-                  <button className="gradient-primary px-4 py-2 rounded-lg text-xs font-semibold mt-3">
+                  <button className="btn btn-primary btn-sm">
                     Upload Document
                   </button>
                 </div>

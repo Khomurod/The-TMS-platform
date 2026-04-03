@@ -7,11 +7,14 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import EntityLink from "@/components/ui/EntityLink";
 import ComplianceDot from "@/components/ui/ComplianceDot";
 import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
-import Modal, { FormField, inputClass, selectClass, btnPrimary, btnSecondary } from "@/components/ui/Modal";
-import { Loader2, Phone, Mail } from "lucide-react";
+import Modal from "@/components/ui/Modal";
+import { FormField } from "@/components/ui/Input";
+import Button from "@/components/ui/Button";
+import { Loader2, Phone, Mail, Plus } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Drivers Page — Phase 4 Enhanced DataTable Integration
+   Drivers Page — Enterprise HR Management
+   Uses design system components exclusively.
    ═══════════════════════════════════════════════════════════════ */
 
 interface DriverItem {
@@ -103,7 +106,7 @@ export default function DriversPage() {
     isActive: t.key === activeTabKey,
   }));
 
-  /* ── Columns (Phase 4 Enhanced) ─────────────────────────── */
+  /* ── Columns ───────────────────────────────────────────────── */
 
   const columns: ColumnDef<DriverItem>[] = [
     {
@@ -226,24 +229,14 @@ export default function DriversPage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4">
-      {/* ── Page Header ── */}
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
-          Drivers
-        </h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-ambient"
-        >
-          <span className="text-lg leading-none">+</span> Create driver
-        </button>
-      </div>
-
-      {/* ── Enhanced DataTable ── */}
+    <div className="page-container">
+      {/* ── Main DataTable ── */}
       <div
-        className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
-        style={{ border: "1px solid var(--outline-variant)" }}
+        className="flex-1 min-h-0 overflow-hidden"
+        style={{
+          border: "1px solid var(--outline-variant)",
+          borderRadius: "var(--radius-lg)",
+        }}
       >
         <DataTable
           data={drivers}
@@ -254,6 +247,15 @@ export default function DriversPage() {
           columnToggle
           emptyState={MODULE_EMPTY_STATES.drivers}
           getRowId={(row) => row.id}
+          primaryAction={
+            <button
+              onClick={() => setShowCreate(true)}
+              className="btn btn-primary btn-sm"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Create Driver
+            </button>
+          }
           totalCount={total}
           currentPage={page}
           pageSize={pageSize}
@@ -266,29 +268,29 @@ export default function DriversPage() {
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Driver">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="First Name" required>
-            <input className={inputClass} placeholder="First name" value={form.first_name} onChange={e => setForm(f => ({...f, first_name: e.target.value}))} />
+            <input className="input-base" placeholder="First name" value={form.first_name} onChange={e => setForm(f => ({...f, first_name: e.target.value}))} />
           </FormField>
           <FormField label="Last Name" required>
-            <input className={inputClass} placeholder="Last name" value={form.last_name} onChange={e => setForm(f => ({...f, last_name: e.target.value}))} />
+            <input className="input-base" placeholder="Last name" value={form.last_name} onChange={e => setForm(f => ({...f, last_name: e.target.value}))} />
           </FormField>
           <FormField label="Email">
-            <input className={inputClass} type="email" placeholder="email@example.com" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} />
+            <input className="input-base" type="email" placeholder="email@example.com" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} />
           </FormField>
           <FormField label="Phone">
-            <input className={inputClass} placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} />
+            <input className="input-base" placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} />
           </FormField>
           <FormField label="Employment Type" required>
-            <select className={selectClass} value={form.employment_type} onChange={e => setForm(f => ({...f, employment_type: e.target.value}))}>
+            <select className="select-base" value={form.employment_type} onChange={e => setForm(f => ({...f, employment_type: e.target.value}))}>
               <option value="company_w2">Company W2</option>
               <option value="owner_operator_1099">Owner Operator (1099)</option>
               <option value="lease_operator">Lease Operator</option>
             </select>
           </FormField>
           <FormField label="CDL Number">
-            <input className={inputClass} placeholder="CDL #" value={form.cdl_number} onChange={e => setForm(f => ({...f, cdl_number: e.target.value}))} />
+            <input className="input-base" placeholder="CDL #" value={form.cdl_number} onChange={e => setForm(f => ({...f, cdl_number: e.target.value}))} />
           </FormField>
           <FormField label="CDL Class">
-            <select className={selectClass} value={form.cdl_class} onChange={e => setForm(f => ({...f, cdl_class: e.target.value}))}>
+            <select className="select-base" value={form.cdl_class} onChange={e => setForm(f => ({...f, cdl_class: e.target.value}))}>
               <option value="">Select</option>
               <option value="A">Class A</option>
               <option value="B">Class B</option>
@@ -296,9 +298,9 @@ export default function DriversPage() {
             </select>
           </FormField>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--outline-variant)" }}>
-          <button className={btnSecondary} onClick={() => setShowCreate(false)}>Cancel</button>
-          <button className={btnPrimary} onClick={handleCreate} disabled={creating || !form.first_name || !form.last_name}>{creating ? "Creating..." : "Create Driver"}</button>
+        <div className="modal-footer" style={{ marginTop: "var(--spacing-6)", padding: "var(--spacing-4) 0 0" }}>
+          <Button variant="secondary" size="md" onClick={() => setShowCreate(false)}>Cancel</Button>
+          <Button variant="primary" size="md" onClick={handleCreate} disabled={creating || !form.first_name || !form.last_name} loading={creating}>Create Driver</Button>
         </div>
       </Modal>
     </div>

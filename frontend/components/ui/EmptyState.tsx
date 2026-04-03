@@ -94,7 +94,7 @@ export default function EmptyState({
         {ctaLabel && ctaHref && (
           <Link
             href={ctaHref}
-            className="gradient-primary px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-ambient transition-opacity"
+            className="btn btn-primary btn-md flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             {ctaLabel}
@@ -104,7 +104,7 @@ export default function EmptyState({
         {ctaLabel && ctaOnClick && !ctaHref && (
           <button
             onClick={ctaOnClick}
-            className="gradient-primary px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-ambient transition-opacity"
+            className="btn btn-primary btn-md flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             {ctaLabel}

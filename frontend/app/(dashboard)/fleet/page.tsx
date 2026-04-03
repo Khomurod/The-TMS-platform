@@ -6,12 +6,14 @@ import DataTable, { ColumnDef, TabDef, StickyFooterItem } from "@/components/ui/
 import StatusBadge from "@/components/ui/StatusBadge";
 import EntityLink from "@/components/ui/EntityLink";
 import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
-import Modal, { FormField, inputClass, selectClass, btnPrimary, btnSecondary } from "@/components/ui/Modal";
+import Modal from "@/components/ui/Modal";
+import { FormField } from "@/components/ui/Input";
+import Button from "@/components/ui/Button";
 import { Loader2, Hash, Plus, Upload } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
    Fleet Page — Enterprise Asset Management
-   Compact truck list with integrated toolbar actions.
+   Uses design system components exclusively.
    ═══════════════════════════════════════════════════════════════ */
 
 interface TruckItem {
@@ -276,7 +278,7 @@ export default function FleetPage() {
   }
 
   return (
-    <div className="h-full flex flex-col" style={{ padding: "16px" }}>
+    <div className="page-container">
       {/* ── Main DataTable ── */}
       <div
         className="flex-1 min-h-0 overflow-hidden"
@@ -296,7 +298,7 @@ export default function FleetPage() {
           emptyState={MODULE_EMPTY_STATES.fleet}
           getRowId={(row) => row.id}
           toolbarLeft={
-            <button className="btn-enterprise">
+            <button className="btn btn-secondary btn-sm">
               <Upload className="h-3.5 w-3.5" />
               Import file
             </button>
@@ -304,7 +306,7 @@ export default function FleetPage() {
           primaryAction={
             <button
               onClick={() => setShowCreate(true)}
-              className="btn-enterprise-primary"
+              className="btn btn-primary btn-sm"
             >
               <Plus className="h-3.5 w-3.5" />
               Create Truck
@@ -327,34 +329,34 @@ export default function FleetPage() {
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create New Truck">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Unit Number" required>
-            <input className={inputClass} placeholder="e.g. 318 CMP" value={form.unit_number} onChange={e => setForm(f => ({...f, unit_number: e.target.value}))} />
+            <input className="input-base" placeholder="e.g. 318 CMP" value={form.unit_number} onChange={e => setForm(f => ({...f, unit_number: e.target.value}))} />
           </FormField>
           <FormField label="Year">
-            <input className={inputClass} type="number" placeholder="2024" value={form.year} onChange={e => setForm(f => ({...f, year: e.target.value}))} />
+            <input className="input-base" type="number" placeholder="2024" value={form.year} onChange={e => setForm(f => ({...f, year: e.target.value}))} />
           </FormField>
           <FormField label="Make">
-            <input className={inputClass} placeholder="e.g. Freightliner" value={form.make} onChange={e => setForm(f => ({...f, make: e.target.value}))} />
+            <input className="input-base" placeholder="e.g. Freightliner" value={form.make} onChange={e => setForm(f => ({...f, make: e.target.value}))} />
           </FormField>
           <FormField label="Model">
-            <input className={inputClass} placeholder="e.g. Cascadia" value={form.model} onChange={e => setForm(f => ({...f, model: e.target.value}))} />
+            <input className="input-base" placeholder="e.g. Cascadia" value={form.model} onChange={e => setForm(f => ({...f, model: e.target.value}))} />
           </FormField>
           <FormField label="VIN">
-            <input className={inputClass} placeholder="Vehicle ID Number" value={form.vin} onChange={e => setForm(f => ({...f, vin: e.target.value}))} />
+            <input className="input-base" placeholder="Vehicle ID Number" value={form.vin} onChange={e => setForm(f => ({...f, vin: e.target.value}))} />
           </FormField>
           <FormField label="License Plate">
-            <input className={inputClass} placeholder="Plate #" value={form.license_plate} onChange={e => setForm(f => ({...f, license_plate: e.target.value}))} />
+            <input className="input-base" placeholder="Plate #" value={form.license_plate} onChange={e => setForm(f => ({...f, license_plate: e.target.value}))} />
           </FormField>
           <FormField label="Ownership Type">
-            <select className={selectClass} value={form.ownership_type} onChange={e => setForm(f => ({...f, ownership_type: e.target.value}))}>
+            <select className="select-base" value={form.ownership_type} onChange={e => setForm(f => ({...f, ownership_type: e.target.value}))}>
               <option value="company">Company</option>
               <option value="owner_operator">Owner Operator</option>
               <option value="leased">Leased</option>
             </select>
           </FormField>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: "1px solid var(--outline-variant)" }}>
-          <button className={btnSecondary} onClick={() => setShowCreate(false)}>Cancel</button>
-          <button className={btnPrimary} onClick={handleCreate} disabled={creating || !form.unit_number}>{creating ? "Creating..." : "Create Truck"}</button>
+        <div className="modal-footer" style={{ marginTop: "var(--spacing-6)", padding: "var(--spacing-4) 0 0" }}>
+          <Button variant="secondary" size="md" onClick={() => setShowCreate(false)}>Cancel</Button>
+          <Button variant="primary" size="md" onClick={handleCreate} disabled={creating || !form.unit_number} loading={creating}>Create Truck</Button>
         </div>
       </Modal>
     </div>

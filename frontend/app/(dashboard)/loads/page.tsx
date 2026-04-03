@@ -295,7 +295,7 @@ export default function LoadsPage() {
           primaryAction={
             <Link
               href="/loads/new"
-              className="btn-enterprise-primary"
+              className="btn btn-primary btn-sm"
               style={{ textDecoration: "none" }}
             >
               <Plus className="h-3.5 w-3.5" />
