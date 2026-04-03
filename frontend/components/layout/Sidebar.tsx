@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import NewBadge from "@/components/ui/NewBadge";
+import Modal from "@/components/ui/Modal";
 import {
   Building2, LayoutDashboard, Truck, Map, Users, Settings, Wallet,
   ChevronDown, ChevronRight, LogOut, Mail, Calendar, MapPin,
@@ -13,7 +14,7 @@ import {
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Sidebar — Phase 6 Enhanced (Blueprint §3.3)
+   Sidebar — Modernized (Tailwind + Data Attributes + Shared Modal)
    Dark navy, single-expand accordion, NewBadge integration,
    Safehaul branding, user identity footer.
    ═══════════════════════════════════════════════════════════════ */
@@ -77,69 +78,12 @@ const navItems: NavItem[] = [
   { name: "Apps & Marketplace", href: "/apps", icon: ShoppingBag, badge: { label: "NEW", variant: "green" }, implemented: false },
 ];
 
-/* ── Under Development Modal ──────────────────────────────────── */
-function UnderDevModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null;
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: "#fff", borderRadius: 16, padding: "36px 40px",
-          maxWidth: 420, width: "90%", textAlign: "center",
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-          position: "relative",
-        }}
-      >
-        <button onClick={onClose} style={{
-          position: "absolute", top: 12, right: 12,
-          background: "none", border: "none", cursor: "pointer", color: "#94a3b8",
-        }}>
-          <X style={{ width: 18, height: 18 }} />
-        </button>
-        <div style={{
-          width: 56, height: 56, borderRadius: 14, margin: "0 auto 16px",
-          background: "linear-gradient(135deg, #f59e0b, #f97316)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Construction style={{ width: 28, height: 28, color: "#fff" }} />
-        </div>
-        <h3 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
-          Under Development
-        </h3>
-        <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.6, marginBottom: 20 }}>
-          This feature is currently being built and will be available soon. Stay tuned for updates!
-        </p>
-        <button
-          onClick={onClose}
-          style={{
-            background: "linear-gradient(135deg, #3b82f6, #06b6d4)",
-            color: "#fff", border: "none", borderRadius: 8,
-            padding: "10px 32px", fontSize: 14, fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Got it
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  // Single-expand accordion — only one section open at a time (§3.3 rule)
+  // Single-expand accordion — only one section open at a time
   const [openSection, setOpenSection] = useState<string | null>(() => {
-    // Auto-open the section containing the current path
     for (const item of navItems) {
       if (item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))) {
         return item.name;
@@ -151,12 +95,10 @@ export default function Sidebar() {
   const [showUnderDev, setShowUnderDev] = useState(false);
 
   const toggleExpand = (name: string) => {
-    // Single-expand: close current if re-clicking, otherwise switch
     setOpenSection(prev => prev === name ? null : name);
   };
 
   const isActivePath = (href: string) => {
-    // Handle query params
     const baseHref = href.split("?")[0];
     return pathname === baseHref || pathname.startsWith(baseHref + "/");
   };
@@ -172,33 +114,37 @@ export default function Sidebar() {
 
   return (
     <>
-      <UnderDevModal open={showUnderDev} onClose={() => setShowUnderDev(false)} />
-      <aside style={{
-        width: 240, minWidth: 240,
-        background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
-        display: "flex", flexDirection: "column",
-        height: "100vh", position: "sticky", top: 0, zIndex: 30,
-        overflow: "hidden", borderRight: "1px solid #334155",
-      }}>
-        {/* Brand */}
-        <div style={{
-          height: 56, display: "flex", alignItems: "center",
-          padding: "0 16px", borderBottom: "1px solid #334155", gap: 10, flexShrink: 0,
-        }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "linear-gradient(135deg, #3b82f6, #06b6d4)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Truck style={{ width: 16, height: 16, color: "#fff" }} />
+      {/* Under Development Modal — using shared Modal component */}
+      <Modal isOpen={showUnderDev} onClose={() => setShowUnderDev(false)} title="Under Development" size="sm">
+        <div className="flex flex-col items-center text-center py-2">
+          <div className="w-14 h-14 rounded-[14px] bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-4">
+            <Construction className="w-7 h-7 text-white" />
           </div>
-          <span style={{ color: "#f8fafc", fontSize: 15, fontWeight: 700, letterSpacing: -0.3 }}>
+          <p className="text-sm text-[var(--on-surface-variant)] leading-relaxed mb-5">
+            This feature is currently being built and will be available soon. Stay tuned for updates!
+          </p>
+          <button
+            onClick={() => setShowUnderDev(false)}
+            className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none rounded-lg px-8 py-2.5 text-sm font-bold cursor-pointer hover:brightness-110 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+          >
+            Got it
+          </button>
+        </div>
+      </Modal>
+
+      <aside className="w-60 min-w-60 bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col h-screen sticky top-0 z-30 overflow-hidden border-r border-slate-700">
+        {/* Brand */}
+        <div className="h-14 flex items-center px-4 border-b border-slate-700 gap-2.5 shrink-0">
+          <div className="w-[30px] h-[30px] rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+            <Truck className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-slate-50 text-[15px] font-bold tracking-tight">
             Safehaul TMS
           </span>
         </div>
 
-        {/* Nav — Blueprint §3.3 Structure */}
-        <nav style={{ flex: 1, overflowY: "auto", padding: "6px 8px" }}>
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-1.5 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const hasChildren = !!item.children;
@@ -211,40 +157,28 @@ export default function Sidebar() {
                 {hasChildren ? (
                   <button
                     onClick={() => toggleExpand(item.name)}
-                    style={{
-                      display: "flex", alignItems: "center", width: "100%",
-                      padding: "7px 10px", borderRadius: 6, border: "none",
-                      background: parentActive ? "rgba(59,130,246,0.12)" : "transparent",
-                      color: parentActive ? "#60a5fa" : "#cbd5e1",
-                      fontSize: 13, fontWeight: parentActive ? 600 : 500,
-                      cursor: "pointer", gap: 10, marginBottom: 1,
-                      borderLeft: parentActive ? "3px solid #3b82f6" : "3px solid transparent",
-                    }}
-                    onMouseEnter={e => { if (!parentActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                    onMouseLeave={e => { if (!parentActive) e.currentTarget.style.background = "transparent"; }}
+                    data-active={parentActive}
+                    className="flex items-center w-full px-2.5 py-[7px] rounded-md border-none text-[13px] gap-2.5 mb-px cursor-pointer border-l-[3px] transition-colors
+                      text-slate-300 border-l-transparent bg-transparent
+                      hover:bg-white/5
+                      data-[active=true]:text-blue-400 data-[active=true]:bg-blue-500/12 data-[active=true]:border-l-blue-500 data-[active=true]:font-semibold"
                   >
-                    <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
-                    <span style={{ flex: 1, textAlign: "left" }}>{item.name}</span>
-                    {isOpen ? <ChevronDown style={{ width: 14, height: 14, opacity: 0.5 }} /> : <ChevronRight style={{ width: 14, height: 14, opacity: 0.5 }} />}
+                    <Icon className="w-[17px] h-[17px] shrink-0" />
+                    <span className="flex-1 text-left font-medium">{item.name}</span>
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
                   </button>
                 ) : (
                   <Link
                     href={item.implemented ? item.href! : "#"}
                     onClick={(e) => handleNav(e, item.implemented)}
-                    style={{
-                      display: "flex", alignItems: "center",
-                      padding: "7px 10px", borderRadius: 6, textDecoration: "none",
-                      color: itemActive ? "#60a5fa" : "#cbd5e1",
-                      fontSize: 13, fontWeight: itemActive ? 600 : 500,
-                      gap: 10, marginBottom: 1,
-                      background: itemActive ? "rgba(59,130,246,0.12)" : "transparent",
-                      borderLeft: itemActive ? "3px solid #3b82f6" : "3px solid transparent",
-                    }}
-                    onMouseEnter={e => { if (!itemActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                    onMouseLeave={e => { if (!itemActive) e.currentTarget.style.background = "transparent"; }}
+                    data-active={itemActive}
+                    className="flex items-center px-2.5 py-[7px] rounded-md no-underline text-[13px] gap-2.5 mb-px border-l-[3px] transition-colors
+                      text-slate-300 border-l-transparent bg-transparent
+                      hover:bg-white/5
+                      data-[active=true]:text-blue-400 data-[active=true]:bg-blue-500/12 data-[active=true]:border-l-blue-500 data-[active=true]:font-semibold"
                   >
-                    <Icon style={{ width: 17, height: 17, flexShrink: 0 }} />
-                    <span style={{ flex: 1 }}>{item.name}</span>
+                    <Icon className="w-[17px] h-[17px] shrink-0" />
+                    <span className="flex-1 font-medium">{item.name}</span>
                     {item.badge && (
                       <NewBadge
                         label={item.badge.label}
@@ -256,7 +190,7 @@ export default function Sidebar() {
                 )}
 
                 {hasChildren && isOpen && (
-                  <div style={{ marginLeft: 20, borderLeft: "1px solid #334155", paddingLeft: 12, marginBottom: 2 }}>
+                  <div className="ml-5 border-l border-slate-700 pl-3 mb-0.5">
                     {item.children!.map(child => {
                       const childActive = isActivePath(child.href);
                       return (
@@ -264,19 +198,13 @@ export default function Sidebar() {
                           key={child.name}
                           href={child.implemented ? child.href : "#"}
                           onClick={(e) => handleNav(e, child.implemented)}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 6,
-                            padding: "5px 10px", borderRadius: 5,
-                            textDecoration: "none",
-                            color: childActive ? "#60a5fa" : "#94a3b8",
-                            fontSize: 12.5, fontWeight: childActive ? 600 : 400,
-                            background: childActive ? "rgba(59,130,246,0.1)" : "transparent",
-                            marginBottom: 1,
-                          }}
-                          onMouseEnter={e => { if (!childActive) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                          onMouseLeave={e => { if (!childActive) e.currentTarget.style.background = "transparent"; }}
+                          data-active={childActive}
+                          className="flex items-center gap-1.5 px-2.5 py-[5px] rounded-[5px] no-underline text-[12.5px] mb-px transition-colors
+                            text-slate-400 bg-transparent
+                            hover:bg-white/[0.04]
+                            data-[active=true]:text-blue-400 data-[active=true]:bg-blue-500/10 data-[active=true]:font-semibold"
                         >
-                          <span style={{ flex: 1 }}>{child.name}</span>
+                          <span className="flex-1">{child.name}</span>
                           {child.badge && (
                             <NewBadge
                               label={child.badge.label}
@@ -294,35 +222,31 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* ── Separator ── */}
-        <div style={{ borderTop: "1px solid #334155", margin: "0 16px" }} />
+        {/* Separator */}
+        <div className="border-t border-slate-700 mx-4" />
 
-        {/* Footer — Company + User Identity (§3.3) */}
-        <div style={{ padding: 10, flexShrink: 0 }}>
-          <button style={{
-            display: "flex", alignItems: "center", gap: 8, width: "100%",
-            padding: "8px 10px", borderRadius: 6,
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-            color: "#e2e8f0", fontSize: 11, fontWeight: 600, cursor: "pointer",
-            marginBottom: 10, textAlign: "left",
-          }}>
-            <Building2 style={{ width: 14, height: 14, color: "#94a3b8", flexShrink: 0 }} />
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.company_name || "Company"}</span>
-            <ChevronRight style={{ width: 12, height: 12, color: "#64748b" }} />
+        {/* Footer — Company + User Identity */}
+        <div className="p-2.5 shrink-0">
+          <button className="flex items-center gap-2 w-full px-2.5 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-slate-200 text-[11px] font-semibold cursor-pointer mb-2.5 text-left hover:bg-white/[0.08] transition-colors">
+            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{user?.company_name || "Company"}</span>
+            <ChevronRight className="w-3 h-3 text-slate-500" />
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px" }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: "50%",
-              background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontSize: 11, fontWeight: 700, flexShrink: 0,
-            }}>{user ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` : "?"}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "#f1f5f9", fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 }}>{user ? `${user.first_name} ${user.last_name}` : "User"}</div>
-              <div style={{ color: "#64748b", fontSize: 10.5, lineHeight: 1.2, marginTop: 2 }}>{user?.email || ""}</div>
+          <div className="flex items-center gap-2.5 px-1">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+              {user ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` : "?"}
             </div>
-            <button onClick={() => logout()} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }} title="Sign out">
-              <LogOut style={{ width: 15, height: 15 }} />
+            <div className="flex-1 min-w-0">
+              <div className="text-slate-100 text-[12.5px] font-semibold leading-tight">{user ? `${user.first_name} ${user.last_name}` : "User"}</div>
+              <div className="text-slate-500 text-[10.5px] leading-tight mt-0.5">{user?.email || ""}</div>
+            </div>
+            <button
+              onClick={() => logout()}
+              className="bg-transparent border-none text-slate-500 cursor-pointer p-1 hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 rounded"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-[15px] h-[15px]" />
             </button>
           </div>
         </div>

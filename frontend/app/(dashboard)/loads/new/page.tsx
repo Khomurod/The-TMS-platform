@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { FormField } from "@/components/ui/Modal";
+import { inputClass, selectClass } from "@/components/ui/Modal";
 import {
   ArrowLeft,
   MapPin,
@@ -31,49 +33,6 @@ const emptyStop = (type: "pickup" | "delivery", seq: number): Stop => ({
   city: "",
   state: "",
 });
-
-/* ═══════════════════════════════════════════════════════════════
-   Shared styled input helpers (inline, CSS-var-themed)
-   ═══════════════════════════════════════════════════════════════ */
-
-const fieldStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 14px",
-  borderRadius: "var(--radius-md)",
-  border: "1px solid var(--outline-variant)",
-  backgroundColor: "var(--surface-lowest)",
-  color: "var(--on-surface)",
-  fontSize: 14,
-  outline: "none",
-  transition: "border-color 0.15s ease",
-};
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label
-        className="text-xs font-semibold uppercase tracking-wider"
-        style={{ color: "var(--on-surface-variant)" }}
-      >
-        {label}
-        {required && (
-          <span style={{ color: "var(--error)" }} className="ml-0.5">
-            *
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    Page Component
@@ -153,23 +112,16 @@ export default function CreateLoadPage() {
   return (
     <div className="h-full flex flex-col">
       {/* ── Top Bar ── */}
-      <div
-        className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: "1px solid var(--outline-variant)" }}
-      >
+      <div className="flex items-center gap-4 px-6 py-4 shrink-0 border-b border-[var(--outline-variant)]">
         <Link
           href="/loads"
-          className="flex items-center gap-2 text-sm font-medium transition-colors"
-          style={{ color: "var(--on-surface-variant)" }}
+          className="flex items-center gap-2 text-sm font-medium text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Loads
         </Link>
-        <div
-          className="w-px h-5"
-          style={{ backgroundColor: "var(--outline-variant)" }}
-        />
-        <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
+        <div className="w-px h-5 bg-[var(--outline-variant)]" />
+        <h1 className="headline-sm text-[var(--on-surface)]">
           Create New Load
         </h1>
       </div>
@@ -181,59 +133,48 @@ export default function CreateLoadPage() {
           <div className="lg:col-span-7 flex flex-col gap-6">
             {/* ── Broker Info Card ── */}
             <div className="card p-6">
-              <h2
-                className="title-md flex items-center gap-2 mb-5"
-                style={{ color: "var(--on-surface)" }}
-              >
-                <FileText className="h-4 w-4" style={{ color: "var(--primary)" }} />
+              <h2 className="title-md flex items-center gap-2 mb-5 text-[var(--on-surface)]">
+                <FileText className="h-4 w-4 text-[var(--primary)]" />
                 Broker Information
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="Broker Load ID">
+                <FormField label="Broker Load ID">
                   <input
-                    style={fieldStyle}
+                    className={inputClass}
                     placeholder="e.g. 445884"
                     value={brokerLoadId}
                     onChange={(e) => setBrokerLoadId(e.target.value)}
                   />
-                </Field>
-                <Field label="Broker Name">
+                </FormField>
+                <FormField label="Broker Name">
                   <input
-                    style={fieldStyle}
+                    className={inputClass}
                     placeholder="e.g. CH Robinson"
                     value={brokerName}
                     onChange={(e) => setBrokerName(e.target.value)}
                   />
-                </Field>
-                <Field label="Broker Contact">
+                </FormField>
+                <FormField label="Broker Contact">
                   <input
-                    style={fieldStyle}
+                    className={inputClass}
                     placeholder="Phone or email"
                     value={brokerContact}
                     onChange={(e) => setBrokerContact(e.target.value)}
                   />
-                </Field>
+                </FormField>
               </div>
             </div>
 
             {/* ── Routing Timeline Card ── */}
             <div className="card p-6">
               <div className="flex items-center justify-between mb-5">
-                <h2
-                  className="title-md flex items-center gap-2"
-                  style={{ color: "var(--on-surface)" }}
-                >
-                  <MapPin className="h-4 w-4" style={{ color: "var(--primary)" }} />
+                <h2 className="title-md flex items-center gap-2 text-[var(--on-surface)]">
+                  <MapPin className="h-4 w-4 text-[var(--primary)]" />
                   Routing Timeline
                 </h2>
                 <button
                   onClick={addStop}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
-                  style={{
-                    color: "var(--primary)",
-                    border: "1px solid var(--primary)",
-                    backgroundColor: "var(--primary-fixed)",
-                  }}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors text-[var(--primary)] border border-[var(--primary)] bg-[var(--primary-fixed)] hover:brightness-95 active:scale-[0.98]"
                 >
                   <Plus className="h-3 w-3" />
                   Add Stop
@@ -246,37 +187,22 @@ export default function CreateLoadPage() {
                     {/* Timeline indicator */}
                     <div className="flex flex-col items-center pt-2 shrink-0">
                       <div
-                        className="w-3 h-3 rounded-full border-2"
-                        style={{
-                          borderColor:
-                            stop.stop_type === "pickup"
-                              ? "var(--success)"
-                              : "var(--error)",
-                          backgroundColor:
-                            stop.stop_type === "pickup"
-                              ? "var(--success-container)"
-                              : "var(--error-container)",
-                        }}
+                        className={`w-3 h-3 rounded-full border-2 ${
+                          stop.stop_type === "pickup"
+                            ? "border-[var(--success)] bg-[var(--success-container)]"
+                            : "border-[var(--error)] bg-[var(--error-container)]"
+                        }`}
                       />
                       {idx < stops.length - 1 && (
-                        <div
-                          className="w-0.5 flex-1 min-h-[40px] mt-1"
-                          style={{ backgroundColor: "var(--outline-variant)" }}
-                        />
+                        <div className="w-0.5 flex-1 min-h-[40px] mt-1 bg-[var(--outline-variant)]" />
                       )}
                     </div>
 
                     {/* Stop fields */}
-                    <div
-                      className="flex-1 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3"
-                      style={{
-                        backgroundColor: "var(--surface-low)",
-                        border: "1px solid var(--outline-variant)",
-                      }}
-                    >
-                      <Field label="Stop Type">
+                    <div className="flex-1 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--surface-low)] border border-[var(--outline-variant)]">
+                      <FormField label="Stop Type">
                         <select
-                          style={fieldStyle}
+                          className={selectClass}
                           value={stop.stop_type}
                           onChange={(e) =>
                             updateStop(
@@ -289,20 +215,20 @@ export default function CreateLoadPage() {
                           <option value="pickup">Pickup</option>
                           <option value="delivery">Delivery</option>
                         </select>
-                      </Field>
-                      <Field label="City">
+                      </FormField>
+                      <FormField label="City">
                         <input
-                          style={fieldStyle}
+                          className={inputClass}
                           placeholder="City"
                           value={stop.city}
                           onChange={(e) =>
                             updateStop(idx, "city", e.target.value)
                           }
                         />
-                      </Field>
-                      <Field label="State">
+                      </FormField>
+                      <FormField label="State">
                         <input
-                          style={fieldStyle}
+                          className={inputClass}
                           placeholder="ST"
                           maxLength={2}
                           value={stop.state}
@@ -310,15 +236,14 @@ export default function CreateLoadPage() {
                             updateStop(idx, "state", e.target.value)
                           }
                         />
-                      </Field>
+                      </FormField>
                     </div>
 
                     {/* Remove button (if more than 2 stops) */}
                     {stops.length > 2 && (
                       <button
                         onClick={() => removeStop(idx)}
-                        className="mt-3 p-2 rounded-md transition-colors"
-                        style={{ color: "var(--error)" }}
+                        className="mt-3 p-2 rounded-md transition-colors text-[var(--error)] hover:bg-[var(--error-container)] active:scale-[0.98]"
                         title="Remove stop"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -334,54 +259,36 @@ export default function CreateLoadPage() {
           <div className="lg:col-span-3 flex flex-col gap-6">
             {/* ── Financials Card ── */}
             <div className="card p-6">
-              <h2
-                className="title-md flex items-center gap-2 mb-5"
-                style={{ color: "var(--on-surface)" }}
-              >
-                <DollarSign
-                  className="h-4 w-4"
-                  style={{ color: "var(--primary)" }}
-                />
+              <h2 className="title-md flex items-center gap-2 mb-5 text-[var(--on-surface)]">
+                <DollarSign className="h-4 w-4 text-[var(--primary)]" />
                 Financials
               </h2>
               <div className="flex flex-col gap-4">
-                <Field label="Base Rate ($)" required>
+                <FormField label="Base Rate ($)" required>
                   <input
-                    style={fieldStyle}
+                    className={inputClass}
                     type="number"
                     placeholder="0.00"
                     value={baseRate}
                     onChange={(e) => setBaseRate(e.target.value)}
                   />
-                </Field>
-                <Field label="Total Miles">
+                </FormField>
+                <FormField label="Total Miles">
                   <input
-                    style={fieldStyle}
+                    className={inputClass}
                     type="number"
                     placeholder="0"
                     value={totalMiles}
                     onChange={(e) => setTotalMiles(e.target.value)}
                   />
-                </Field>
+                </FormField>
 
                 {/* Rate-per-mile summary */}
-                <div
-                  className="rounded-lg p-4 flex items-center justify-between"
-                  style={{
-                    backgroundColor: "var(--surface-low)",
-                    border: "1px solid var(--outline-variant)",
-                  }}
-                >
-                  <span
-                    className="text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--on-surface-variant)" }}
-                  >
+                <div className="rounded-lg p-4 flex items-center justify-between bg-[var(--surface-low)] border border-[var(--outline-variant)]">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--on-surface-variant)]">
                     Rate / Mile
                   </span>
-                  <span
-                    className="text-lg font-bold tabular-nums"
-                    style={{ color: "var(--primary)" }}
-                  >
+                  <span className="text-lg font-bold tabular-nums text-[var(--primary)]">
                     {ratePerMile === "—" ? "—" : `$${ratePerMile}`}
                   </span>
                 </div>
@@ -390,18 +297,11 @@ export default function CreateLoadPage() {
 
             {/* ── Notes Card ── */}
             <div className="card p-6">
-              <h2
-                className="title-md mb-5"
-                style={{ color: "var(--on-surface)" }}
-              >
+              <h2 className="title-md mb-5 text-[var(--on-surface)]">
                 Notes
               </h2>
               <textarea
-                style={{
-                  ...fieldStyle,
-                  minHeight: 120,
-                  resize: "vertical",
-                }}
+                className={`${inputClass} min-h-[120px] resize-y`}
                 placeholder="Add any special instructions, detention alerts, etc..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -412,28 +312,17 @@ export default function CreateLoadPage() {
       </div>
 
       {/* ── Sticky Footer Action Bar ── */}
-      <div
-        className="flex items-center justify-end gap-3 px-6 py-4 shrink-0"
-        style={{
-          borderTop: "1px solid var(--outline-variant)",
-          backgroundColor: "var(--surface-lowest)",
-        }}
-      >
+      <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t border-[var(--outline-variant)] bg-[var(--surface-lowest)]">
         <Link
           href="/loads"
-          className="px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{
-            backgroundColor: "var(--surface-lowest)",
-            color: "var(--on-surface-variant)",
-            border: "1px solid var(--outline-variant)",
-          }}
+          className="px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-[var(--surface-lowest)] text-[var(--on-surface-variant)] border border-[var(--outline-variant)] hover:bg-[var(--surface-container)] hover:border-[var(--outline)] no-underline"
         >
           Cancel
         </Link>
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="gradient-primary px-6 py-2 rounded-lg text-sm font-semibold shadow-ambient transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="gradient-primary px-6 py-2 rounded-lg text-sm font-semibold shadow-ambient transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
         >
           {creating && <Loader2 className="h-4 w-4 animate-spin" />}
           {creating ? "Creating..." : "Create Load"}

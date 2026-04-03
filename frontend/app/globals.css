@@ -4,6 +4,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
 
 /* ── Design Tokens (CSS Custom Properties) ───────────────────── */
 

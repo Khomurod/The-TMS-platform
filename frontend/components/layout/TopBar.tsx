@@ -1,16 +1,17 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import {
-  Search, Sun, Settings, Send, Bell, User, Plus,
+  Search, Sun, Moon, Settings, Send, Bell, User, Plus,
   ChevronDown, Globe, Package, Users, Truck,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   TopBar — Phase 6 Enhanced (Blueprint §3.5)
-   Breadcrumbs + Ctrl+K search + "Create new" dropdown + notifications
+   TopBar — Modernized (Tailwind + Dark Mode + Wired Buttons)
+   Breadcrumbs + Ctrl+K search + "Create new" dropdown
    ═══════════════════════════════════════════════════════════════ */
 
 interface TopBarProps {
@@ -20,7 +21,12 @@ interface TopBarProps {
 export default function TopBar({ onSearchClick }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch for theme icon
+  useEffect(() => setMounted(true), []);
 
   const getBreadcrumbs = () => {
     if (pathname.includes("/drivers/") && pathname.split("/").length > 2) return ["HR Management", "Drivers", "Driver Profile"];
@@ -42,31 +48,21 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
   ];
 
   return (
-    <header style={{
-      height: 48,
-      background: "#ffffff",
-      borderBottom: "1px solid #e2e8f0",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "0 20px",
-      position: "sticky",
-      top: 0,
-      zIndex: 10,
-      flexShrink: 0,
-    }}>
+    <header className="h-12 bg-[var(--surface-lowest)] border-b border-[var(--outline-variant)] flex items-center justify-between px-5 sticky top-0 z-10 shrink-0 transition-colors">
       {/* Left: Breadcrumbs */}
-      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+      <div className="flex items-center">
         {breadcrumbs.map((crumb, i) => (
-          <span key={crumb} style={{ display: "flex", alignItems: "center" }}>
+          <span key={crumb} className="flex items-center">
             {i > 0 && (
-              <span style={{ margin: "0 8px", color: "#cbd5e1", fontSize: 12 }}>/</span>
+              <span className="mx-2 text-[var(--outline-variant)] text-xs">/</span>
             )}
-            <span style={{
-              fontSize: 13,
-              color: i === breadcrumbs.length - 1 ? "#0f172a" : "#64748b",
-              fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
-            }}>
+            <span
+              className={`text-[13px] ${
+                i === breadcrumbs.length - 1
+                  ? "text-[var(--on-surface)] font-bold"
+                  : "text-[var(--on-surface-variant)] font-medium"
+              }`}
+            >
               {crumb}
             </span>
           </span>
@@ -74,89 +70,54 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
       </div>
 
       {/* Right: Search + Actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="flex items-center gap-3">
         {/* Search — clicks open CommandMenu */}
         <button
           onClick={onSearchClick}
-          style={{
-            display: "flex", alignItems: "center",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            borderRadius: 8,
-            height: 32,
-            padding: "0 12px",
-            gap: 6,
-            cursor: "pointer",
-          }}
+          className="flex items-center h-8 px-3 gap-1.5 bg-[var(--surface)] border border-[var(--outline-variant)] rounded-lg cursor-pointer hover:border-[var(--outline)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
         >
-          <Search style={{ width: 14, height: 14, color: "#94a3b8" }} />
-          <span style={{ fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap" }}>
+          <Search className="w-3.5 h-3.5 text-[var(--on-surface-variant)]" />
+          <span className="text-xs text-[var(--on-surface-variant)] whitespace-nowrap">
             Ctrl + K to search
           </span>
-          <kbd style={{
-            fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 3,
-            background: "#e2e8f0", color: "#64748b", marginLeft: 8,
-          }}>⌘K</kbd>
+          <kbd className="text-[9px] font-bold px-1 py-[1px] rounded bg-[var(--surface-container)] text-[var(--on-surface-variant)] ml-2">
+            ⌘K
+          </kbd>
         </button>
 
         {/* Divider */}
-        <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
+        <div className="w-px h-5 bg-[var(--outline-variant)]" />
 
         {/* Version */}
-        <button style={{
-          display: "flex", alignItems: "center", gap: 6,
-          background: "none", border: "none", cursor: "pointer",
-          fontSize: 12, fontWeight: 700, color: "#0f172a",
-        }}>
-          <span style={{
-            width: 22, height: 22, borderRadius: "50%",
-            background: "#eff6ff", display: "flex",
-            alignItems: "center", justifyContent: "center",
-          }}>
-            <Globe style={{ width: 13, height: 13, color: "#3b82f6" }} />
+        <button className="flex items-center gap-1.5 bg-transparent border-none cursor-pointer text-xs font-bold text-[var(--on-surface)] hover:opacity-80 transition-opacity">
+          <span className="w-[22px] h-[22px] rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+            <Globe className="w-[13px] h-[13px] text-blue-500" />
           </span>
           Safehaul 2.0
-          <ChevronDown style={{ width: 12, height: 12, color: "#94a3b8" }} />
+          <ChevronDown className="w-3 h-3 text-[var(--on-surface-variant)]" />
         </button>
 
-        {/* Create New — with dropdown (§3.5) */}
-        <div style={{ position: "relative" }}>
+        {/* Create New — with dropdown */}
+        <div className="relative">
           <button
             onClick={() => setShowCreateMenu(!showCreateMenu)}
-            style={{
-              display: "flex", alignItems: "center", gap: 5,
-              padding: "5px 12px", borderRadius: 6,
-              background: "#fff", border: "1px solid #e2e8f0",
-              fontSize: 12, fontWeight: 600, color: "#334155",
-              cursor: "pointer",
-            }}
+            className="flex items-center gap-1.5 px-3 py-[5px] rounded-md bg-[var(--surface-lowest)] border border-[var(--outline-variant)] text-xs font-semibold text-[var(--on-surface)] cursor-pointer hover:border-[var(--outline)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
           >
-            <Plus style={{ width: 14, height: 14, color: "#94a3b8" }} />
+            <Plus className="w-3.5 h-3.5 text-[var(--on-surface-variant)]" />
             Create new
-            <ChevronDown style={{ width: 12, height: 12, color: "#94a3b8" }} />
+            <ChevronDown className="w-3 h-3 text-[var(--on-surface-variant)]" />
           </button>
 
           {showCreateMenu && (
             <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 10 }} onClick={() => setShowCreateMenu(false)} />
-              <div style={{
-                position: "absolute", right: 0, top: "100%", marginTop: 4, zIndex: 20,
-                background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.1)", minWidth: 180,
-                padding: "4px 0",
-              }}>
+              <div className="fixed inset-0 z-10" onClick={() => setShowCreateMenu(false)} />
+              <div className="absolute right-0 top-full mt-1 z-20 bg-[var(--surface-lowest)] rounded-lg border border-[var(--outline-variant)] shadow-lg min-w-[180px] py-1 animate-in fade-in zoom-in-95 duration-150">
                 {createOptions.map((opt) => (
                   <Link
                     key={opt.label}
                     href={opt.href}
                     onClick={() => setShowCreateMenu(false)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "8px 14px", fontSize: 12.5, fontWeight: 500,
-                      color: "#334155", textDecoration: "none",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    className="flex items-center gap-2 px-3.5 py-2 text-[12.5px] font-medium text-[var(--on-surface)] no-underline hover:bg-[var(--surface-container)] rounded-md mx-1 transition-colors focus-visible:outline-none focus-visible:bg-[var(--surface-container)]"
                   >
                     {opt.icon}
                     {opt.label}
@@ -168,44 +129,57 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
         </div>
 
         {/* Live Support */}
-        <button style={{
-          display: "flex", alignItems: "center", gap: 5,
-          background: "none", border: "none", cursor: "pointer",
-          fontSize: 11, fontWeight: 700, color: "#10b981",
-        }}>
-          <span style={{
-            width: 6, height: 6, borderRadius: "50%",
-            background: "#10b981", display: "inline-block",
-          }} />
+        <button className="flex items-center gap-1.5 bg-transparent border-none cursor-pointer text-[11px] font-bold text-emerald-500">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
           Live Support
         </button>
 
-        {/* Icons */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#94a3b8" }}>
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "inherit" }}>
-            <Sun style={{ width: 16, height: 16 }} />
+        {/* Icon Actions */}
+        <div className="flex items-center gap-1">
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-1.5 rounded-lg text-[var(--on-surface-variant)] hover:text-[var(--on-surface)] hover:bg-[var(--surface-container)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 active:scale-95"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {mounted && theme === "dark" ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
           </button>
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "inherit" }}>
-            <Settings style={{ width: 16, height: 16 }} />
+
+          {/* Settings */}
+          <button
+            onClick={() => router.push("/settings")}
+            className="p-1.5 rounded-lg text-[var(--on-surface-variant)] hover:text-[var(--on-surface)] hover:bg-[var(--surface-container)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 active:scale-95"
+            aria-label="Settings"
+          >
+            <Settings className="w-4 h-4" />
           </button>
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "inherit" }}>
-            <Send style={{ width: 16, height: 16 }} />
+
+          {/* Messages (placeholder) */}
+          <button
+            className="p-1.5 rounded-lg text-[var(--on-surface-variant)] hover:text-[var(--on-surface)] hover:bg-[var(--surface-container)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 active:scale-95"
+            aria-label="Messages"
+          >
+            <Send className="w-4 h-4" />
           </button>
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "inherit", position: "relative" }}>
-            <Bell style={{ width: 16, height: 16 }} />
-            <span style={{
-              position: "absolute", top: 2, right: 2,
-              width: 6, height: 6, borderRadius: "50%",
-              background: "#ef4444",
-            }} />
+
+          {/* Notifications — red dot removed (no notification infrastructure yet) */}
+          <button
+            className="p-1.5 rounded-lg text-[var(--on-surface-variant)] hover:text-[var(--on-surface)] hover:bg-[var(--surface-container)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 active:scale-95 relative"
+            aria-label="Notifications"
+          >
+            <Bell className="w-4 h-4" />
           </button>
-          <button style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: "#f1f5f9", border: "1px solid #e2e8f0",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", marginLeft: 4, color: "#475569",
-          }}>
-            <User style={{ width: 14, height: 14 }} />
+
+          {/* User Avatar */}
+          <button
+            className="w-7 h-7 rounded-full bg-[var(--surface-container)] border border-[var(--outline-variant)] flex items-center justify-center cursor-pointer ml-1 text-[var(--on-surface-variant)] hover:border-[var(--outline)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+            aria-label="User menu"
+          >
+            <User className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

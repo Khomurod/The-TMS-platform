@@ -1,70 +1,74 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+"use client";
 
-type ButtonVariant = "primary" | "secondary" | "tertiary";
+import { ButtonHTMLAttributes, ReactNode, forwardRef } from "react";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+
+type ButtonVariant = "primary" | "secondary" | "tertiary" | "danger";
+type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
-  children: ReactNode;
+  size?: ButtonSize;
   icon?: ReactNode;
+  loading?: boolean;
 }
 
-const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
-  primary: {
-    background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
-    color: "var(--on-primary)",
-    border: "none",
-    fontWeight: 600,
-  },
-  secondary: {
-    background: "var(--surface-lowest)",
-    color: "var(--on-surface)",
-    border: "1px solid rgba(199, 196, 216, 0.15)",
-    fontWeight: 500,
-  },
-  tertiary: {
-    background: "transparent",
-    color: "var(--primary)",
-    border: "none",
-    fontWeight: 500,
-  },
+const variantClasses: Record<ButtonVariant, string> = {
+  primary: cn(
+    "text-white bg-gradient-to-r from-[var(--primary)] to-[var(--primary-container)]",
+    "shadow-md shadow-blue-500/20",
+    "hover:shadow-lg hover:shadow-blue-500/30 hover:brightness-110",
+  ),
+  secondary: cn(
+    "text-slate-700 dark:text-slate-300",
+    "bg-white dark:bg-slate-800",
+    "border border-slate-200 dark:border-slate-700",
+    "shadow-sm",
+    "hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
+  ),
+  tertiary: cn(
+    "text-blue-600 dark:text-blue-400",
+    "bg-transparent",
+    "hover:bg-blue-50 dark:hover:bg-blue-500/10",
+  ),
+  danger: cn(
+    "text-white bg-red-600",
+    "shadow-md shadow-red-500/20",
+    "hover:bg-red-700 hover:shadow-lg hover:shadow-red-500/30",
+  ),
 };
 
-export default function Button({
-  variant = "primary",
-  children,
-  icon,
-  style,
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "var(--spacing-2)",
-        padding: "var(--spacing-3) var(--spacing-6)",
-        borderRadius: "var(--radius-md)",
-        fontSize: "0.875rem",
-        cursor: "pointer",
-        transition: "opacity 0.15s ease, background-color 0.15s ease",
-        ...variantStyles[variant],
-        ...style,
-      }}
-      onMouseEnter={(e) => {
-        if (variant === "primary") (e.currentTarget as HTMLElement).style.opacity = "0.9";
-        if (variant === "tertiary")
-          (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-container-high)";
-      }}
-      onMouseLeave={(e) => {
-        if (variant === "primary") (e.currentTarget as HTMLElement).style.opacity = "1";
-        if (variant === "tertiary")
-          (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-      }}
-      {...props}
-    >
-      {icon}
-      {children}
-    </button>
-  );
-}
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: "px-3 py-1.5 text-xs rounded-md gap-1.5",
+  md: "px-5 py-2.5 text-sm rounded-lg gap-2",
+  lg: "px-6 py-3 text-base rounded-lg gap-2.5",
+};
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = "primary", size = "md", icon, loading, children, className, disabled, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || loading}
+        className={cn(
+          "inline-flex items-center justify-center font-semibold",
+          "transition-all duration-150",
+          "active:scale-[0.98] active:shadow-sm",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900",
+          "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
+          variantClasses[variant],
+          sizeClasses[size],
+          className,
+        )}
+        {...props}
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : icon}
+        {children}
+      </button>
+    );
+  }
+);
+
+Button.displayName = "Button";
+export default Button;

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface KPICardProps {
   title: string;
@@ -20,63 +21,30 @@ export default function KPICard({
   badgeColor,
 }: KPICardProps) {
   return (
-    <div
-      style={{
-        backgroundColor: "var(--surface-lowest)",
-        borderRadius: "var(--radius-xl)",
-        padding: "var(--spacing-8)",
-        flex: 1,
-        minWidth: 180,
-        position: "relative",
-        transition: "background-color 0.2s ease",
-      }}
-    >
+    <div className="card p-[var(--spacing-8)] flex-1 min-w-[180px] relative transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md group">
       {/* Header row */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: "var(--spacing-4)",
-        }}
-      >
+      <div className="flex items-start justify-between mb-[var(--spacing-4)]">
         <span
-          className="label-lg"
-          style={{
-            color: "var(--on-surface-variant)",
-            fontSize: "0.625rem",
-            letterSpacing: "0.08em",
-          }}
+          className="label-lg text-[var(--on-surface-variant)] text-[0.625rem] tracking-[0.08em]"
         >
           {title}
         </span>
 
         {/* Icon or Badge */}
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-2)" }}>
+        <div className="flex items-center gap-[var(--spacing-2)]">
           {badge && (
             <span
-              style={{
-                fontSize: "0.6875rem",
-                fontWeight: 600,
-                color: badgeColor || "var(--success)",
-              }}
+              className={cn(
+                "text-[0.6875rem] font-semibold",
+                !badgeColor && "text-[var(--success)]",
+              )}
+              style={badgeColor ? { color: badgeColor } : undefined}
             >
               {badge}
             </span>
           )}
           {icon && (
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--surface-container-high)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--on-surface-variant)",
-              }}
-            >
+            <div className="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--surface-container-high)] flex items-center justify-center text-[var(--on-surface-variant)] group-hover:bg-[var(--surface-container-highest)] transition-colors">
               {icon}
             </div>
           )}
@@ -84,27 +52,18 @@ export default function KPICard({
       </div>
 
       {/* Value */}
-      <div
-        className="title-lg tabular-nums"
-        style={{
-          fontSize: "1.75rem",
-          fontWeight: 800,
-          fontFamily: "var(--font-display)",
-          color: "var(--on-surface)",
-          marginBottom: "var(--spacing-1)",
-        }}
-      >
+      <div className="title-lg tabular-nums text-[1.75rem] font-extrabold text-[var(--on-surface)] mb-[var(--spacing-1)] font-[var(--font-display)]">
         {value}
       </div>
 
       {/* Subtitle */}
       {subtitle && (
         <span
-          className="body-sm"
-          style={{
-            color: subtitleColor || "var(--on-surface-variant)",
-            fontSize: "0.75rem",
-          }}
+          className={cn(
+            "body-sm text-xs",
+            !subtitleColor && "text-[var(--on-surface-variant)]",
+          )}
+          style={subtitleColor ? { color: subtitleColor } : undefined}
         >
           {subtitle}
         </span>

@@ -13,6 +13,7 @@ import TopBar from "@/components/layout/TopBar";
 import CommandMenu from "@/components/layout/CommandMenu";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { Truck } from "lucide-react";
 
 function ProtectedShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -39,12 +40,13 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        minHeight: "100vh", background: "#f8fafc", color: "#64748b",
-        fontSize: 15, fontWeight: 600,
-      }}>
-        Loading...
+      <div className="flex items-center justify-center min-h-screen bg-[var(--surface)]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center animate-pulse">
+            <Truck className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-sm font-semibold text-[var(--on-surface-variant)]">Loading Safehaul...</span>
+        </div>
       </div>
     );
   }
@@ -52,18 +54,11 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) return null;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f1f5f9" }}>
+    <div className="flex min-h-screen bg-[var(--surface)]">
       <Sidebar />
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+      <div className="flex flex-col flex-1 min-w-0">
         <TopBar onSearchClick={() => setCommandMenuOpen(true)} />
-        <main style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "var(--surface)",
-          overflow: "hidden",
-          minHeight: 0,
-        }}>
+        <main className="flex-1 flex flex-col bg-[var(--surface)] overflow-hidden min-h-0">
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
