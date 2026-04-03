@@ -7,10 +7,11 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import EntityLink from "@/components/ui/EntityLink";
 import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
 import Modal, { FormField, inputClass, selectClass, btnPrimary, btnSecondary } from "@/components/ui/Modal";
-import { Loader2, Hash } from "lucide-react";
+import { Loader2, Hash, Plus, Upload } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Fleet Page — Phase 4 Enhanced DataTable Integration
+   Fleet Page — Enterprise Asset Management
+   Compact truck list with integrated toolbar actions.
    ═══════════════════════════════════════════════════════════════ */
 
 interface TruckItem {
@@ -21,9 +22,15 @@ interface TruckItem {
   model?: string;
   vin?: string;
   license_plate?: string;
+  state?: string;
+  mc_number?: string;
   ownership_type?: string;
   status: string;
   is_active: boolean;
+  driver_name?: string;
+  owner_name?: string;
+  odometer?: number;
+  trailer_number?: string;
 }
 
 interface FleetStatus {
@@ -44,11 +51,10 @@ const STATUS_MAP: Record<string, { intent: "good" | "dispatched" | "upcoming"; l
 type TabConfig = { key: string; label: string; statusFilter: string | null };
 
 const TAB_CONFIG: TabConfig[] = [
-  { key: "active",      label: "Active Trucks", statusFilter: null },
-  { key: "all",         label: "All Trucks",    statusFilter: null },
-  { key: "available",   label: "Available",     statusFilter: "available" },
-  { key: "in_use",      label: "In Use",        statusFilter: "in_use" },
-  { key: "maintenance", label: "Maintenance",   statusFilter: "maintenance" },
+  { key: "active",      label: "Active Trucks",     statusFilter: null },
+  { key: "unassigned",  label: "Unassigned Trucks",  statusFilter: "available" },
+  { key: "all",         label: "All Trucks",         statusFilter: null },
+  { key: "inactive",    label: "Inactive Trucks",    statusFilter: "maintenance" },
 ];
 
 export default function FleetPage() {
@@ -104,16 +110,18 @@ export default function FleetPage() {
   const tabs: TabDef[] = TAB_CONFIG.map((t) => ({
     key: t.key,
     label: t.label,
-    count: t.key === "available" ? fleetStatus?.available
-         : t.key === "in_use" ? fleetStatus?.in_use
-         : t.key === "maintenance" ? fleetStatus?.maintenance
+    count: t.key === "active" ? fleetStatus?.total
+         : t.key === "unassigned" ? fleetStatus?.available
+         : t.key === "inactive" ? fleetStatus?.maintenance
          : undefined,
     isActive: t.key === activeTabKey,
   }));
 
-  /* ── Columns (Phase 4 Enhanced) ─────────────────────────── */
+  /* ── Columns ─────────────────────────────────────────────── */
 
   const columns: ColumnDef<TruckItem>[] = [
+    { header: "Make", accessorKey: "make", cell: (r) => r.make || "—" },
+    { header: "Model", accessorKey: "model", cell: (r) => r.model || "—" },
     {
       header: "Unit #",
       accessorKey: "unit_number",
@@ -125,8 +133,6 @@ export default function FleetPage() {
         />
       ),
     },
-    { header: "Make", accessorKey: "make", cell: (r) => r.make || "—" },
-    { header: "Model", accessorKey: "model", cell: (r) => r.model || "—" },
     {
       header: "Plate #",
       accessorKey: "license_plate",
@@ -141,25 +147,77 @@ export default function FleetPage() {
       header: "VIN",
       accessorKey: "vin",
       cell: (r) => r.vin ? (
-        <div className="max-w-[140px] truncate font-mono text-[10px]" title={r.vin}>{r.vin}</div>
+        <div
+          className="font-mono"
+          title={r.vin}
+          style={{
+            maxWidth: "140px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: "10px",
+          }}
+        >
+          {r.vin}
+        </div>
       ) : "—",
     },
     {
       header: "Year",
       accessorKey: "year",
       align: "center",
-      width: "80px",
+      width: "60px",
       cell: (r) => r.year || "—",
     },
     {
-      header: "Ownership",
-      accessorKey: "ownership_type",
-      cell: (r) => r.ownership_type || "—",
+      header: "State",
+      accessorKey: "state",
+      width: "60px",
+      cell: (r) => r.state || "—",
+      hideable: true,
+    },
+    {
+      header: "MC #",
+      accessorKey: "mc_number",
+      cell: (r) => r.mc_number || "—",
+      defaultHidden: true,
+      hideable: true,
+    },
+    {
+      header: "Operator",
+      accessorKey: "driver_name",
+      cell: (r) => r.driver_name ? (
+        <span style={{ color: "var(--primary)", fontWeight: 500 }}>{r.driver_name}</span>
+      ) : (
+        <span style={{ color: "var(--on-surface-variant)" }}>—</span>
+      ),
+    },
+    {
+      header: "Owner",
+      accessorKey: "owner_name",
+      cell: (r) => r.owner_name || "—",
+      defaultHidden: true,
+      hideable: true,
+    },
+    {
+      header: "Odometer",
+      accessorKey: "odometer",
+      align: "right",
+      cell: (r) => r.odometer ? (
+        <span className="tabular-nums">{r.odometer.toLocaleString()}</span>
+      ) : "—",
+      hideable: true,
+    },
+    {
+      header: "Trailer",
+      accessorKey: "trailer_number",
+      cell: (r) => r.trailer_number || "—",
+      hideable: true,
     },
     {
       header: "Status",
       accessorKey: "status",
-      width: "120px",
+      width: "100px",
       cell: (row) => {
         const cfg = STATUS_MAP[row.status] || { intent: "upcoming" as const, label: row.status };
         return <StatusBadge intent={cfg.intent}>{cfg.label}</StatusBadge>;
@@ -218,24 +276,14 @@ export default function FleetPage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4">
-      {/* ── Page Header ── */}
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
-          Fleet
-        </h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1 shadow-ambient"
-        >
-          <span className="text-lg leading-none">+</span> Create Truck
-        </button>
-      </div>
-
-      {/* ── Enhanced DataTable ── */}
+    <div className="h-full flex flex-col" style={{ padding: "16px" }}>
+      {/* ── Main DataTable ── */}
       <div
-        className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
-        style={{ border: "1px solid var(--outline-variant)" }}
+        className="flex-1 min-h-0 overflow-hidden"
+        style={{
+          border: "1px solid var(--outline-variant)",
+          borderRadius: "var(--radius-lg)",
+        }}
       >
         <DataTable
           data={trucks}
@@ -247,6 +295,26 @@ export default function FleetPage() {
           stickyFooter={stickyFooter}
           emptyState={MODULE_EMPTY_STATES.fleet}
           getRowId={(row) => row.id}
+          toolbarLeft={
+            <button className="btn-enterprise">
+              <Upload className="h-3.5 w-3.5" />
+              Import file
+            </button>
+          }
+          primaryAction={
+            <button
+              onClick={() => setShowCreate(true)}
+              className="btn-enterprise-primary"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Create Truck
+            </button>
+          }
+          rowActions={[
+            { label: "View Detail", onClick: (row) => window.location.href = `/fleet/${row.id}` },
+            { label: "Edit Truck", onClick: (row) => console.log("Edit:", row.id) },
+            { label: "Deactivate", onClick: (row) => console.log("Deactivate:", row.id), destructive: true },
+          ]}
           totalCount={total}
           currentPage={page}
           pageSize={pageSize}

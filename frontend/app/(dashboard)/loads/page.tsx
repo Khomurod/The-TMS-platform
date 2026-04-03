@@ -8,10 +8,11 @@ import DataTable, { ColumnDef, TabDef, StickyFooterItem } from "@/components/ui/
 import StatusBadge, { statusToIntent } from "@/components/ui/StatusBadge";
 import EntityLink from "@/components/ui/EntityLink";
 import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
-import { Truck, Users, MapPin, Loader2 } from "lucide-react";
+import { Truck, Users, MapPin, Loader2, Plus, FileText, MoreVertical } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Loads Board — Phase 4 Enhanced DataTable Integration
+   Loads Board — Enterprise Dispatch Operations
+   Dense table layout with integrated toolbar actions.
    ═══════════════════════════════════════════════════════════════ */
 
 interface LoadItem {
@@ -24,13 +25,18 @@ interface LoadItem {
   total_rate?: number;
   created_at?: string;
   pickup_city?: string;
+  pickup_state?: string;
   pickup_date?: string;
   delivery_city?: string;
+  delivery_state?: string;
   delivery_date?: string;
   broker_name?: string;
   driver_name?: string;
   truck_number?: string;
+  trailer_number?: string;
+  mc_number?: string;
   trip_count?: number;
+  total_miles?: number;
 }
 
 /* ── Tab Configuration ─────────────────────────────────────── */
@@ -43,14 +49,13 @@ type TabConfig = {
 };
 
 const TAB_CONFIG: TabConfig[] = [
-  { key: "all",       label: "All Loads",  endpoint: null,              statusFilter: null },
-  { key: "upcoming",  label: "Upcoming",   endpoint: "/loads/upcoming",  statusFilter: null },
-  { key: "live",      label: "Live",       endpoint: "/loads/live",      statusFilter: null },
-  { key: "completed", label: "Completed",  endpoint: "/loads/completed", statusFilter: null },
-  { key: "offer",     label: "Offer",      endpoint: null,              statusFilter: "offer" },
-  { key: "booked",    label: "Booked",     endpoint: null,              statusFilter: "booked" },
-  { key: "invoiced",  label: "Invoiced",   endpoint: null,              statusFilter: "invoiced" },
-  { key: "paid",      label: "Paid",       endpoint: null,              statusFilter: "paid" },
+  { key: "all",        label: "All Loads",     endpoint: null,              statusFilter: null },
+  { key: "upcoming",   label: "Upcoming Loads", endpoint: "/loads/upcoming", statusFilter: null },
+  { key: "dispatched", label: "Dispatched",     endpoint: null,              statusFilter: "dispatched" },
+  { key: "in_transit", label: "In-Transit",     endpoint: null,              statusFilter: "in_transit" },
+  { key: "delivered",  label: "Delivered",       endpoint: null,              statusFilter: "delivered" },
+  { key: "unpaid",     label: "Unpaid",          endpoint: null,              statusFilter: "invoiced" },
+  { key: "trips",      label: "Trips",           endpoint: "/loads/live",     statusFilter: null },
 ];
 
 export default function LoadsPage() {
@@ -99,7 +104,7 @@ export default function LoadsPage() {
     setPage(1);
   };
 
-  /* ── Tabs (Phase 4) ─────────────────────────────────────── */
+  /* ── Tabs ─────────────────────────────────────────────────── */
 
   const tabs: TabDef[] = TAB_CONFIG.map((t) => ({
     key: t.key,
@@ -110,6 +115,17 @@ export default function LoadsPage() {
   /* ── Columns ────────────────────────────────────────────── */
 
   const columns: ColumnDef<LoadItem>[] = [
+    {
+      header: "Shipment ID",
+      accessorKey: "shipment_id",
+      cell: (row) => (
+        <span style={{ color: "var(--primary)", fontWeight: 500 }}>
+          {row.shipment_id || "—"}
+        </span>
+      ),
+      defaultHidden: true,
+      hideable: true,
+    },
     {
       header: "Load #",
       accessorKey: "load_number",
@@ -122,19 +138,10 @@ export default function LoadsPage() {
       ),
     },
     {
-      header: "Broker Load ID",
-      accessorKey: "broker_load_id",
-      cell: (row) => (
-        <span style={{ color: "var(--success)" }} className="font-semibold">
-          {row.broker_load_id || "—"}
-        </span>
-      ),
-    },
-    {
-      header: "Broker",
+      header: "Customer",
       accessorKey: "broker_name",
       cell: (row) => (
-        <span style={{ color: "var(--primary)" }} className="font-medium">
+        <span style={{ fontWeight: 500 }}>
           {row.broker_name || "—"}
         </span>
       ),
@@ -147,7 +154,7 @@ export default function LoadsPage() {
           className="flex items-center gap-1.5"
           style={{ color: r.driver_name ? "var(--primary)" : "var(--on-surface-variant)" }}
         >
-          <Users className="h-3 w-3" />
+          <Users className="h-3 w-3 shrink-0" />
           {r.driver_name || "Unassigned"}
         </div>
       ),
@@ -158,37 +165,67 @@ export default function LoadsPage() {
       cell: (r) => (
         <div
           className="flex items-center gap-1.5"
-          style={{ color: r.truck_number ? "var(--primary)" : "var(--on-surface-variant)" }}
+          style={{ color: r.truck_number ? "var(--on-surface)" : "var(--on-surface-variant)" }}
         >
-          <Truck className="h-3 w-3" />
+          <Truck className="h-3 w-3 shrink-0" />
           {r.truck_number || "—"}
         </div>
       ),
     },
     {
-      header: "Route",
+      header: "Trailer",
+      accessorKey: "trailer_number",
+      cell: (r) => r.trailer_number || "—",
+      defaultHidden: true,
+      hideable: true,
+    },
+    {
+      header: "MC #",
+      accessorKey: "mc_number",
+      cell: (r) => r.mc_number || "—",
+      defaultHidden: true,
+      hideable: true,
+    },
+    {
+      header: "Pickup",
       accessorKey: "pickup_city",
       cell: (r) => (
-        <div className="flex items-center gap-1 text-xs">
+        <div className="flex items-center gap-1" style={{ fontSize: "12px" }}>
           <MapPin className="h-3 w-3 shrink-0" style={{ color: "var(--success)" }} />
-          <span>{r.pickup_city || "—"}</span>
-          <span style={{ color: "var(--on-surface-variant)" }}>→</span>
-          <MapPin className="h-3 w-3 shrink-0" style={{ color: "var(--error)" }} />
-          <span>{r.delivery_city || "—"}</span>
+          <span>{r.pickup_city || "—"}{r.pickup_state ? `, ${r.pickup_state}` : ""}</span>
         </div>
       ),
     },
     {
-      header: "Pickup Date",
-      accessorKey: "pickup_date",
+      header: "Delivery",
+      accessorKey: "delivery_city",
+      cell: (r) => (
+        <div className="flex items-center gap-1" style={{ fontSize: "12px" }}>
+          <MapPin className="h-3 w-3 shrink-0" style={{ color: "var(--error)" }} />
+          <span>{r.delivery_city || "—"}{r.delivery_state ? `, ${r.delivery_state}` : ""}</span>
+        </div>
+      ),
+    },
+    {
+      header: "DEL Date",
+      accessorKey: "delivery_date",
       cell: (r) =>
-        r.pickup_date
-          ? new Date(r.pickup_date).toLocaleDateString("en-US", {
+        r.delivery_date
+          ? new Date(r.delivery_date).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
-              year: "numeric",
             })
           : "—",
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      width: "110px",
+      cell: (row) => {
+        const intent = statusToIntent(row.status);
+        const label = LOAD_STATUSES[row.status]?.label || row.status;
+        return <StatusBadge intent={intent}>{label}</StatusBadge>;
+      },
     },
     {
       header: "Rate",
@@ -200,41 +237,28 @@ export default function LoadsPage() {
           : "—",
     },
     {
-      header: "Trips",
+      header: "Docs",
       accessorKey: "trip_count",
       align: "center",
-      cell: (r) => (
-        <span
-          className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full"
-          style={{
-            backgroundColor: (r.trip_count ?? 0) > 0 ? "var(--primary-fixed)" : "var(--surface-container-high)",
-            color: (r.trip_count ?? 0) > 0 ? "var(--primary)" : "var(--on-surface-variant)",
-          }}
-        >
-          {r.trip_count || 0}
-        </span>
+      width: "50px",
+      cell: () => (
+        <FileText className="h-3.5 w-3.5 mx-auto" style={{ color: "var(--on-surface-variant)" }} />
       ),
-    },
-    {
-      header: "Status",
-      accessorKey: "status",
-      cell: (row) => {
-        const intent = statusToIntent(row.status);
-        const label = LOAD_STATUSES[row.status]?.label || row.status;
-        return <StatusBadge intent={intent}>{label}</StatusBadge>;
-      },
+      hideable: true,
     },
   ];
 
   /* ── Sticky Footer Aggregates ──────────────────────────── */
 
   const totalRate = loads.reduce((s, l) => s + (l.total_rate || 0), 0);
-  const totalBase = loads.reduce((s, l) => s + (l.base_rate || 0), 0);
+  const totalMiles = loads.reduce((s, l) => s + (l.total_miles || 0), 0);
+  const rpm = totalMiles > 0 ? totalRate / totalMiles : 0;
 
   const stickyFooter: StickyFooterItem[] = [
     { label: "Showing", value: `${loads.length} of ${total}` },
-    { label: "Total rate", value: `$${totalRate.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, format: "currency" },
-    { label: "Base rate", value: `$${totalBase.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, format: "currency" },
+    { label: "Total Pay", value: `$${totalRate.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, format: "currency" },
+    { label: "Miles", value: totalMiles.toLocaleString(), format: "miles" },
+    { label: "RPM", value: rpm > 0 ? `$${rpm.toFixed(2)}` : "—", format: "currency" },
   ];
 
   /* ── Render ─────────────────────────────────────────────── */
@@ -248,24 +272,14 @@ export default function LoadsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4">
-      {/* ── Page Header ── */}
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="headline-sm" style={{ color: "var(--on-surface)" }}>
-          Loads
-        </h1>
-        <Link
-          href="/loads/new"
-          className="gradient-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1 shadow-ambient"
-        >
-          <span className="text-lg leading-none">+</span> New load
-        </Link>
-      </div>
-
-      {/* ── Enhanced DataTable ── */}
+    <div className="h-full flex flex-col" style={{ padding: "16px" }}>
+      {/* ── Main DataTable ── */}
       <div
-        className="flex-1 min-h-0 rounded-lg overflow-hidden shadow-ambient"
-        style={{ border: "1px solid var(--outline-variant)" }}
+        className="flex-1 min-h-0 overflow-hidden"
+        style={{
+          border: "1px solid var(--outline-variant)",
+          borderRadius: "var(--radius-lg)",
+        }}
       >
         <DataTable
           data={loads}
@@ -278,6 +292,16 @@ export default function LoadsPage() {
           stickyFooter={stickyFooter}
           emptyState={MODULE_EMPTY_STATES.loads}
           getRowId={(row) => row.id}
+          primaryAction={
+            <Link
+              href="/loads/new"
+              className="btn-enterprise-primary"
+              style={{ textDecoration: "none" }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Load
+            </Link>
+          }
           bulkActions={[
             {
               label: "Export Selected",
@@ -288,6 +312,11 @@ export default function LoadsPage() {
               variant: "danger",
               onClick: (ids) => console.log("Cancel:", ids),
             },
+          ]}
+          rowActions={[
+            { label: "View Detail", onClick: (row) => window.location.href = `/loads/${row.id}` },
+            { label: "Duplicate", onClick: (row) => console.log("Duplicate:", row.id) },
+            { label: "Cancel Load", onClick: (row) => console.log("Cancel:", row.id), destructive: true },
           ]}
           totalCount={total}
           currentPage={page}

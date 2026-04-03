@@ -14,13 +14,15 @@ import {
   Check,
   Trash2,
   X,
+  AlignJustify,
+  List,
 } from "lucide-react";
 import EmptyState from "./EmptyState";
 
 /* ═══════════════════════════════════════════════════════════════
-   DataTable — Enhanced Component (Phase 4 Blueprint)
-   Supports: tabs, selection, bulk actions, sticky footer,
-   empty states, row actions, pagination, density, column toggle
+   DataTable — Enterprise Operations Grid
+   Dense, tables-first design with tabs, selection, bulk actions,
+   sticky footer, density toggle, column chooser, pagination.
    ═══════════════════════════════════════════════════════════════ */
 
 // ── Public Types ─────────────────────────────────────────────
@@ -104,6 +106,10 @@ interface DataTableProps<T> {
   columnToggle?: boolean;
   exportable?: boolean;
 
+  // Toolbar slots
+  toolbarLeft?: React.ReactNode;
+  primaryAction?: React.ReactNode;
+
   // Row Interactions
   onRowClick?: (row: T) => void;
   rowActions?: RowActionDef<T>[];
@@ -133,10 +139,12 @@ export default function DataTable<T>({
   stickyFooter,
   emptyState,
   renderFooter,
-  density = "comfortable",
+  density: initialDensity = "compact",
   zebraStripe = false,
   columnToggle = false,
   exportable = true,
+  toolbarLeft,
+  primaryAction,
   onRowClick,
   rowActions,
   pageSize: controlledPageSize,
@@ -148,6 +156,7 @@ export default function DataTable<T>({
 }: DataTableProps<T>) {
   // ── Internal State ──────────────────────────────────────
 
+  const [density, setDensity] = useState(initialDensity);
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
   const selectedIds = controlledSelectedIds ?? internalSelectedIds;
   const setSelectedIds = onSelectionChange ?? setInternalSelectedIds;
@@ -168,7 +177,9 @@ export default function DataTable<T>({
     [columns, hiddenColumns]
   );
 
-  const cellPadding = density === "compact" ? "px-3 py-2" : "px-4 py-3";
+  const isCompact = density === "compact";
+  const cellPy = isCompact ? "6px" : "10px";
+  const cellPx = "12px";
   const rowIds = useMemo(() => data.map(getRowId), [data, getRowId]);
   const allSelected = data.length > 0 && selectedIds.length === data.length;
   const someSelected = selectedIds.length > 0 && selectedIds.length < data.length;
@@ -176,11 +187,8 @@ export default function DataTable<T>({
   // ── Selection Handlers ────────────────────────────────────
 
   const toggleAll = useCallback(() => {
-    if (allSelected) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(rowIds);
-    }
+    if (allSelected) setSelectedIds([]);
+    else setSelectedIds(rowIds);
   }, [allSelected, rowIds, setSelectedIds]);
 
   const toggleRow = useCallback(
@@ -208,37 +216,53 @@ export default function DataTable<T>({
     []
   );
 
-  // ── Total column count for colSpan ────────────────────────
-
-  const totalColSpan = visibleColumns.length + (selectable ? 1 : 0) + (rowActions ? 1 : 0);
-
   return (
     <div
-      className="flex flex-col h-full w-full text-sm rounded-md"
-      style={{ backgroundColor: "var(--surface-lowest)" }}
+      className="flex flex-col h-full w-full"
+      style={{
+        backgroundColor: "var(--surface-lowest)",
+        fontSize: "12px",
+        borderRadius: "var(--radius-lg)",
+      }}
     >
       {/* ═══ Tabs ═══ */}
       {tabs && tabs.length > 0 && (
         <div
-          className="flex items-center gap-1 px-4 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
-          style={{ borderBottom: "1px solid var(--outline-variant)" }}
+          className="flex items-center gap-0 overflow-x-auto whitespace-nowrap shrink-0"
+          style={{
+            borderBottom: "1px solid var(--outline-variant)",
+            paddingLeft: "16px",
+          }}
         >
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => onTabChange?.(tab.key)}
-              className="text-xs font-semibold pb-2.5 pt-3 px-3 border-b-2 transition-colors flex items-center gap-1.5"
+              className="flex items-center gap-1.5 transition-colors"
               style={{
-                borderColor: tab.isActive ? "var(--primary)" : "transparent",
+                padding: "10px 14px",
+                fontSize: "12px",
+                fontWeight: tab.isActive ? 600 : 500,
                 color: tab.isActive ? "var(--primary)" : "var(--on-surface-variant)",
+                borderBottom: tab.isActive ? "2px solid var(--primary)" : "2px solid transparent",
+                background: "transparent",
+                border: "none",
+                borderBottomWidth: "2px",
+                borderBottomStyle: "solid",
+                borderBottomColor: tab.isActive ? "var(--primary)" : "transparent",
+                cursor: "pointer",
               }}
             >
               {tab.label}
               {tab.count !== undefined && (
                 <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums"
+                  className="tabular-nums"
                   style={{
-                    backgroundColor: tab.isActive ? "var(--primary-fixed)" : "var(--surface-container-high)",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    padding: "1px 6px",
+                    borderRadius: "var(--radius-full)",
+                    backgroundColor: tab.isActive ? "var(--primary-fixed)" : "var(--surface-container)",
                     color: tab.isActive ? "var(--primary)" : "var(--on-surface-variant)",
                   }}
                 >
@@ -250,16 +274,17 @@ export default function DataTable<T>({
         </div>
       )}
 
-      {/* ═══ Bulk Actions Bar (shown when rows selected) ═══ */}
+      {/* ═══ Bulk Actions Bar ═══ */}
       {selectedIds.length > 0 && bulkActions && (
         <div
-          className="flex items-center gap-3 px-4 py-2.5 shrink-0"
+          className="flex items-center gap-3 shrink-0"
           style={{
+            padding: "8px 16px",
             backgroundColor: "var(--primary-fixed)",
             borderBottom: "1px solid var(--outline-variant)",
           }}
         >
-          <span className="text-xs font-semibold" style={{ color: "var(--primary)" }}>
+          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--primary)" }}>
             {selectedIds.length} selected
           </span>
           <div className="flex items-center gap-2 ml-2">
@@ -267,11 +292,10 @@ export default function DataTable<T>({
               <button
                 key={i}
                 onClick={() => action.onClick(selectedIds)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+                className="btn-enterprise"
                 style={{
-                  border: `1px solid ${action.variant === "danger" ? "var(--error)" : "var(--outline-variant)"}`,
-                  color: action.variant === "danger" ? "var(--error)" : "var(--on-surface)",
-                  backgroundColor: "var(--surface-lowest)",
+                  borderColor: action.variant === "danger" ? "var(--error)" : undefined,
+                  color: action.variant === "danger" ? "var(--error)" : undefined,
                 }}
               >
                 {action.icon}
@@ -281,8 +305,15 @@ export default function DataTable<T>({
           </div>
           <button
             onClick={() => setSelectedIds([])}
-            className="ml-auto text-xs font-medium flex items-center gap-1 transition-colors"
-            style={{ color: "var(--on-surface-variant)" }}
+            className="ml-auto flex items-center gap-1 transition-colors"
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "12px",
+              fontWeight: 500,
+              color: "var(--on-surface-variant)",
+            }}
           >
             <X className="h-3 w-3" />
             Clear
@@ -293,102 +324,129 @@ export default function DataTable<T>({
       {/* ═══ Table Action Bar ═══ */}
       {selectedIds.length === 0 && (
         <div
-          className="flex items-center justify-between px-4 py-2.5 shrink-0"
-          style={{ borderBottom: "1px solid var(--outline-variant)" }}
+          className="flex items-center justify-between shrink-0"
+          style={{
+            padding: "6px 16px",
+            borderBottom: "1px solid var(--outline-variant)",
+          }}
         >
           <div className="flex items-center gap-2">
-            <button
-              className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors"
-              style={{
-                border: "1px solid var(--outline-variant)",
-                backgroundColor: "var(--surface-lowest)",
-                color: "var(--on-surface)",
-              }}
-            >
-              <Filter className="h-3 w-3" />
+            <button className="btn-enterprise">
+              <Filter className="h-3.5 w-3.5" />
               Filter
             </button>
+            {toolbarLeft}
           </div>
 
           <div className="flex items-center gap-2">
             {exportable && (
-              <button
-                className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors"
-                style={{
-                  border: "1px solid var(--outline-variant)",
-                  backgroundColor: "var(--surface-lowest)",
-                  color: "var(--on-surface)",
-                }}
-              >
-                <Download className="h-3 w-3" />
+              <button className="btn-enterprise">
+                <Download className="h-3.5 w-3.5" />
                 Export
               </button>
             )}
 
             <button
-              className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+              className="btn-enterprise"
               style={{
-                border: "1px solid var(--primary)",
+                borderColor: "var(--primary)",
                 color: "var(--primary)",
                 backgroundColor: "var(--primary-fixed)",
               }}
             >
-              <Bookmark className="h-3 w-3" />
+              <Bookmark className="h-3.5 w-3.5" />
               Save view
+            </button>
+
+            {/* Density Toggle */}
+            <button
+              className="btn-enterprise"
+              onClick={() => setDensity(d => d === "compact" ? "comfortable" : "compact")}
+              title={`Switch to ${isCompact ? "comfortable" : "compact"} density`}
+            >
+              {isCompact ? <AlignJustify className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+              {isCompact ? "Compact" : "Comfortable"}
             </button>
 
             {columnToggle && (
               <div className="relative">
                 <button
                   onClick={() => setShowColumnMenu(!showColumnMenu)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors"
-                  style={{
-                    border: "1px solid var(--outline-variant)",
-                    backgroundColor: "var(--surface-lowest)",
-                    color: "var(--on-surface)",
-                  }}
+                  className="btn-enterprise"
                 >
-                  <Columns className="h-3 w-3" />
+                  <Columns className="h-3.5 w-3.5" />
                   Columns
                 </button>
 
                 {showColumnMenu && (
-                  <div
-                    className="absolute right-0 top-full mt-1 z-30 rounded-lg shadow-lg py-1 min-w-[180px]"
-                    style={{
-                      backgroundColor: "var(--surface-lowest)",
-                      border: "1px solid var(--outline-variant)",
-                    }}
-                  >
-                    {columns
-                      .filter((col) => col.hideable !== false)
-                      .map((col) => {
-                        const key = String(col.accessorKey);
-                        const isVisible = !hiddenColumns.has(key);
-                        return (
-                          <button
-                            key={key}
-                            onClick={() => toggleColumn(key)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors text-left"
-                            style={{ color: "var(--on-surface)" }}
-                          >
-                            <span
-                              className="w-4 h-4 rounded border flex items-center justify-center shrink-0"
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setShowColumnMenu(false)} />
+                    <div
+                      className="absolute right-0 top-full mt-1 z-30 rounded-md py-1 min-w-[200px]"
+                      style={{
+                        backgroundColor: "var(--surface-lowest)",
+                        border: "1px solid var(--outline-variant)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: "var(--on-surface-variant)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          borderBottom: "1px solid var(--outline-variant)",
+                        }}
+                      >
+                        Toggle Columns
+                      </div>
+                      {columns
+                        .filter((col) => col.hideable !== false)
+                        .map((col) => {
+                          const key = String(col.accessorKey);
+                          const isVisible = !hiddenColumns.has(key);
+                          return (
+                            <button
+                              key={key}
+                              onClick={() => toggleColumn(key)}
+                              className="w-full flex items-center gap-2 text-left transition-colors"
                               style={{
-                                borderColor: isVisible ? "var(--primary)" : "var(--outline-variant)",
-                                backgroundColor: isVisible ? "var(--primary)" : "transparent",
+                                padding: "6px 12px",
+                                fontSize: "12px",
+                                fontWeight: 500,
+                                color: "var(--on-surface)",
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
                               }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
                             >
-                              {isVisible && <Check className="h-3 w-3 text-white" />}
-                            </span>
-                            {col.header}
-                          </button>
-                        );
-                      })}
-                  </div>
+                              <span
+                                className="flex items-center justify-center shrink-0"
+                                style={{
+                                  width: "16px",
+                                  height: "16px",
+                                  borderRadius: "3px",
+                                  border: `1.5px solid ${isVisible ? "var(--primary)" : "var(--outline-variant)"}`,
+                                  backgroundColor: isVisible ? "var(--primary)" : "transparent",
+                                }}
+                              >
+                                {isVisible && <Check className="h-2.5 w-2.5 text-white" />}
+                              </span>
+                              {col.header}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </>
                 )}
               </div>
             )}
+
+            {primaryAction}
           </div>
         </div>
       )}
@@ -400,32 +458,37 @@ export default function DataTable<T>({
             <EmptyState {...emptyState} />
           ) : (
             <div
-              className="flex items-center justify-center py-16 text-sm"
-              style={{ color: "var(--on-surface-variant)" }}
+              className="flex items-center justify-center py-16"
+              style={{ color: "var(--on-surface-variant)", fontSize: "13px" }}
             >
               No data available
             </div>
           )
         ) : (
-          <table className="w-full text-left border-collapse min-w-max">
+          <table
+            className="w-full text-left min-w-max"
+            style={{ borderCollapse: "collapse" }}
+          >
             <thead
               className="sticky top-0 z-10"
               style={{
                 backgroundColor: "var(--surface-low)",
-                borderBottom: "1px solid var(--outline-variant)",
-                boxShadow: "0 1px 2px var(--shadow-ambient)",
+                boxShadow: "inset 0 -1px 0 var(--outline-variant)",
               }}
             >
               <tr>
                 {selectable && (
                   <th
-                    className={`${cellPadding} w-12 text-center`}
-                    style={{ borderRight: "1px solid var(--outline-variant)" }}
+                    style={{
+                      padding: `8px ${cellPx}`,
+                      width: "40px",
+                      textAlign: "center",
+                      borderRight: "1px solid var(--outline-variant)",
+                    }}
                   >
                     <input
                       type="checkbox"
-                      className="rounded"
-                      style={{ accentColor: "var(--primary)" }}
+                      style={{ accentColor: "var(--primary)", cursor: "pointer" }}
                       checked={allSelected}
                       ref={(el) => { if (el) el.indeterminate = someSelected; }}
                       onChange={toggleAll}
@@ -435,30 +498,33 @@ export default function DataTable<T>({
                 {visibleColumns.map((col, idx) => (
                   <th
                     key={idx}
-                    className={`${cellPadding} text-xs font-semibold whitespace-nowrap`}
                     style={{
+                      padding: `8px ${cellPx}`,
+                      fontSize: "11px",
+                      fontWeight: 600,
                       color: "var(--on-surface-variant)",
+                      whiteSpace: "nowrap",
                       borderRight: "1px solid var(--outline-variant)",
                       width: col.width,
                       textAlign: col.align || "left",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
                     }}
                   >
-                    <div className="flex items-center justify-between cursor-pointer group">
-                      <span className="flex items-center gap-2">
-                        <ChevronsUpDown
-                          className="h-3 w-3"
-                          style={{ color: "var(--outline)" }}
-                        />
-                        {col.header}
-                      </span>
+                    <div className="flex items-center gap-1.5 cursor-pointer">
+                      <ChevronsUpDown
+                        className="h-3 w-3 shrink-0"
+                        style={{ color: "var(--outline)" }}
+                      />
+                      {col.header}
                     </div>
                   </th>
                 ))}
                 {rowActions && (
                   <th
-                    className={`${cellPadding} text-xs font-semibold w-10`}
                     style={{
-                      color: "var(--on-surface-variant)",
+                      padding: `8px ${cellPx}`,
+                      width: "40px",
                       borderRight: "1px solid var(--outline-variant)",
                     }}
                   />
@@ -473,7 +539,7 @@ export default function DataTable<T>({
                   <tr
                     key={rowIndex}
                     onClick={() => onRowClick?.(row)}
-                    className={`transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
+                    className={onRowClick ? "cursor-pointer" : ""}
                     style={{
                       borderBottom: "1px solid var(--outline-variant)",
                       backgroundColor: isSelected
@@ -481,10 +547,11 @@ export default function DataTable<T>({
                         : zebraStripe && rowIndex % 2 === 1
                         ? "var(--surface-low)"
                         : undefined,
+                      transition: "background-color 0.1s ease",
                     }}
                     onMouseEnter={(e) => {
                       if (!isSelected)
-                        e.currentTarget.style.backgroundColor = "var(--surface-container-high)";
+                        e.currentTarget.style.backgroundColor = "var(--surface-low)";
                     }}
                     onMouseLeave={(e) => {
                       if (!isSelected)
@@ -494,13 +561,15 @@ export default function DataTable<T>({
                   >
                     {selectable && (
                       <td
-                        className={`${cellPadding} text-center`}
-                        style={{ borderRight: "1px solid var(--outline-variant)" }}
+                        style={{
+                          padding: `${cellPy} ${cellPx}`,
+                          textAlign: "center",
+                          borderRight: "1px solid var(--outline-variant)",
+                        }}
                       >
                         <input
                           type="checkbox"
-                          className="rounded"
-                          style={{ accentColor: "var(--primary)" }}
+                          style={{ accentColor: "var(--primary)", cursor: "pointer" }}
                           checked={isSelected}
                           onChange={() => toggleRow(rowId)}
                           onClick={(e) => e.stopPropagation()}
@@ -510,11 +579,16 @@ export default function DataTable<T>({
                     {visibleColumns.map((col, colIndex) => (
                       <td
                         key={colIndex}
-                        className={`${cellPadding} text-xs truncate max-w-[200px]`}
                         style={{
+                          padding: `${cellPy} ${cellPx}`,
+                          fontSize: "12px",
                           color: "var(--on-surface)",
                           borderRight: "1px solid var(--outline-variant)",
                           textAlign: col.align || "left",
+                          maxWidth: "220px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {col.cell ? col.cell(row) : (row as any)[col.accessorKey]}
@@ -522,46 +596,69 @@ export default function DataTable<T>({
                     ))}
                     {rowActions && (
                       <td
-                        className={`${cellPadding} text-center relative`}
-                        style={{ borderRight: "1px solid var(--outline-variant)" }}
+                        style={{
+                          padding: `${cellPy} ${cellPx}`,
+                          textAlign: "center",
+                          borderRight: "1px solid var(--outline-variant)",
+                          position: "relative",
+                        }}
                       >
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveRowAction(activeRowAction === rowId ? null : rowId);
                           }}
-                          className="outline-none transition-colors"
-                          style={{ color: "var(--on-surface-variant)" }}
+                          className="focus-ring"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "var(--on-surface-variant)",
+                            padding: "2px",
+                            borderRadius: "var(--radius-sm)",
+                          }}
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
 
                         {activeRowAction === rowId && (
-                          <div
-                            className="absolute right-0 top-full mt-1 z-20 rounded-lg shadow-lg py-1 min-w-[160px]"
-                            style={{
-                              backgroundColor: "var(--surface-lowest)",
-                              border: "1px solid var(--outline-variant)",
-                            }}
-                          >
-                            {rowActions.map((action, i) => (
-                              <button
-                                key={i}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  action.onClick(row);
-                                  setActiveRowAction(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors text-left"
-                                style={{
-                                  color: action.destructive ? "var(--error)" : "var(--on-surface)",
-                                }}
-                              >
-                                {action.icon || (action.destructive && <Trash2 className="h-3 w-3" />)}
-                                {action.label}
-                              </button>
-                            ))}
-                          </div>
+                          <>
+                            <div className="fixed inset-0 z-15" onClick={() => setActiveRowAction(null)} />
+                            <div
+                              className="absolute right-0 top-full mt-1 z-20 rounded-md py-1 min-w-[160px]"
+                              style={{
+                                backgroundColor: "var(--surface-lowest)",
+                                border: "1px solid var(--outline-variant)",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                              }}
+                            >
+                              {rowActions.map((action, i) => (
+                                <button
+                                  key={i}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    action.onClick(row);
+                                    setActiveRowAction(null);
+                                  }}
+                                  className="w-full flex items-center gap-2 text-left transition-colors"
+                                  style={{
+                                    padding: "6px 12px",
+                                    fontSize: "12px",
+                                    fontWeight: 500,
+                                    color: action.destructive ? "var(--error)" : "var(--on-surface)",
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                                >
+                                  {action.icon || (action.destructive && <Trash2 className="h-3 w-3" />)}
+                                  {action.label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
                         )}
                       </td>
                     )}
@@ -573,32 +670,40 @@ export default function DataTable<T>({
         )}
       </div>
 
-      {/* ═══ Sticky Aggregate Footer (Phase 4.2) ═══ */}
+      {/* ═══ Sticky Aggregate Footer ═══ */}
       {stickyFooter && stickyFooter.length > 0 && (
         <div
-          className="sticky bottom-0 z-10 px-4 py-3 flex flex-wrap gap-x-6 gap-y-1 text-xs font-semibold shrink-0"
+          className="sticky bottom-0 z-10 flex flex-wrap gap-x-6 gap-y-1 shrink-0"
           style={{
+            padding: "8px 16px",
             backgroundColor: "var(--surface-low)",
             borderTop: "1px solid var(--outline-variant)",
+            fontSize: "12px",
+            fontWeight: 600,
             color: "var(--on-surface)",
           }}
         >
           {stickyFooter.map((agg, i) => (
             <span key={i} className="tabular-nums">
-              <span style={{ color: "var(--on-surface-variant)" }}>{agg.label}: </span>
+              <span style={{ color: "var(--on-surface-variant)", fontWeight: 500 }}>
+                {agg.label}:{" "}
+              </span>
               {agg.value}
             </span>
           ))}
         </div>
       )}
 
-      {/* ═══ Legacy Footer (backward compat) ═══ */}
+      {/* ═══ Legacy Footer ═══ */}
       {renderFooter && !stickyFooter && (
         <div
-          className="px-4 py-3 flex text-xs font-bold w-full shrink-0"
+          className="flex w-full shrink-0"
           style={{
+            padding: "8px 16px",
             backgroundColor: "var(--surface-low)",
             borderTop: "1px solid var(--outline-variant)",
+            fontSize: "12px",
+            fontWeight: 600,
             color: "var(--on-surface)",
           }}
         >
@@ -608,11 +713,13 @@ export default function DataTable<T>({
 
       {/* ═══ Pagination ═══ */}
       <div
-        className="px-4 py-2.5 flex items-center justify-between text-xs shrink-0"
+        className="flex items-center justify-between shrink-0"
         style={{
+          padding: "6px 16px",
           borderTop: "1px solid var(--outline-variant)",
           backgroundColor: "var(--surface-lowest)",
           color: "var(--on-surface-variant)",
+          fontSize: "12px",
         }}
       >
         <span className="tabular-nums">
@@ -628,8 +735,15 @@ export default function DataTable<T>({
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
             <select
-              className="border-none bg-transparent focus:ring-0 cursor-pointer font-medium"
-              style={{ color: "var(--on-surface)" }}
+              className="focus-ring"
+              style={{
+                border: "none",
+                background: "transparent",
+                color: "var(--on-surface)",
+                fontWeight: 500,
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
               value={controlledPageSize ?? 20}
               onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
             >
@@ -646,12 +760,27 @@ export default function DataTable<T>({
               <button
                 onClick={() => onPageChange((currentPage ?? 1) - 1)}
                 disabled={(currentPage ?? 1) <= 1}
-                className="p-1 rounded transition-colors disabled:opacity-30"
-                style={{ color: "var(--on-surface)" }}
+                className="focus-ring"
+                style={{
+                  padding: "3px",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--on-surface)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  opacity: (currentPage ?? 1) <= 1 ? 0.3 : 1,
+                }}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="tabular-nums font-medium px-1" style={{ color: "var(--on-surface)" }}>
+              <span
+                className="tabular-nums"
+                style={{
+                  fontWeight: 500,
+                  padding: "0 4px",
+                  color: "var(--on-surface)",
+                }}
+              >
                 {currentPage ?? 1}
               </span>
               <button
@@ -660,8 +789,17 @@ export default function DataTable<T>({
                   totalCount !== undefined &&
                   (currentPage ?? 1) * (controlledPageSize ?? 20) >= totalCount
                 }
-                className="p-1 rounded transition-colors disabled:opacity-30"
-                style={{ color: "var(--on-surface)" }}
+                className="focus-ring"
+                style={{
+                  padding: "3px",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--on-surface)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  opacity: totalCount !== undefined &&
+                    (currentPage ?? 1) * (controlledPageSize ?? 20) >= totalCount ? 0.3 : 1,
+                }}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

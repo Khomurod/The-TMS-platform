@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    Safehaul TMS — Global Styles & Design Tokens
-   Design System: "Safehaul Precision Framework" (DESIGN.md)
+   Enterprise Operations UI — Dense, Tables-First Design
    ═══════════════════════════════════════════════════════════════ */
 
 @import "tailwindcss";
@@ -9,28 +9,28 @@
 /* ── Design Tokens (CSS Custom Properties) ───────────────────── */
 
 :root {
-  /* Surface Architecture — Light Mode */
-  --surface: #f4f5f7;
-  --surface-low: #eef0f3;
+  /* Surface Architecture — Light Mode (Enterprise Blue-Gray) */
+  --surface: #f5f7fb;
+  --surface-low: #edf0f5;
   --surface-lowest: #ffffff;
-  --surface-container: #e8eaed;
-  --surface-container-high: #dfe1e4;
-  --surface-container-highest: #d5d7da;
-  --surface-variant: #dddfe2;
+  --surface-container: #e8ebf0;
+  --surface-container-high: #dfe2e8;
+  --surface-container-highest: #d5d8de;
+  --surface-variant: #e4e8ef;
 
-  /* Primary */
-  --primary: #3525cd;
-  --primary-container: #4f46e5;
-  --primary-fixed: #e8e0ff;
+  /* Primary (Clean Blue) */
+  --primary: #2563eb;
+  --primary-container: #3b82f6;
+  --primary-fixed: #eff6ff;
   --on-primary: #ffffff;
 
   /* Text Colors */
-  --on-surface: #191c1e;
-  --on-surface-variant: #5a5d6b;
+  --on-surface: #111827;
+  --on-surface-variant: #6b7280;
 
   /* Outline */
-  --outline: #8e8e9e;
-  --outline-variant: #c2bfd4;
+  --outline: #9ca3af;
+  --outline-variant: #e4e8ef;
 
   /* Status Colors */
   --success: #16a34a;
@@ -38,7 +38,7 @@
   --warning: #f59e0b;
   --warning-container: #fef3c7;
   --error: #dc2626;
-  --error-container: #ffdad6;
+  --error-container: #fee2e2;
   --info: #2563eb;
   --info-container: #dbeafe;
 
@@ -47,8 +47,8 @@
   --tertiary-fixed: #ffdad6;
   --on-tertiary-container: #16a34a;
 
-  /* Shadows — tinted with on-surface, not black */
-  --shadow-ambient: rgba(25, 28, 30, 0.08);
+  /* Shadows — minimal in enterprise UI */
+  --shadow-ambient: rgba(0, 0, 0, 0.04);
 
   /* Spacing scale */
   --spacing-1: 0.25rem;
@@ -61,56 +61,67 @@
   --spacing-12: 2.75rem;
   --spacing-16: 3.75rem;
 
-  /* Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
+  /* Radius — enterprise compact */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
   --radius-full: 9999px;
 
   /* Typography */
-  --font-display: "Manrope", sans-serif;
+  --font-display: "Inter", sans-serif;
   --font-body: "Inter", sans-serif;
 
   /* Sidebar */
-  --sidebar-width: 230px;
+  --sidebar-width: 244px;
   --sidebar-collapsed-width: 64px;
-  --sidebar-bg: var(--surface-lowest);
-  --sidebar-active-bg: rgba(79, 70, 229, 0.08);
-  --sidebar-active-text: var(--primary);
-  --sidebar-hover-bg: var(--surface-container);
+  --sidebar-bg: #f0f2f6;
+  --sidebar-border: #e4e8ef;
+  --sidebar-active-bg: rgba(37, 99, 235, 0.08);
+  --sidebar-active-text: #2563eb;
+  --sidebar-hover-bg: rgba(0, 0, 0, 0.04);
+  --sidebar-text: #374151;
+  --sidebar-text-muted: #6b7280;
 
   /* TopBar */
-  --topbar-height: 52px;
+  --topbar-height: 54px;
 
-  /* ── Logistics Status Colors (Warm Palette) ──────────────── */
-  --status-offer: #FF5722;
-  --status-booked: #7C4DFF;
-  --status-assigned: #26A69A;
-  --status-dispatched: #1E88E5;
-  --status-in-transit: #FF9800;
-  --status-delivered: #43A047;
+  /* ── Logistics Status Colors ─────────────────────────────── */
+  --status-offer: #6b7280;
+  --status-booked: #7c3aed;
+  --status-assigned: #0d9488;
+  --status-dispatched: #2563eb;
+  --status-in-transit: #f59e0b;
+  --status-delivered: #16a34a;
 
-  /* ── Financial Status Colors (Cool Palette) ──────────────── */
-  --status-unposted: #FF9800;
-  --status-posted: #5C6BC0;
-  --status-partial-posted: #78909C;
-  --status-invoiced: #E91E63;
-  --status-paid: #43A047;
+  /* ── Financial Status Colors ─────────────────────────────── */
+  --status-unposted: #f59e0b;
+  --status-posted: #6366f1;
+  --status-partial-posted: #64748b;
+  --status-invoiced: #e11d48;
+  --status-paid: #16a34a;
 
-  /* ── Compliance Colors (Semantic) ────────────────────────── */
-  --compliance-good: #43A047;
-  --compliance-upcoming: #FFC107;
-  --compliance-critical: #F44336;
-  --compliance-expired: #B71C1C;
+  /* ── Compliance Colors ───────────────────────────────────── */
+  --compliance-good: #16a34a;
+  --compliance-upcoming: #f59e0b;
+  --compliance-critical: #ef4444;
+  --compliance-expired: #991b1b;
 
   /* ── Canvas and Card ─────────────────────────────────────── */
   --canvas-bg: var(--surface);
   --card-bg: var(--surface-lowest);
   --card-border: var(--outline-variant);
-  --card-radius: var(--radius-xl);
-  --card-padding: 20px;
+  --card-radius: var(--radius-lg);
+  --card-padding: 16px;
+
+  /* ── DataTable density ───────────────────────────────────── */
+  --dt-row-height-compact: 40px;
+  --dt-row-height-comfortable: 48px;
+  --dt-header-height: 38px;
+  --dt-cell-px: 12px;
+  --dt-cell-py-compact: 6px;
+  --dt-cell-py-comfortable: 10px;
 }
 
 /* ── Dark Mode — Surface Architecture ────────────────────────── */
@@ -118,36 +129,45 @@
 .dark {
   --surface: #0f1117;
   --surface-low: #1a1c24;
-  --surface-lowest: #24262e;
-  --surface-container: #1e2028;
-  --surface-container-high: #2a2c34;
-  --surface-container-highest: #35373f;
+  --surface-lowest: #1e2028;
+  --surface-container: #262830;
+  --surface-container-high: #2e3038;
+  --surface-container-highest: #383a42;
   --surface-variant: #2f3139;
 
-  --primary: #7c6ff7;
-  --primary-container: #5b4fd6;
-  --primary-fixed: #2a2050;
+  --primary: #60a5fa;
+  --primary-container: #3b82f6;
+  --primary-fixed: #1e3a5f;
   --on-primary: #ffffff;
 
-  --on-surface: #e2e4e8;
-  --on-surface-variant: #9e9dae;
+  --on-surface: #e5e7eb;
+  --on-surface-variant: #9ca3af;
 
-  --outline: #6b6980;
-  --outline-variant: #45435a;
+  --outline: #6b7280;
+  --outline-variant: #374151;
 
   --success: #4ade80;
   --success-container: #14532d;
   --warning: #fbbf24;
   --warning-container: #78350f;
-  --error: #ff8a80;
-  --error-container: #4a0404;
+  --error: #f87171;
+  --error-container: #450a0a;
   --info: #60a5fa;
   --info-container: #1e3a5f;
 
-  --tertiary: #ff8a80;
-  --tertiary-fixed: #4a0404;
+  --tertiary: #f87171;
+  --tertiary-fixed: #450a0a;
 
-  --shadow-ambient: rgba(0, 0, 0, 0.25);
+  --shadow-ambient: rgba(0, 0, 0, 0.2);
+
+  /* Sidebar dark mode */
+  --sidebar-bg: #1a1c24;
+  --sidebar-border: #2e3038;
+  --sidebar-active-bg: rgba(96, 165, 250, 0.1);
+  --sidebar-active-text: #60a5fa;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+  --sidebar-text: #d1d5db;
+  --sidebar-text-muted: #9ca3af;
 }
 
 /* ── Base Styles ─────────────────────────────────────────────── */
@@ -160,6 +180,7 @@
 
 html {
   font-family: var(--font-body);
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -167,20 +188,12 @@ html {
 body {
   background-color: var(--surface);
   color: var(--on-surface);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-/* ── Typography System ───────────────────────────────────────── */
+/* ── Typography System (Enterprise-Compact) ─────────────────── */
 
 .headline-lg {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 2.5rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-}
-
-.headline-md {
   font-family: var(--font-display);
   font-size: 1.5rem;
   line-height: 2rem;
@@ -188,59 +201,67 @@ body {
   letter-spacing: -0.02em;
 }
 
-.headline-sm {
+.headline-md {
   font-family: var(--font-display);
   font-size: 1.25rem;
   line-height: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.headline-sm {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.5rem;
   font-weight: 700;
 }
 
 .title-lg {
   font-family: var(--font-display);
-  font-size: 1.375rem;
-  line-height: 1.75rem;
-  font-weight: 700;
-}
-
-.title-md {
-  font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.5rem;
   font-weight: 600;
 }
 
-.title-sm {
+.title-md {
   font-family: var(--font-body);
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 600;
 }
 
-.body-lg {
+.title-sm {
   font-family: var(--font-body);
-  font-size: 1rem;
-  line-height: 1.75rem;
-  font-weight: 400;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 600;
 }
 
-.body-md {
+.body-lg {
   font-family: var(--font-body);
   font-size: 0.875rem;
   line-height: 1.5rem;
   font-weight: 400;
 }
 
-.body-sm {
+.body-md {
   font-family: var(--font-body);
   font-size: 0.8125rem;
   line-height: 1.25rem;
   font-weight: 400;
 }
 
+.body-sm {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+}
+
 .label-lg {
   font-family: var(--font-body);
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
   font-weight: 600;
   letter-spacing: 0.025em;
   text-transform: uppercase;
@@ -248,8 +269,8 @@ body {
 
 .label-md {
   font-family: var(--font-body);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
   font-weight: 500;
 }
 
@@ -260,69 +281,131 @@ body {
   font-weight: 500;
 }
 
-/* ── KPI Rule — Tabular Numbers ──────────────────────────────── */
+/* ── Tabular Numbers ─────────────────────────────────────────── */
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Card — the core surface-elevated container ──────────────── */
+/* ── Card — enterprise surface container ─────────────────────── */
 
 .card {
   background-color: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-xl);
-  box-shadow: 0 1px 3px 0 var(--shadow-ambient), 0 1px 2px -1px var(--shadow-ambient);
+  border-radius: var(--radius-lg);
 }
 
-.dark .card {
-  border-color: var(--outline-variant);
-}
-
-/* ── Ghost Border (accessibility fallback) ───────────────────── */
+/* ── Ghost Border (accessibility) ────────────────────────────── */
 
 .ghost-border {
   border: 1px solid var(--outline-variant);
 }
 
-.dark .ghost-border {
-  border: 1px solid var(--outline-variant);
-}
-
-/* ── Ambient Shadow (floating elements only) ─────────────────── */
+/* ── Ambient Shadow (minimal) ────────────────────────────────── */
 
 .shadow-ambient {
-  box-shadow: 0 1px 3px 0 var(--shadow-ambient), 0 1px 2px -1px var(--shadow-ambient);
-}
-
-/* ── Glassmorphism (modals, command menus) ────────────────────── */
-
-.glass {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.dark .glass {
-  background-color: rgba(36, 38, 46, 0.8);
+  box-shadow: 0 1px 2px 0 var(--shadow-ambient);
 }
 
 /* ── Gradient Primary CTA ────────────────────────────────────── */
 
 .gradient-primary {
-  background: linear-gradient(135deg, var(--primary), var(--primary-container));
+  background: var(--primary);
   color: var(--on-primary);
-  transition: opacity 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .gradient-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-container);
+}
+
+/* ── Enterprise Button Base ──────────────────────────────────── */
+
+.btn-enterprise {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-lowest);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-enterprise:hover {
+  border-color: var(--outline);
+  background: var(--surface-low);
+}
+
+.btn-enterprise:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+.btn-enterprise-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-enterprise-primary:hover {
+  background: var(--primary-container);
+}
+
+.btn-enterprise-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
+}
+
+/* ── Status Chip (pill badge) ────────────────────────────────── */
+
+.chip-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── DataTable Density Classes ───────────────────────────────── */
+
+.dt-compact td,
+.dt-compact th {
+  padding: var(--dt-cell-py-compact) var(--dt-cell-px);
+}
+
+.dt-comfortable td,
+.dt-comfortable th {
+  padding: var(--dt-cell-py-comfortable) var(--dt-cell-px);
 }
 
 /* ── Scrollbar Styling ───────────────────────────────────────── */
 
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -336,4 +419,72 @@ body {
 
 .dark ::-webkit-scrollbar-thumb {
   background-color: var(--surface-container-high);
+}
+
+/* ── Focus Ring Utility ──────────────────────────────────────── */
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+/* ── Enterprise Divider ──────────────────────────────────────── */
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* ── Glassmorphism (modals, command menus) ────────────────────── */
+
+.glass {
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass {
+  background-color: rgba(30, 32, 40, 0.85);
+}
+
+/* ── Metrics Card (accounting detail) ────────────────────────── */
+
+.metric-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-right: 1px solid var(--outline-variant);
+  min-width: 120px;
+}
+
+.metric-block:last-child {
+  border-right: none;
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-link {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.metric-link:hover {
+  text-decoration: underline;
 }

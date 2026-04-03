@@ -9,15 +9,24 @@ import Modal from "@/components/ui/Modal";
 import {
   Building2, LayoutDashboard, Truck, Map, Users, Settings, Wallet,
   ChevronDown, ChevronRight, LogOut, Mail, Calendar, MapPin,
-  Shield, UserCog, Wrench, Puzzle, ListTodo, ShoppingBag, BarChart3,
-  Construction, X, Boxes, FileText, Landmark,
+  Shield, UserCog, Wrench, ShoppingBag, BarChart3,
+  Construction, Boxes, ClipboardList, Radio, Layers,
+  Compass, MonitorDot, FileText, DollarSign, CreditCard,
+  Package, Gauge,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Sidebar — Modernized (Tailwind + Data Attributes + Shared Modal)
-   Dark navy, single-expand accordion, NewBadge integration,
+   Sidebar — Enterprise Operations UI
+   Light gray-blue background, compact nav, single-expand accordion,
    Safehaul branding, user identity footer.
    ═══════════════════════════════════════════════════════════════ */
+
+interface NavChild {
+  name: string;
+  href: string;
+  implemented?: boolean;
+  badge?: { label: string; variant: "blue" | "green" | "orange"; launchDate?: string };
+}
 
 interface NavItem {
   name: string;
@@ -25,7 +34,7 @@ interface NavItem {
   icon: React.ElementType;
   badge?: { label: string; variant: "blue" | "green" | "orange"; launchDate?: string };
   implemented?: boolean;
-  children?: { name: string; href: string; implemented?: boolean; badge?: { label: string; variant: "blue" | "green" | "orange"; launchDate?: string } }[];
+  children?: NavChild[];
 }
 
 const navItems: NavItem[] = [
@@ -39,14 +48,19 @@ const navItems: NavItem[] = [
       { name: "My Loads", href: "/loads?tab=my", implemented: false },
       { name: "LTL Trips", href: "/loads/ltl", implemented: false },
       { name: "Loadboard", href: "/loadboard", implemented: false, badge: { label: "NEW", variant: "blue" } },
+      { name: "Planning Calendar", href: "/planning/calendar", implemented: false },
+      { name: "Planning Board", href: "/planning/board", implemented: false },
+      { name: "Dispatch Board", href: "/dispatch", implemented: false },
+      { name: "Dispatch Board 2.0", href: "/dispatch/v2", implemented: false, badge: { label: "BETA", variant: "orange" } },
+      { name: "MAP", href: "/map", implemented: false },
     ]
   },
   {
     name: "Accounting", icon: Wallet,
     children: [
-      { name: "Invoices", href: "/accounting?tab=invoices", implemented: true },
+      { name: "Invoice", href: "/accounting?tab=invoices", implemented: false },
       { name: "Salary", href: "/accounting", implemented: true },
-      { name: "Bills", href: "/accounting/bills", implemented: false },
+      { name: "Bill", href: "/accounting/bills", implemented: false },
     ]
   },
   {
@@ -57,12 +71,16 @@ const navItems: NavItem[] = [
       { name: "Locations", href: "/locations", implemented: false },
     ]
   },
+  { name: "Safety", href: "/safety", icon: Shield, implemented: false },
   {
     name: "Fleet Management", icon: Truck,
     children: [
       { name: "Trucks", href: "/fleet", implemented: true },
       { name: "Trailers", href: "/fleet/trailers", implemented: false },
       { name: "Inspections", href: "/fleet/inspections", implemented: false },
+      { name: "Fleet Board", href: "/fleet/board", implemented: false },
+      { name: "Inventory", href: "/fleet/inventory", implemented: false },
+      { name: "Maintenance", href: "/fleet/maintenance", implemented: false },
     ]
   },
   {
@@ -72,8 +90,6 @@ const navItems: NavItem[] = [
       { name: "Users", href: "/users", implemented: false },
     ]
   },
-  { name: "Safety", href: "/safety", icon: Shield, implemented: false },
-  { name: "Maintenance", href: "/maintenance", icon: Wrench, implemented: false },
   { name: "Reports", href: "/reports", icon: BarChart3, implemented: false },
   { name: "Apps & Marketplace", href: "/apps", icon: ShoppingBag, badge: { label: "NEW", variant: "green" }, implemented: false },
 ];
@@ -82,10 +98,10 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  // Single-expand accordion — only one section open at a time
+  // Single-expand accordion
   const [openSection, setOpenSection] = useState<string | null>(() => {
     for (const item of navItems) {
-      if (item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+      if (item.children?.some(c => pathname === c.href.split("?")[0] || pathname.startsWith(c.href.split("?")[0] + "/"))) {
         return item.name;
       }
     }
@@ -114,37 +130,61 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Under Development Modal — using shared Modal component */}
+      {/* Under Development Modal */}
       <Modal isOpen={showUnderDev} onClose={() => setShowUnderDev(false)} title="Under Development" size="sm">
         <div className="flex flex-col items-center text-center py-2">
-          <div className="w-14 h-14 rounded-[14px] bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-4">
-            <Construction className="w-7 h-7 text-white" />
+          <div
+            className="w-12 h-12 rounded-[10px] flex items-center justify-center mb-3"
+            style={{ backgroundColor: "var(--warning-container)" }}
+          >
+            <Construction className="w-6 h-6" style={{ color: "var(--warning)" }} />
           </div>
-          <p className="text-sm text-[var(--on-surface-variant)] leading-relaxed mb-5">
+          <p className="text-sm mb-4" style={{ color: "var(--on-surface-variant)" }}>
             This feature is currently being built and will be available soon. Stay tuned for updates!
           </p>
           <button
             onClick={() => setShowUnderDev(false)}
-            className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-none rounded-lg px-8 py-2.5 text-sm font-bold cursor-pointer hover:brightness-110 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+            className="btn-enterprise-primary"
           >
             Got it
           </button>
         </div>
       </Modal>
 
-      <aside className="w-60 min-w-60 bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col h-screen sticky top-0 z-30 overflow-hidden border-r border-slate-700">
-        {/* Brand */}
-        <div className="h-14 flex items-center px-4 border-b border-slate-700 gap-2.5 shrink-0">
-          <div className="w-[30px] h-[30px] rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-            <Truck className="w-4 h-4 text-white" />
+      <aside
+        className="flex flex-col h-screen sticky top-0 z-30 overflow-hidden shrink-0"
+        style={{
+          width: "var(--sidebar-width)",
+          minWidth: "var(--sidebar-width)",
+          backgroundColor: "var(--sidebar-bg)",
+          borderRight: "1px solid var(--sidebar-border)",
+        }}
+      >
+        {/* ── Brand ── */}
+        <div
+          className="flex items-center gap-2.5 shrink-0"
+          style={{
+            height: "var(--topbar-height)",
+            padding: "0 16px",
+            borderBottom: "1px solid var(--sidebar-border)",
+          }}
+        >
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: "var(--primary)" }}
+          >
+            <Truck className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="text-slate-50 text-[15px] font-bold tracking-tight">
+          <span
+            className="text-[14px] font-bold tracking-tight"
+            style={{ color: "var(--on-surface)" }}
+          >
             Safehaul TMS
           </span>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-1.5 px-2">
+        {/* ── Nav ── */}
+        <nav className="flex-1 overflow-y-auto py-1 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const hasChildren = !!item.children;
@@ -157,28 +197,55 @@ export default function Sidebar() {
                 {hasChildren ? (
                   <button
                     onClick={() => toggleExpand(item.name)}
-                    data-active={parentActive}
-                    className="flex items-center w-full px-2.5 py-[7px] rounded-md border-none text-[13px] gap-2.5 mb-px cursor-pointer border-l-[3px] transition-colors
-                      text-slate-300 border-l-transparent bg-transparent
-                      hover:bg-white/5
-                      data-[active=true]:text-blue-400 data-[active=true]:bg-blue-500/12 data-[active=true]:border-l-blue-500 data-[active=true]:font-semibold"
+                    className="flex items-center w-full rounded-md border-none cursor-pointer transition-colors"
+                    style={{
+                      padding: "6px 10px",
+                      gap: "8px",
+                      marginBottom: "1px",
+                      fontSize: "12.5px",
+                      fontWeight: parentActive ? 600 : 500,
+                      color: parentActive ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
+                      backgroundColor: parentActive ? "var(--sidebar-active-bg)" : "transparent",
+                      borderLeft: parentActive ? "3px solid var(--sidebar-active-text)" : "3px solid transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!parentActive) e.currentTarget.style.backgroundColor = "var(--sidebar-hover-bg)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!parentActive) e.currentTarget.style.backgroundColor = "transparent";
+                    }}
                   >
-                    <Icon className="w-[17px] h-[17px] shrink-0" />
-                    <span className="flex-1 text-left font-medium">{item.name}</span>
-                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
+                    <Icon className="w-[16px] h-[16px] shrink-0" />
+                    <span className="flex-1 text-left">{item.name}</span>
+                    {isOpen
+                      ? <ChevronDown className="w-3 h-3 opacity-50" />
+                      : <ChevronRight className="w-3 h-3 opacity-50" />
+                    }
                   </button>
                 ) : (
                   <Link
                     href={item.implemented ? item.href! : "#"}
                     onClick={(e) => handleNav(e, item.implemented)}
-                    data-active={itemActive}
-                    className="flex items-center px-2.5 py-[7px] rounded-md no-underline text-[13px] gap-2.5 mb-px border-l-[3px] transition-colors
-                      text-slate-300 border-l-transparent bg-transparent
-                      hover:bg-white/5
-                      data-[active=true]:text-blue-400 data-[active=true]:bg-blue-500/12 data-[active=true]:border-l-blue-500 data-[active=true]:font-semibold"
+                    className="flex items-center rounded-md no-underline transition-colors"
+                    style={{
+                      padding: "6px 10px",
+                      gap: "8px",
+                      marginBottom: "1px",
+                      fontSize: "12.5px",
+                      fontWeight: itemActive ? 600 : 500,
+                      color: itemActive ? "var(--sidebar-active-text)" : "var(--sidebar-text)",
+                      backgroundColor: itemActive ? "var(--sidebar-active-bg)" : "transparent",
+                      borderLeft: itemActive ? "3px solid var(--sidebar-active-text)" : "3px solid transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!itemActive) e.currentTarget.style.backgroundColor = "var(--sidebar-hover-bg)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!itemActive) e.currentTarget.style.backgroundColor = "transparent";
+                    }}
                   >
-                    <Icon className="w-[17px] h-[17px] shrink-0" />
-                    <span className="flex-1 font-medium">{item.name}</span>
+                    <Icon className="w-[16px] h-[16px] shrink-0" />
+                    <span className="flex-1">{item.name}</span>
                     {item.badge && (
                       <NewBadge
                         label={item.badge.label}
@@ -189,8 +256,16 @@ export default function Sidebar() {
                   </Link>
                 )}
 
+                {/* Children */}
                 {hasChildren && isOpen && (
-                  <div className="ml-5 border-l border-slate-700 pl-3 mb-0.5">
+                  <div
+                    className="mb-0.5"
+                    style={{
+                      marginLeft: "20px",
+                      paddingLeft: "12px",
+                      borderLeft: "1px solid var(--outline-variant)",
+                    }}
+                  >
                     {item.children!.map(child => {
                       const childActive = isActivePath(child.href);
                       return (
@@ -198,11 +273,22 @@ export default function Sidebar() {
                           key={child.name}
                           href={child.implemented ? child.href : "#"}
                           onClick={(e) => handleNav(e, child.implemented)}
-                          data-active={childActive}
-                          className="flex items-center gap-1.5 px-2.5 py-[5px] rounded-[5px] no-underline text-[12.5px] mb-px transition-colors
-                            text-slate-400 bg-transparent
-                            hover:bg-white/[0.04]
-                            data-[active=true]:text-blue-400 data-[active=true]:bg-blue-500/10 data-[active=true]:font-semibold"
+                          className="flex items-center rounded-[5px] no-underline transition-colors"
+                          style={{
+                            padding: "4px 10px",
+                            gap: "6px",
+                            marginBottom: "1px",
+                            fontSize: "12px",
+                            fontWeight: childActive ? 600 : 400,
+                            color: childActive ? "var(--sidebar-active-text)" : "var(--sidebar-text-muted)",
+                            backgroundColor: childActive ? "var(--sidebar-active-bg)" : "transparent",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!childActive) e.currentTarget.style.backgroundColor = "var(--sidebar-hover-bg)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!childActive) e.currentTarget.style.backgroundColor = "transparent";
+                          }}
                         >
                           <span className="flex-1">{child.name}</span>
                           {child.badge && (
@@ -222,31 +308,54 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Separator */}
-        <div className="border-t border-slate-700 mx-4" />
+        {/* ── Separator ── */}
+        <div style={{ borderTop: "1px solid var(--sidebar-border)", margin: "0 12px" }} />
 
-        {/* Footer — Company + User Identity */}
+        {/* ── Footer — Company + User Identity ── */}
         <div className="p-2.5 shrink-0">
-          <button className="flex items-center gap-2 w-full px-2.5 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-slate-200 text-[11px] font-semibold cursor-pointer mb-2.5 text-left hover:bg-white/[0.08] transition-colors">
-            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{user?.company_name || "Company"}</span>
-            <ChevronRight className="w-3 h-3 text-slate-500" />
+          <button
+            className="flex items-center gap-2 w-full rounded-md cursor-pointer text-left transition-colors"
+            style={{
+              padding: "6px 10px",
+              marginBottom: "8px",
+              fontSize: "11px",
+              fontWeight: 600,
+              color: "var(--sidebar-text)",
+              backgroundColor: "var(--surface-lowest)",
+              border: "1px solid var(--outline-variant)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--sidebar-hover-bg)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-lowest)"; }}
+          >
+            <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--on-surface-variant)" }} />
+            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              {user?.company_name || "Company"}
+            </span>
+            <ChevronRight className="w-3 h-3" style={{ color: "var(--on-surface-variant)" }} />
           </button>
           <div className="flex items-center gap-2.5 px-1">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
               {user ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` : "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-slate-100 text-[12.5px] font-semibold leading-tight">{user ? `${user.first_name} ${user.last_name}` : "User"}</div>
-              <div className="text-slate-500 text-[10.5px] leading-tight mt-0.5">{user?.email || ""}</div>
+              <div className="text-[12px] font-semibold leading-tight" style={{ color: "var(--on-surface)" }}>
+                {user ? `${user.first_name} ${user.last_name}` : "User"}
+              </div>
+              <div className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--on-surface-variant)" }}>
+                {user?.email || ""}
+              </div>
             </div>
             <button
               onClick={() => logout()}
-              className="bg-transparent border-none text-slate-500 cursor-pointer p-1 hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 rounded"
+              className="border-none cursor-pointer p-1 rounded transition-colors focus-ring"
+              style={{ background: "transparent", color: "var(--on-surface-variant)" }}
               title="Sign out"
               aria-label="Sign out"
             >
-              <LogOut className="w-[15px] h-[15px]" />
+              <LogOut className="w-[14px] h-[14px]" />
             </button>
           </div>
         </div>
