@@ -7,13 +7,11 @@ import { useAuth } from "@/lib/auth-context";
 import {
   Building2, LayoutDashboard, Truck, Map, Users, Settings, Wallet,
   ChevronDown, ChevronRight, LogOut,
-  Layers,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
    Sidebar — Enterprise Operations UI
    Clean, trust-building navigation. Only shows implemented routes.
-   Unimplemented features are collapsed into a "Coming Soon" count.
    ═══════════════════════════════════════════════════════════════ */
 
 interface NavChild {
@@ -61,8 +59,7 @@ const navItems: NavItem[] = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-/** Count of features in development (hidden from nav) */
-const COMING_SOON_COUNT = 18;
+
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
@@ -171,32 +168,6 @@ export default function Sidebar() {
           );
         })}
 
-        {/* ── Coming Soon Indicator ── */}
-        <div className="sidebar-section-label" style={{ marginTop: "var(--spacing-4)" }}>
-          Coming Soon
-        </div>
-        <div
-          className="sidebar-nav-item"
-          style={{ opacity: 0.5, cursor: "default" }}
-        >
-          <Layers className="w-[16px] h-[16px] shrink-0" />
-          <span className="flex-1" style={{ fontSize: "12px" }}>
-            {COMING_SOON_COUNT} more features
-          </span>
-          <span
-            className="tabular-nums"
-            style={{
-              fontSize: "10px",
-              fontWeight: 700,
-              padding: "1px 6px",
-              borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--surface-container)",
-              color: "var(--on-surface-variant)",
-            }}
-          >
-            Soon
-          </span>
-        </div>
       </nav>
 
       {/* ── Footer — Company + User Identity ── */}

@@ -15,7 +15,6 @@ import {
   DollarSign,
   Loader2,
   AlertCircle,
-  Upload,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -122,18 +121,18 @@ export default function CreateDriverPage() {
       )}
 
       {/* ═══ 70/30 Body ═══ */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 380px" }}>
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 340px" }}>
 
           {/* ── LEFT 70% — Form ── */}
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Personal Information */}
-            <div className="card p-5 space-y-4">
-              <h2 className="title-sm flex items-center gap-2" style={{ color: "var(--on-surface)" }}>
-                <Users className="h-4 w-4" style={{ color: "var(--primary)" }} />
+            <div className="card-section">
+              <h2 className="card-section-header">
+                <Users className="icon" style={{ color: "var(--primary)" }} />
                 Personal Information
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <FormField label="First Name" required>
                   <input className="input-base" placeholder="First name" value={firstName} onChange={e => setFirstName(e.target.value)} />
                 </FormField>
@@ -160,12 +159,12 @@ export default function CreateDriverPage() {
             </div>
 
             {/* CDL & Compliance */}
-            <div className="card p-5 space-y-4">
-              <h2 className="title-sm flex items-center gap-2" style={{ color: "var(--on-surface)" }}>
-                <Shield className="h-4 w-4" style={{ color: "var(--success)" }} />
+            <div className="card-section card-section--green">
+              <h2 className="card-section-header">
+                <Shield className="icon" style={{ color: "var(--success)" }} />
                 CDL &amp; Compliance
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <FormField label="CDL Number">
                   <input className="input-base" placeholder="CDL-XXXXXXXXX" value={cdlNumber} onChange={e => setCdlNumber(e.target.value)} />
                 </FormField>
@@ -187,12 +186,12 @@ export default function CreateDriverPage() {
             </div>
 
             {/* Payment */}
-            <div className="card p-5 space-y-4">
-              <h2 className="title-sm flex items-center gap-2" style={{ color: "var(--on-surface)" }}>
-                <DollarSign className="h-4 w-4" style={{ color: "var(--warning)" }} />
+            <div className="card-section card-section--amber">
+              <h2 className="card-section-header">
+                <DollarSign className="icon" style={{ color: "var(--warning)" }} />
                 Payment Configuration
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <FormField label="Tariff Type">
                   <select className="select-base" value={paymentTariffType} onChange={e => setPaymentTariffType(e.target.value)}>
                     <option value="">Select tariff</option>
@@ -211,56 +210,46 @@ export default function CreateDriverPage() {
           </div>
 
           {/* ── RIGHT 30% — Side Info ── */}
-          <aside className="space-y-4" style={{ position: "sticky", top: 20, alignSelf: "start" }}>
+          <aside className="space-y-5" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
             {/* Quick Tips */}
-            <div className="card p-4 space-y-3">
-              <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
+            <div className="card-tinted space-y-4">
+              <h3 className="card-section-header" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: "none" }}>
                 Quick Tips
               </h3>
-              <div className="space-y-2 text-xs" style={{ color: "var(--on-surface-variant)" }}>
-                <div className="flex items-start gap-2">
-                  <Phone className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--primary)" }} />
-                  <p>Driver phone is used for dispatch notifications</p>
+              <div className="space-y-3.5 text-[13px]" style={{ color: "var(--on-surface-variant)" }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(37, 99, 235, 0.1)" }}>
+                    <Phone className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                  </div>
+                  <p className="pt-0.5">Driver phone is used for dispatch notifications</p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--success)" }} />
-                  <p>CDL and medical card dates feed into compliance tracking</p>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(22, 163, 74, 0.1)" }}>
+                    <Shield className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
+                  </div>
+                  <p className="pt-0.5">CDL and medical card dates feed into compliance tracking</p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Calendar className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--warning)" }} />
-                  <p>Hire date is used to compute driver tenure automatically</p>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(245, 158, 11, 0.1)" }}>
+                    <Calendar className="h-3.5 w-3.5" style={{ color: "var(--warning)" }} />
+                  </div>
+                  <p className="pt-0.5">Hire date is used to compute driver tenure automatically</p>
                 </div>
-              </div>
-            </div>
-
-            {/* CDL Document Upload placeholder */}
-            <div className="card p-4 space-y-3">
-              <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
-                Documents
-              </h3>
-              <div className="py-6 text-center rounded-lg" style={{ border: "2px dashed var(--outline-variant)" }}>
-                <Upload className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--outline)" }} />
-                <p className="text-xs font-medium" style={{ color: "var(--on-surface-variant)" }}>
-                  CDL, Medical Card, MVR uploads
-                </p>
-                <p className="text-[10px] mt-1" style={{ color: "var(--outline)" }}>
-                  Coming soon
-                </p>
               </div>
             </div>
 
             {/* Notes */}
-            <div className="card p-4 space-y-3">
-              <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
+            <div className="card-section">
+              <h3 className="card-section-header" style={{ marginBottom: 12 }}>
                 Notes
               </h3>
               <textarea
                 className="input-base"
-                rows={4}
+                rows={5}
                 placeholder="Internal notes about this driver..."
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                style={{ resize: "vertical" }}
+                style={{ resize: "vertical", minHeight: 140, height: "auto" }}
               />
             </div>
           </aside>

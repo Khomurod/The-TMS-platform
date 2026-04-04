@@ -9,8 +9,8 @@ import ComplianceDot from "@/components/ui/ComplianceDot";
 import ActivityPanel from "@/components/ui/ActivityPanel";
 import {
   Pencil, Save, Users, Truck, Phone, Mail, Calendar,
-  Shield, FileText, Smartphone, Briefcase, DollarSign,
-  BarChart3, Clock, CheckSquare, Settings, Star, Loader2,
+  Shield, FileText, DollarSign,
+  BarChart3, Star, Loader2,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -52,14 +52,8 @@ interface DriverDetail {
 const DRIVER_TABS = [
   { key: "main",        label: "Main",           icon: <Users className="h-3.5 w-3.5" /> },
   { key: "documents",   label: "Documents",      icon: <FileText className="h-3.5 w-3.5" /> },
-  { key: "mobile",      label: "Mobile App",     icon: <Smartphone className="h-3.5 w-3.5" /> },
-  { key: "recruiting",  label: "Recruiting",     icon: <Briefcase className="h-3.5 w-3.5" /> },
   { key: "accounting",  label: "Accounting",     icon: <DollarSign className="h-3.5 w-3.5" /> },
-  { key: "safety",      label: "Safety",         icon: <Shield className="h-3.5 w-3.5" /> },
-  { key: "assets",      label: "Assets",         icon: <Truck className="h-3.5 w-3.5" /> },
   { key: "statistics",  label: "Statistics",     icon: <BarChart3 className="h-3.5 w-3.5" /> },
-  { key: "log-history", label: "Log History",    icon: <Clock className="h-3.5 w-3.5" /> },
-  { key: "others",      label: "Others",         icon: <Settings className="h-3.5 w-3.5" /> },
 ];
 
 const STATUS_MAP: Record<string, { intent: "good" | "dispatched" | "upcoming" | "critical"; label: string }> = {
@@ -306,7 +300,7 @@ export default function DriverDetailPage() {
               <p className="text-xs mb-3" style={{ color: "var(--on-surface-variant)" }}>
                 Upload CDL, Medical Card, MVR, Drug Test and more
               </p>
-              <button className="btn btn-primary btn-sm">
+              <button className="btn btn-secondary btn-sm" disabled title="Document uploads will be available in a future update">
                 Bulk Upload
               </button>
             </div>
@@ -355,21 +349,7 @@ export default function DriverDetailPage() {
           </div>
         )}
 
-        {/* ── Generic Placeholder for other tabs ── */}
-        {!["main", "documents", "accounting", "statistics"].includes(activeTab) && (
-          <div className="card p-5 space-y-4">
-            <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
-              {DRIVER_TABS.find((t) => t.key === activeTab)?.label}
-            </h3>
-            <div className="py-12 text-center">
-              <Settings className="h-8 w-8 mx-auto mb-2" style={{ color: "var(--outline-variant)" }} />
-              <p className="text-sm font-medium mb-1" style={{ color: "var(--on-surface)" }}>Coming soon</p>
-              <p className="text-xs" style={{ color: "var(--on-surface-variant)" }}>
-                This section is under development
-              </p>
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );

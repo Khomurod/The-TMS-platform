@@ -78,22 +78,7 @@ const SETTLEMENT_STATUS_MAP: Record<string, { intent: "unposted" | "posted" | "p
   paid: { intent: "paid", label: "Paid" },
 };
 
-/* ── Sub-Navigation Tab Configuration ──────────────────────── */
 
-type SubNavTab = {
-  key: string;
-  label: string;
-};
-
-const SUB_NAV_TABS: SubNavTab[] = [
-  { key: "salary_batches", label: "Salary batches" },
-  { key: "driver_statements", label: "Driver statements" },
-  { key: "salary_report", label: "Salary report" },
-  { key: "driver_balances", label: "Driver balances" },
-  { key: "dispatcher_salary", label: "Dispatcher salary" },
-  { key: "one_time_charges", label: "One time charges" },
-  { key: "scheduled_payments", label: "Scheduled payments" },
-];
 
 /* ── List Tab Configuration ────────────────────────────────── */
 
@@ -118,7 +103,6 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: 
 export default function AccountingPage() {
   const [settlements, setSettlements] = useState<SettlementItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeSubNav, setActiveSubNav] = useState("salary_batches");
   const [activeListTab, setActiveListTab] = useState("all");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -152,10 +136,10 @@ export default function AccountingPage() {
   }, [page, pageSize, activeListTab]);
 
   useEffect(() => {
-    if (activeSubNav === "salary_batches" && !showDetail) {
+    if (!showDetail) {
       fetchSettlements();
     }
-  }, [fetchSettlements, activeSubNav, showDetail]);
+  }, [fetchSettlements, showDetail]);
 
   const handleListTabChange = (key: string) => {
     setActiveListTab(key);
@@ -267,26 +251,8 @@ export default function AccountingPage() {
 
   return (
     <div className="h-full flex flex-col" style={{ padding: "16px" }}>
-      {/* ── Sub-Navigation Tabs ── */}
-      <div className="tab-bar shrink-0" style={{ marginBottom: "16px" }}>
-        {SUB_NAV_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => {
-              setActiveSubNav(tab.key);
-              setShowDetail(false);
-              setSelectedSettlement(null);
-            }}
-            className={`tab-item ${activeSubNav === tab.key ? "tab-item--active" : ""}`}
-            style={{ fontSize: "12px" }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* ── Content Area ── */}
-      {activeSubNav === "salary_batches" && !showDetail && (
+      {!showDetail && (
         /* ═══ Settlement List View ═══ */
         <div
           className="flex-1 min-h-0 overflow-hidden"
@@ -315,33 +281,12 @@ export default function AccountingPage() {
         </div>
       )}
 
-      {activeSubNav === "salary_batches" && showDetail && selectedSettlement && (
+      {showDetail && selectedSettlement && (
         /* ═══ Settlement Detail View ═══ */
         <SettlementDetail
           settlement={selectedSettlement}
           onBack={handleBackToList}
         />
-      )}
-
-      {activeSubNav !== "salary_batches" && (
-        /* ═══ Placeholder for other sub-sections ═══ */
-        <div
-          className="flex-1 flex items-center justify-center"
-          style={{
-            border: "1px solid var(--outline-variant)",
-            borderRadius: "var(--radius-lg)",
-            backgroundColor: "var(--surface-lowest)",
-          }}
-        >
-          <div className="text-center">
-            <p style={{ color: "var(--on-surface)", fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>
-              {SUB_NAV_TABS.find(t => t.key === activeSubNav)?.label}
-            </p>
-            <p style={{ color: "var(--on-surface-variant)", fontSize: "12px" }}>
-              This section is under development.
-            </p>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -12,8 +12,7 @@ import {
   Shield,
   Loader2,
   AlertCircle,
-  Upload,
-  Camera,
+  Settings2,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -112,18 +111,18 @@ export default function CreateTruckPage() {
       )}
 
       {/* ═══ 70/30 Body ═══ */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 380px" }}>
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 340px" }}>
 
           {/* ── LEFT 70% — Form ── */}
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Unit Information */}
-            <div className="card p-5 space-y-4">
-              <h2 className="title-sm flex items-center gap-2" style={{ color: "var(--on-surface)" }}>
-                <Truck className="h-4 w-4" style={{ color: "var(--primary)" }} />
+            <div className="card-section">
+              <h2 className="card-section-header">
+                <Truck className="icon" style={{ color: "var(--primary)" }} />
                 Unit Information
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <FormField label="Unit Number" required>
                   <input className="input-base" placeholder="TRK-001" value={unitNumber} onChange={e => setUnitNumber(e.target.value)} />
                 </FormField>
@@ -163,12 +162,12 @@ export default function CreateTruckPage() {
             </div>
 
             {/* DOT Inspection */}
-            <div className="card p-5 space-y-4">
-              <h2 className="title-sm flex items-center gap-2" style={{ color: "var(--on-surface)" }}>
-                <Shield className="h-4 w-4" style={{ color: "var(--success)" }} />
+            <div className="card-section card-section--green">
+              <h2 className="card-section-header">
+                <Shield className="icon" style={{ color: "var(--success)" }} />
                 DOT Inspection
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <FormField label="Last Inspection Date">
                   <input className="input-base" type="date" value={dotInspectionDate} onChange={e => setDotInspectionDate(e.target.value)} />
                 </FormField>
@@ -177,60 +176,52 @@ export default function CreateTruckPage() {
                 </FormField>
               </div>
             </div>
+
+            {/* Specifications (future) */}
+            <div className="card-section card-section--amber">
+              <h2 className="card-section-header">
+                <Settings2 className="icon" style={{ color: "var(--warning)" }} />
+                Specifications
+              </h2>
+              <div className="grid grid-cols-2 gap-5">
+                <FormField label="Engine Type">
+                  <input className="input-base" placeholder="e.g. Diesel" disabled title="Coming in a future update" />
+                </FormField>
+                <FormField label="Fuel Type">
+                  <select className="select-base" disabled title="Coming in a future update">
+                    <option value="">Select fuel type</option>
+                  </select>
+                </FormField>
+              </div>
+            </div>
           </div>
 
           {/* ── RIGHT 30% — Side Info ── */}
-          <aside className="space-y-4" style={{ position: "sticky", top: 20, alignSelf: "start" }}>
+          <aside className="space-y-5" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
             {/* Quick Tips */}
-            <div className="card p-4 space-y-3">
-              <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
+            <div className="card-tinted space-y-4">
+              <h3 className="card-section-header" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: "none" }}>
                 Quick Tips
               </h3>
-              <div className="space-y-2 text-xs" style={{ color: "var(--on-surface-variant)" }}>
-                <div className="flex items-start gap-2">
-                  <Truck className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--primary)" }} />
-                  <p>Unit number must be unique across your fleet</p>
+              <div className="space-y-3.5 text-[13px]" style={{ color: "var(--on-surface-variant)" }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(37, 99, 235, 0.1)" }}>
+                    <Truck className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                  </div>
+                  <p className="pt-0.5">Unit number must be unique across your fleet</p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Shield className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--success)" }} />
-                  <p>DOT inspection dates trigger compliance alerts</p>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(22, 163, 74, 0.1)" }}>
+                    <Shield className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
+                  </div>
+                  <p className="pt-0.5">DOT inspection dates trigger compliance alerts</p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Calendar className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "var(--warning)" }} />
-                  <p>Trucks are automatically set to &apos;available&apos; status</p>
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(245, 158, 11, 0.1)" }}>
+                    <Calendar className="h-3.5 w-3.5" style={{ color: "var(--warning)" }} />
+                  </div>
+                  <p className="pt-0.5">Trucks are automatically set to &apos;available&apos; status</p>
                 </div>
-              </div>
-            </div>
-
-            {/* Truck Photos placeholder */}
-            <div className="card p-4 space-y-3">
-              <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
-                Truck Photos
-              </h3>
-              <div className="py-6 text-center rounded-lg" style={{ border: "2px dashed var(--outline-variant)" }}>
-                <Camera className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--outline)" }} />
-                <p className="text-xs font-medium" style={{ color: "var(--on-surface-variant)" }}>
-                  Upload truck photos
-                </p>
-                <p className="text-[10px] mt-1" style={{ color: "var(--outline)" }}>
-                  Coming soon
-                </p>
-              </div>
-            </div>
-
-            {/* Documents placeholder */}
-            <div className="card p-4 space-y-3">
-              <h3 className="title-sm" style={{ color: "var(--on-surface)" }}>
-                Documents
-              </h3>
-              <div className="py-6 text-center rounded-lg" style={{ border: "2px dashed var(--outline-variant)" }}>
-                <Upload className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--outline)" }} />
-                <p className="text-xs font-medium" style={{ color: "var(--on-surface-variant)" }}>
-                  Registration, insurance, inspection reports
-                </p>
-                <p className="text-[10px] mt-1" style={{ color: "var(--outline)" }}>
-                  Coming soon
-                </p>
               </div>
             </div>
           </aside>

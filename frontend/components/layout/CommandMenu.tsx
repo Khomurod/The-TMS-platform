@@ -64,6 +64,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState(false);
 
   // Focus input when opened
   useEffect(() => {
@@ -90,9 +91,10 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
         if (categoryFilter) params.set("type", categoryFilter);
         const res = await api.get(`/search?${params}`);
         setResults(res.data.items || []);
+        setSearchError(false);
       } catch {
-        // Search endpoint may not exist yet — show quick actions
         setResults([]);
+        setSearchError(true);
       } finally {
         setLoading(false);
       }
@@ -136,13 +138,13 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50"
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)" }}
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
         onClick={onClose}
       />
 
       {/* Command Palette */}
       <div
-        className="fixed z-50 w-full max-w-[640px] rounded-xl overflow-hidden animate-fadeIn"
+        className="fixed z-50 w-full max-w-[640px] rounded-2xl overflow-hidden animate-fadeIn"
         role="dialog"
         aria-modal="true"
         aria-label="Command menu — search and navigate"
@@ -152,15 +154,15 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
           transform: "translateX(-50%)",
           backgroundColor: "var(--surface-lowest)",
           border: "1px solid var(--outline-variant)",
-          boxShadow: "0 24px 64px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.03)",
+          boxShadow: "0 32px 80px -16px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.05)",
         }}
       >
         {/* Search Input */}
         <div
           className="flex items-center gap-3 px-5"
-          style={{ borderBottom: "1px solid var(--outline-variant)" }}
+          style={{ borderBottom: "1px solid var(--outline-variant)", backgroundColor: "rgba(37, 99, 235, 0.02)" }}
         >
-          <Search className="h-5 w-5 shrink-0" style={{ color: "var(--primary)" }} />
+          <Search className="h-6 w-6 shrink-0" style={{ color: "var(--primary)" }} />
           <input
             ref={inputRef}
             type="text"
@@ -168,7 +170,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Search loads, drivers, trucks..."
-            className="flex-1 py-4 text-sm bg-transparent outline-none"
+            className="flex-1 py-4 text-[15px] bg-transparent outline-none"
             style={{ color: "var(--on-surface)", fontWeight: 500 }}
           />
           <kbd
@@ -181,15 +183,14 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
 
         {/* Category Filter Chips */}
         <div
-          className="flex items-center gap-2 px-5 py-2"
+          className="flex items-center gap-2 px-5 py-2.5"
           style={{ borderBottom: "1px solid var(--outline-variant)", backgroundColor: "var(--surface-low)" }}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--on-surface-variant)", marginRight: 4 }}>Filter:</span>
           {["load", "driver", "truck", "invoice"].map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-              className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-all"
+              className="px-3.5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03]"
               style={{
                 backgroundColor: categoryFilter === cat ? CATEGORY_COLORS[cat] : "var(--surface-container-high)",
                 color: categoryFilter === cat ? "#fff" : "var(--on-surface-variant)",
@@ -202,7 +203,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
           {categoryFilter && (
             <button
               onClick={() => setCategoryFilter(null)}
-              className="ml-auto text-[10px] font-medium transition-colors flex items-center gap-0.5"
+              className="ml-auto text-[11px] font-medium transition-colors flex items-center gap-0.5"
               style={{ color: "var(--on-surface-variant)" }}
             >
               <X className="h-3 w-3" /> Clear
@@ -224,14 +225,14 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
                   key={action.label}
                   onClick={() => navigateTo(action.href)}
                   onMouseEnter={() => setSelectedIndex(i)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-all"
                   style={{
                     backgroundColor: selectedIndex === i ? "var(--surface-container-high)" : "transparent",
                     color: "var(--on-surface)",
                   }}
                 >
                   <span
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                     style={{ backgroundColor: "var(--primary-fixed)", color: "var(--primary)" }}
                   >
                     {action.icon}
@@ -253,7 +254,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
                   key={result.id}
                   onClick={() => navigateTo(result.href)}
                   onMouseEnter={() => setSelectedIndex(i)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
                   style={{
                     backgroundColor: selectedIndex === i ? "var(--surface-container-high)" : "transparent",
                   }}
@@ -283,12 +284,32 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
                 </button>
               ))}
             </div>
+          ) : searchError ? (
+            <div className="py-12 text-center">
+              <Search className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--error)" }} />
+              <p className="text-sm font-medium" style={{ color: "var(--on-surface)" }}>Search unavailable</p>
+              <p className="text-xs mt-1" style={{ color: "var(--on-surface-variant)" }}>
+                Try using the quick actions below
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                {QUICK_ACTIONS.slice(0, 3).map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => navigateTo(action.href)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{ backgroundColor: "var(--surface-container-high)", color: "var(--on-surface)" }}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="py-12 text-center">
               <Search className="h-6 w-6 mx-auto mb-2" style={{ color: "var(--outline-variant)" }} />
-              <p className="text-sm font-medium" style={{ color: "var(--on-surface)" }}>No results found</p>
+              <p className="text-sm font-medium" style={{ color: "var(--on-surface)" }}>No results for “{query}”</p>
               <p className="text-xs mt-1" style={{ color: "var(--on-surface-variant)" }}>
-                Try a different search term or category
+                Try a different search term or browse by category
               </p>
             </div>
           )}
@@ -296,26 +317,26 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
 
         {/* Footer */}
         <div
-          className="flex items-center justify-between px-5 py-2.5 text-[10px]"
+          className="flex items-center justify-between px-5 py-3 text-[11px]"
           style={{
             borderTop: "1px solid var(--outline-variant)",
-            backgroundColor: "var(--surface-low)",
+            background: "linear-gradient(180deg, var(--surface-low), var(--surface-container))",
             color: "var(--on-surface-variant)",
           }}
         >
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>↑↓</kbd>
+              <kbd className="px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>↑↓</kbd>
               navigate
             </span>
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>
+              <kbd className="px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>
                 <CornerDownLeft className="h-2.5 w-2.5 inline" />
               </kbd>
               select
             </span>
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>esc</kbd>
+              <kbd className="px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>esc</kbd>
               close
             </span>
           </div>

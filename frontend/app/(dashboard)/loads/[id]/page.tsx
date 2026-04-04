@@ -429,11 +429,8 @@ export default function LoadDetailPage() {
                   <FileText className="h-8 w-8 mx-auto mb-2" style={{ color: "var(--outline-variant)" }} />
                   <p className="text-sm font-medium mb-1" style={{ color: "var(--on-surface)" }}>No documents</p>
                   <p className="text-xs" style={{ color: "var(--on-surface-variant)" }}>
-                    Upload BOL, POD, or rate confirmations
+                    BOL, POD, and rate confirmations will appear here
                   </p>
-                  <button className="btn btn-primary btn-sm" disabled title="Document uploads coming soon">
-                    Upload Document
-                  </button>
                 </div>
               </div>
             )}

@@ -13,6 +13,7 @@ import {
   Plus,
   Trash2,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -109,45 +110,67 @@ export default function CreateLoadPage() {
       ? (Number(baseRate) / Number(totalMiles)).toFixed(2)
       : "—";
 
+  const hasValidStop = stops.some((s) => s.city.trim());
+
   return (
-    <div className="h-full flex flex-col">
-      {/* ── Top Bar ── */}
-      <div className="flex items-center gap-4 px-6 py-4 shrink-0 border-b border-[var(--outline-variant)]">
-        <Link
-          href="/loads"
-          className="flex items-center gap-2 text-sm font-medium text-[var(--on-surface-variant)] transition-colors hover:text-[var(--on-surface)]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Loads
-        </Link>
-        <div className="w-px h-5 bg-[var(--outline-variant)]" />
-        <h1 className="headline-sm text-[var(--on-surface)]">
-          Create New Load
-        </h1>
+    <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: "var(--surface)" }}>
+      {/* ═══ Sticky Header ═══ */}
+      <div
+        className="shrink-0 flex items-center justify-between px-6"
+        style={{
+          height: "var(--topbar-height)",
+          borderBottom: "1px solid var(--outline-variant)",
+          backgroundColor: "var(--surface-lowest)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <Link
+            href="/loads"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+            style={{ color: "var(--on-surface-variant)" }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div>
+            <h1 className="title-md" style={{ color: "var(--on-surface)" }}>Create New Load</h1>
+            <p className="text-[11px]" style={{ color: "var(--on-surface-variant)" }}>Add a new load to dispatch</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/loads" className="btn btn-secondary btn-sm">Cancel</Link>
+          <button
+            onClick={handleCreate}
+            disabled={creating || !hasValidStop}
+            className="btn btn-primary btn-sm"
+          >
+            {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {creating ? "Creating..." : "Create Load"}
+          </button>
+        </div>
       </div>
 
-      {/* ── Error Banner ── */}
+      {/* ═══ Error Banner ═══ */}
       {error && (
         <div
           className="flex items-center gap-2 px-6 py-3 text-sm shrink-0"
           style={{ backgroundColor: "var(--error-container)", color: "var(--error)" }}
         >
-          <span className="font-medium">{error}</span>
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
       )}
 
-      {/* ── Main Content: 70/30 Split ── */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 max-w-[1400px] mx-auto">
+        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 340px" }}>
           {/* ════════════ LEFT COLUMN — 70% ════════════ */}
-          <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="flex flex-col gap-6">
             {/* ── Broker Info Card ── */}
-            <div className="card p-6">
-              <h2 className="title-md flex items-center gap-2 mb-5 text-[var(--on-surface)]">
-                <FileText className="h-4 w-4 text-[var(--primary)]" />
+            <div className="card-section">
+              <h2 className="card-section-header">
+                <FileText className="icon" style={{ color: "var(--primary)" }} />
                 Broker Information
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <FormField label="Broker Load ID">
                   <input
                     className="input-base"
@@ -156,14 +179,30 @@ export default function CreateLoadPage() {
                     onChange={(e) => setBrokerLoadId(e.target.value)}
                   />
                 </FormField>
+                <FormField label="Broker Name">
+                  <input
+                    className="input-base"
+                    placeholder="Broker company"
+                    disabled
+                    title="Coming in a future update"
+                  />
+                </FormField>
+                <FormField label="Broker MC#">
+                  <input
+                    className="input-base"
+                    placeholder="MC Number"
+                    disabled
+                    title="Coming in a future update"
+                  />
+                </FormField>
                 </div>
               </div>
 
             {/* ── Routing Timeline Card ── */}
-            <div className="card p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="title-md flex items-center gap-2 text-[var(--on-surface)]">
-                  <MapPin className="h-4 w-4 text-[var(--primary)]" />
+            <div className="card-section card-section--green">
+              <div className="flex items-center justify-between" style={{ paddingBottom: 14, marginBottom: 20, borderBottom: "1px solid var(--outline-variant)" }}>
+                <h2 className="flex items-center gap-2.5" style={{ fontSize: 15, fontWeight: 600, color: "var(--on-surface)" }}>
+                  <MapPin className="icon" style={{ color: "var(--success)" }} />
                   Routing Timeline
                 </h2>
                 <button
@@ -250,14 +289,14 @@ export default function CreateLoadPage() {
           </div>
 
           {/* ════════════ RIGHT COLUMN — 30% ════════════ */}
-          <div className="lg:col-span-3 flex flex-col gap-6">
+          <aside className="flex flex-col gap-5" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
             {/* ── Financials Card ── */}
-            <div className="card p-6">
-              <h2 className="title-md flex items-center gap-2 mb-5 text-[var(--on-surface)]">
-                <DollarSign className="h-4 w-4 text-[var(--primary)]" />
+            <div className="card-section card-section--amber">
+              <h2 className="card-section-header">
+                <DollarSign className="icon" style={{ color: "var(--warning)" }} />
                 Financials
               </h2>
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-5">
                 <FormField label="Base Rate ($)" required>
                   <input
                     className="input-base"
@@ -278,11 +317,11 @@ export default function CreateLoadPage() {
                 </FormField>
 
                 {/* Rate-per-mile summary */}
-                <div className="rounded-lg p-4 flex items-center justify-between bg-[var(--surface-low)] border border-[var(--outline-variant)]">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--on-surface-variant)]">
+                <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #f0f4ff 0%, #e8f5e9 100%)", border: "1px solid #d8e2f4" }}>
+                  <span className="text-xs font-semibold tracking-wide" style={{ color: "var(--on-surface-variant)" }}>
                     Rate / Mile
                   </span>
-                  <span className="text-lg font-bold tabular-nums text-[var(--primary)]">
+                  <span className="text-xl font-bold tabular-nums" style={{ color: "var(--primary)" }}>
                     {ratePerMile === "—" ? "—" : `$${ratePerMile}`}
                   </span>
                 </div>
@@ -290,37 +329,19 @@ export default function CreateLoadPage() {
             </div>
 
             {/* ── Notes Card ── */}
-            <div className="card p-6">
-              <h2 className="title-md mb-5 text-[var(--on-surface)]">
+            <div className="card-section">
+              <h2 className="card-section-header" style={{ marginBottom: 12 }}>
                 Notes
               </h2>
               <textarea
-                className="input-base min-h-[120px] resize-y"
+                className="input-base min-h-[140px] resize-y"
                 placeholder="Add any special instructions, detention alerts, etc..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
-
-      {/* ── Sticky Footer Action Bar ── */}
-      <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t border-[var(--outline-variant)] bg-[var(--surface-lowest)]">
-        <Link
-          href="/loads"
-          className="px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-[var(--surface-lowest)] text-[var(--on-surface-variant)] border border-[var(--outline-variant)] hover:bg-[var(--surface-container)] hover:border-[var(--outline)] no-underline"
-        >
-          Cancel
-        </Link>
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="btn btn-primary btn-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-          {creating ? "Creating..." : "Create Load"}
-        </button>
       </div>
     </div>
   );

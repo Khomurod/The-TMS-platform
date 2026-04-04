@@ -7,7 +7,6 @@ import {
   Download,
   Filter,
   Columns,
-  Bookmark,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -106,6 +105,10 @@ interface DataTableProps<T> {
   columnToggle?: boolean;
   exportable?: boolean;
 
+  // Toolbar: Filter
+  onFilterClick?: () => void;
+  filterCount?: number;
+
   // Toolbar slots
   toolbarLeft?: React.ReactNode;
   primaryAction?: React.ReactNode;
@@ -143,6 +146,8 @@ export default function DataTable<T>({
   zebraStripe = false,
   columnToggle = false,
   exportable = true,
+  onFilterClick,
+  filterCount,
   toolbarLeft,
   primaryAction,
   onRowClick,
@@ -215,6 +220,27 @@ export default function DataTable<T>({
     },
     []
   );
+
+  // ── CSV Export ─────────────────────────────────────────────
+
+  const handleExport = useCallback(() => {
+    const headers = visibleColumns.map((col) => col.header);
+    const rows = data.map((row) =>
+      visibleColumns.map((col) => {
+        const val = (row as Record<string, unknown>)[col.accessorKey as string];
+        const str = val === null || val === undefined ? "" : String(val);
+        return str.includes(",") || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+      })
+    );
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [data, visibleColumns]);
 
   return (
     <div
@@ -327,27 +353,46 @@ export default function DataTable<T>({
           }}
         >
           <div className="flex items-center gap-2">
-            <button className="btn btn-secondary btn-sm">
-              <Filter className="h-3.5 w-3.5" />
-              Filter
-            </button>
+            {onFilterClick && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={onFilterClick}
+                aria-label={filterCount ? `Filter (${filterCount} active)` : "Filter"}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Filter
+                {!!filterCount && filterCount > 0 && (
+                  <span
+                    className="tabular-nums"
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      padding: "0 5px",
+                      borderRadius: "var(--radius-full)",
+                      backgroundColor: "var(--primary)",
+                      color: "var(--on-primary)",
+                      marginLeft: "2px",
+                    }}
+                  >
+                    {filterCount}
+                  </span>
+                )}
+              </button>
+            )}
             {toolbarLeft}
           </div>
 
           <div className="flex items-center gap-2">
             {exportable && (
-              <button className="btn btn-secondary btn-sm">
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleExport}
+                aria-label="Export data as CSV"
+              >
                 <Download className="h-3.5 w-3.5" />
                 Export
               </button>
             )}
-
-            <button
-              className="btn btn-soft btn-sm"
-            >
-              <Bookmark className="h-3.5 w-3.5" />
-              Save view
-            </button>
 
             {/* Density Toggle */}
             <button

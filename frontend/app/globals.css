@@ -81,10 +81,10 @@
 
   /* Radius */
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
   --radius-full: 9999px;
 
   /* Typography */
@@ -103,7 +103,7 @@
   --sidebar-text-muted: #6b7280;
 
   /* TopBar */
-  --topbar-height: 54px;
+  --topbar-height: 56px;
 
   /* ── Logistics Status Colors ─────────────────────────────── */
   --status-offer: #6b7280;
@@ -129,9 +129,9 @@
   /* ── Canvas and Card ─────────────────────────────────────── */
   --canvas-bg: var(--surface);
   --card-bg: var(--surface-lowest);
-  --card-border: var(--outline-variant);
-  --card-radius: var(--radius-lg);
-  --card-padding: 16px;
+  --card-border: #dde1e8;
+  --card-radius: var(--radius-xl);
+  --card-padding: 24px;
 
   /* ── DataTable density ───────────────────────────────────── */
   --dt-row-height-compact: 40px;
@@ -291,8 +291,7 @@ body {
   font-size: 0.8125rem;
   line-height: 1.125rem;
   font-weight: 600;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 .label-md {
@@ -321,13 +320,69 @@ body {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
+  box-shadow: var(--shadow-md);
 }
 
 .card-elevated {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card with colored left accent border */
+.card-section {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-md);
+  border-left: 3px solid var(--primary);
+  padding: var(--card-padding);
+}
+
+.card-section--green {
+  border-left-color: var(--success);
+}
+
+.card-section--amber {
+  border-left-color: var(--warning);
+}
+
+.card-section--rose {
+  border-left-color: var(--error);
+}
+
+/* Section header inside card */
+.card-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--outline-variant);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--on-surface);
+  font-family: var(--font-display);
+}
+
+.card-section-header .icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Tinted card for sidebars */
+.card-tinted {
+  background-color: #f0f4ff;
+  border: 1px solid #d8e2f4;
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+}
+
+.dark .card-tinted {
+  background-color: #1a2035;
+  border-color: #2a3454;
 }
 
 .card-flat {
@@ -339,7 +394,7 @@ body {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
 
@@ -534,7 +589,8 @@ body {
 
 .input-base {
   width: 100%;
-  padding: 8px 12px;
+  height: 40px;
+  padding: 8px 14px;
   background-color: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -542,6 +598,7 @@ body {
   font-family: var(--font-body);
   font-size: 13px;
   line-height: 1.5;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
@@ -556,7 +613,7 @@ body {
 .input-base:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-fixed);
+  box-shadow: 0 0 0 4px var(--primary-fixed);
 }
 
 .input-base:disabled {
@@ -576,7 +633,8 @@ body {
 
 .select-base {
   width: 100%;
-  padding: 8px 12px;
+  height: 40px;
+  padding: 8px 14px;
   background-color: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -585,6 +643,7 @@ body {
   font-size: 13px;
   line-height: 1.5;
   cursor: pointer;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -606,11 +665,10 @@ body {
 /* Form field label */
 .form-label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface);
+  letter-spacing: 0.01em;
   margin-bottom: 6px;
 }
 
@@ -676,7 +734,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-4);
+  padding: var(--spacing-6);
 }
 
 .page-header {

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { getBreadcrumbs } from "@/lib/breadcrumb-config";
 import {
-  Search, Sun, Moon, Settings, Bell, Plus,
+  Search, Sun, Moon, Settings, Plus,
   ChevronDown, ChevronRight, Package, Users, Truck,
 } from "lucide-react";
 
@@ -168,13 +168,6 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
             <Settings className="w-4 h-4" />
           </button>
 
-          {/* Notifications */}
-          <button
-            className="topbar-icon-btn focus-ring relative"
-            aria-label="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </header>
