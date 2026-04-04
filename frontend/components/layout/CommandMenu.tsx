@@ -160,7 +160,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
         {/* Search Input */}
         <div
           className="flex items-center gap-3 px-5"
-          style={{ borderBottom: "1px solid var(--outline-variant)", backgroundColor: "rgba(37, 99, 235, 0.02)" }}
+          style={{ borderBottom: "1px solid var(--outline-variant)", backgroundColor: "rgba(37, 99, 235, 0.04)" }}
         >
           <Search className="h-6 w-6 shrink-0" style={{ color: "var(--primary)" }} />
           <input

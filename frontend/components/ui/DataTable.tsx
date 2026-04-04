@@ -429,9 +429,8 @@ export default function DataTable<T>({
                         style={{
                           padding: "6px 12px",
                           fontSize: "11px",
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color: "var(--on-surface-variant)",
-                          textTransform: "uppercase",
                           letterSpacing: "0.04em",
                           borderBottom: "1px solid var(--outline-variant)",
                         }}

@@ -327,7 +327,7 @@ body {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Card with colored left accent border */
@@ -659,7 +659,7 @@ body {
 .select-base:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-fixed);
+  box-shadow: 0 0 0 4px var(--primary-fixed);
 }
 
 /* Form field label */
@@ -922,47 +922,7 @@ body {
    KPI / METRIC COMPONENTS
    ═══════════════════════════════════════════════════════════════ */
 
-.kpi-card {
-  background-color: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: var(--shadow-sm);
-}
-
-.kpi-label {
-  font-size: 12px;
-  color: var(--on-surface-variant);
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.kpi-value {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--on-surface);
-  font-variant-numeric: tabular-nums;
-  font-family: var(--font-display);
-}
-
-.kpi-sub {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--on-surface-variant);
-  margin-top: 2px;
-}
-
-.kpi-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* KPI classes removed — dashboard now uses inline Tailwind */
 
 /* Metric block (accounting) */
 .metric-block {
@@ -982,7 +942,6 @@ body {
   font-size: 11px;
   font-weight: 500;
   color: var(--on-surface-variant);
-  text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
@@ -1009,41 +968,7 @@ body {
    STATUS TABLE ROWS
    ═══════════════════════════════════════════════════════════════ */
 
-.status-grid-header {
-  display: grid;
-  grid-template-columns: 1fr 80px 60px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.status-grid-header span {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--on-surface-variant);
-  text-transform: uppercase;
-}
-
-.status-grid-row {
-  display: grid;
-  grid-template-columns: 1fr 80px 60px;
-  padding: 8px 0;
-  align-items: center;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.status-qty-badge {
-  padding: 2px 12px;
-  border-radius: 20px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-}
+/* Status grid/dot/badge classes removed — dashboard now uses progress bars */
 
 /* ══════════════════════════════════════════════════════════════
    PROGRESS BAR
@@ -1270,10 +1195,10 @@ body {
 }
 
 .auth-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--on-surface-variant);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 600;
   text-align: center;
 }
 

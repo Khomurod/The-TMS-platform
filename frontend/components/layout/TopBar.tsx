@@ -85,7 +85,6 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
         <button
           onClick={onSearchClick}
           className="btn btn-secondary btn-sm"
-          style={{ gap: "6px" }}
         >
           <Search className="w-3.5 h-3.5" style={{ color: "var(--on-surface-variant)" }} />
           <span style={{ color: "var(--on-surface-variant)", fontSize: "12px" }}>

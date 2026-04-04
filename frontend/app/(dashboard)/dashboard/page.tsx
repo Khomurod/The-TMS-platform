@@ -104,10 +104,10 @@ export default function DashboardPage() {
 
   /* KPI card configs */
   const kpiCards = [
-    { label: "Total Revenue", value: fmtCurrency(kpis?.gross_revenue), sub: `RPM: $${kpis?.avg_rpm?.toFixed(2) ?? "—"}`, icon: DollarSign, gradient: "linear-gradient(180deg, #16a34a, #15803d)", iconBg: "rgba(22, 163, 74, 0.1)" },
-    { label: "Active Loads", value: fmt(kpis?.active_loads), sub: `${fmt(kpis?.offer_loads)} offers`, icon: Package, gradient: "linear-gradient(180deg, #2563eb, #1d4ed8)", iconBg: "rgba(37, 99, 235, 0.1)" },
-    { label: "Active Drivers", value: fmt(kpis?.active_drivers), sub: `${fmt(kpis?.on_trip_drivers)} on trip`, icon: Users, gradient: "linear-gradient(180deg, #7c3aed, #6d28d9)", iconBg: "rgba(124, 58, 237, 0.1)" },
-    { label: "Fleet Size", value: fmt(fleetTotal), sub: `${fleet?.utilization_rate ?? 0}% utilized`, icon: Truck, gradient: "linear-gradient(180deg, #0891b2, #0e7490)", iconBg: "rgba(8, 145, 178, 0.1)" },
+    { label: "Total Revenue", value: fmtCurrency(kpis?.gross_revenue), sub: `RPM: $${kpis?.avg_rpm?.toFixed(2) ?? "—"}`, icon: DollarSign, gradient: "linear-gradient(180deg, #16a34a, #15803d)", iconBg: "rgba(22, 163, 74, 0.1)", iconColor: "#16a34a" },
+    { label: "Active Loads", value: fmt(kpis?.active_loads), sub: `${fmt(kpis?.offer_loads)} offers`, icon: Package, gradient: "linear-gradient(180deg, #2563eb, #1d4ed8)", iconBg: "rgba(37, 99, 235, 0.1)", iconColor: "#2563eb" },
+    { label: "Active Drivers", value: fmt(kpis?.active_drivers), sub: `${fmt(kpis?.on_trip_drivers)} on trip`, icon: Users, gradient: "linear-gradient(180deg, #7c3aed, #6d28d9)", iconBg: "rgba(124, 58, 237, 0.1)", iconColor: "#7c3aed" },
+    { label: "Fleet Size", value: fmt(fleetTotal), sub: `${fleet?.utilization_rate ?? 0}% utilized`, icon: Truck, gradient: "linear-gradient(180deg, #0891b2, #0e7490)", iconBg: "rgba(8, 145, 178, 0.1)", iconColor: "#0891b2" },
   ];
 
   return (
@@ -131,7 +131,7 @@ export default function DashboardPage() {
                 <div className="text-[11px] font-medium" style={{ color: "var(--on-surface-variant)", opacity: 0.7 }}>{kpi.sub}</div>
               </div>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: kpi.iconBg }}>
-                <kpi.icon style={{ width: 22, height: 22, color: kpi.gradient.includes("#16a34a") ? "#16a34a" : kpi.gradient.includes("#2563eb") ? "#2563eb" : kpi.gradient.includes("#7c3aed") ? "#7c3aed" : "#0891b2" }} />
+                <kpi.icon style={{ width: 22, height: 22, color: kpi.iconColor }} />
               </div>
             </div>
           </div>
