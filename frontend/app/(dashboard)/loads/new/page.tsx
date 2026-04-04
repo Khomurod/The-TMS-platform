@@ -40,11 +40,10 @@ const emptyStop = (type: "pickup" | "delivery", seq: number): Stop => ({
 export default function CreateLoadPage() {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Form State ──
   const [brokerLoadId, setBrokerLoadId] = useState("");
-  const [brokerName, setBrokerName] = useState("");
-  const [brokerContact, setBrokerContact] = useState("");
   const [baseRate, setBaseRate] = useState("");
   const [totalMiles, setTotalMiles] = useState("");
   const [notes, setNotes] = useState("");
@@ -81,6 +80,7 @@ export default function CreateLoadPage() {
   // ── Submit ──
   const handleCreate = async () => {
     setCreating(true);
+    setError(null);
     try {
       await api.post("/loads", {
         broker_load_id: brokerLoadId || undefined,
@@ -95,8 +95,9 @@ export default function CreateLoadPage() {
         })),
       });
       router.push("/loads");
-    } catch (err) {
-      console.error("Failed to create load:", err);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || "Failed to create load. Please try again.";
+      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
       setCreating(false);
     }
@@ -125,6 +126,16 @@ export default function CreateLoadPage() {
         </h1>
       </div>
 
+      {/* ── Error Banner ── */}
+      {error && (
+        <div
+          className="flex items-center gap-2 px-6 py-3 text-sm shrink-0"
+          style={{ backgroundColor: "var(--error-container)", color: "var(--error)" }}
+        >
+          <span className="font-medium">{error}</span>
+        </div>
+      )}
+
       {/* ── Main Content: 70/30 Split ── */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-6 max-w-[1400px] mx-auto">
@@ -145,24 +156,8 @@ export default function CreateLoadPage() {
                     onChange={(e) => setBrokerLoadId(e.target.value)}
                   />
                 </FormField>
-                <FormField label="Broker Name">
-                  <input
-                    className="input-base"
-                    placeholder="e.g. CH Robinson"
-                    value={brokerName}
-                    onChange={(e) => setBrokerName(e.target.value)}
-                  />
-                </FormField>
-                <FormField label="Broker Contact">
-                  <input
-                    className="input-base"
-                    placeholder="Phone or email"
-                    value={brokerContact}
-                    onChange={(e) => setBrokerContact(e.target.value)}
-                  />
-                </FormField>
+                </div>
               </div>
-            </div>
 
             {/* ── Routing Timeline Card ── */}
             <div className="card p-6">

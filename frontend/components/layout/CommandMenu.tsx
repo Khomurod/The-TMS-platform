@@ -142,24 +142,25 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
 
       {/* Command Palette */}
       <div
-        className="fixed z-50 w-full max-w-[640px] rounded-xl overflow-hidden shadow-2xl"
+        className="fixed z-50 w-full max-w-[640px] rounded-xl overflow-hidden animate-fadeIn"
         role="dialog"
         aria-modal="true"
         aria-label="Command menu — search and navigate"
         style={{
-          top: "20%",
+          top: "clamp(120px, 22vh, 240px)",
           left: "50%",
           transform: "translateX(-50%)",
           backgroundColor: "var(--surface-lowest)",
           border: "1px solid var(--outline-variant)",
+          boxShadow: "0 24px 64px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.03)",
         }}
       >
         {/* Search Input */}
         <div
-          className="flex items-center gap-3 px-4"
+          className="flex items-center gap-3 px-5"
           style={{ borderBottom: "1px solid var(--outline-variant)" }}
         >
-          <Search className="h-5 w-5 shrink-0" style={{ color: "var(--on-surface-variant)" }} />
+          <Search className="h-5 w-5 shrink-0" style={{ color: "var(--primary)" }} />
           <input
             ref={inputRef}
             type="text"
@@ -168,31 +169,45 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
             onKeyDown={handleKeyDown}
             placeholder="Search loads, drivers, trucks..."
             className="flex-1 py-4 text-sm bg-transparent outline-none"
-            style={{ color: "var(--on-surface)" }}
+            style={{ color: "var(--on-surface)", fontWeight: 500 }}
           />
-          <div className="flex items-center gap-1">
-            {/* Category Chips */}
-            {["load", "driver", "truck", "invoice"].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-                className="px-2 py-1 rounded text-[10px] font-bold uppercase transition-colors"
-                style={{
-                  backgroundColor: categoryFilter === cat ? CATEGORY_COLORS[cat] : "var(--surface-container-high)",
-                  color: categoryFilter === cat ? "#fff" : "var(--on-surface-variant)",
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded transition-colors"
-            style={{ color: "var(--on-surface-variant)" }}
+          <kbd
+            className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+            style={{ backgroundColor: "var(--surface-container-high)", color: "var(--on-surface-variant)", border: "1px solid var(--outline-variant)" }}
           >
-            <X className="h-4 w-4" />
-          </button>
+            ESC
+          </kbd>
+        </div>
+
+        {/* Category Filter Chips */}
+        <div
+          className="flex items-center gap-2 px-5 py-2"
+          style={{ borderBottom: "1px solid var(--outline-variant)", backgroundColor: "var(--surface-low)" }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--on-surface-variant)", marginRight: 4 }}>Filter:</span>
+          {["load", "driver", "truck", "invoice"].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+              className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition-all"
+              style={{
+                backgroundColor: categoryFilter === cat ? CATEGORY_COLORS[cat] : "var(--surface-container-high)",
+                color: categoryFilter === cat ? "#fff" : "var(--on-surface-variant)",
+                border: categoryFilter === cat ? `1px solid ${CATEGORY_COLORS[cat]}` : "1px solid var(--outline-variant)",
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+          {categoryFilter && (
+            <button
+              onClick={() => setCategoryFilter(null)}
+              className="ml-auto text-[10px] font-medium transition-colors flex items-center gap-0.5"
+              style={{ color: "var(--on-surface-variant)" }}
+            >
+              <X className="h-3 w-3" /> Clear
+            </button>
+          )}
         </div>
 
         {/* Results */}
@@ -281,31 +296,32 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
 
         {/* Footer */}
         <div
-          className="flex items-center justify-between px-4 py-2.5 text-[10px]"
+          className="flex items-center justify-between px-5 py-2.5 text-[10px]"
           style={{
             borderTop: "1px solid var(--outline-variant)",
+            backgroundColor: "var(--surface-low)",
             color: "var(--on-surface-variant)",
           }}
         >
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold" style={{ backgroundColor: "var(--surface-container-high)" }}>↑↓</kbd>
-              Navigate
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>↑↓</kbd>
+              navigate
             </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold" style={{ backgroundColor: "var(--surface-container-high)" }}>
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>
                 <CornerDownLeft className="h-2.5 w-2.5 inline" />
               </kbd>
-              Select
+              select
             </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold" style={{ backgroundColor: "var(--surface-container-high)" }}>Esc</kbd>
-              Close
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>esc</kbd>
+              close
             </span>
           </div>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1.5">
             <Command className="h-3 w-3" />
-            Powered by Safehaul
+            <kbd className="px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold" style={{ backgroundColor: "var(--surface-container-high)", border: "1px solid var(--outline-variant)" }}>Ctrl+K</kbd>
           </span>
         </div>
       </div>

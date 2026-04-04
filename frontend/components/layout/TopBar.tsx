@@ -37,8 +37,8 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
 
   const createOptions = [
     { label: "New Load", href: "/loads/new", icon: <Package className="h-3.5 w-3.5" /> },
-    { label: "New Driver", href: "#", icon: <Users className="h-3.5 w-3.5" /> },
-    { label: "New Truck", href: "#", icon: <Truck className="h-3.5 w-3.5" /> },
+    { label: "New Driver", href: "/drivers/new", icon: <Users className="h-3.5 w-3.5" /> },
+    { label: "New Truck", href: "/fleet/new", icon: <Truck className="h-3.5 w-3.5" /> },
   ];
 
   return (

@@ -25,26 +25,28 @@ export const MODULE_EMPTY_STATES = {
     icon: <Package className="h-10 w-10" />,
     title: "No loads yet",
     description: "Create your first load to start tracking shipments and managing dispatches.",
-    ctaLabel: "+ Create Load",
+    ctaLabel: "Create Load",
     ctaHref: "/loads/new",
   },
   drivers: {
     icon: <Users className="h-10 w-10" />,
     title: "No drivers on file",
     description: "Add your first driver to start dispatching and tracking compliance.",
-    ctaLabel: "+ Add Driver",
+    ctaLabel: "Add Driver",
+    ctaHref: "/drivers/new",
   },
   fleet: {
     icon: <Truck className="h-10 w-10" />,
     title: "No trucks registered",
     description: "Register your fleet to begin assignments and maintenance tracking.",
-    ctaLabel: "+ Add Truck",
+    ctaLabel: "Add Truck",
+    ctaHref: "/fleet/new",
   },
   settlements: {
     icon: <Calculator className="h-10 w-10" />,
     title: "No settlements yet",
     description: "Settlements are created automatically when loads are delivered.",
-    ctaLabel: "View Delivered Loads →",
+    ctaLabel: "View Delivered Loads",
     ctaHref: "/loads",
   },
 } as const;
@@ -59,7 +61,7 @@ export default function EmptyState({
   learnMoreHref,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+    <div className="flex flex-col items-center justify-center min-h-[400px] flex-1 px-6 text-center">
       {/* Illustration Circle */}
       {icon && (
         <div
@@ -96,7 +98,7 @@ export default function EmptyState({
             href={ctaHref}
             className="btn btn-primary btn-md flex items-center gap-2"
           >
-            <Plus className="h-4 w-4" />
+            {/^(Create|Add|New)/.test(ctaLabel) && <Plus className="h-4 w-4" />}
             {ctaLabel}
           </Link>
         )}
@@ -106,7 +108,7 @@ export default function EmptyState({
             onClick={ctaOnClick}
             className="btn btn-primary btn-md flex items-center gap-2"
           >
-            <Plus className="h-4 w-4" />
+            {/^(Create|Add|New)/.test(ctaLabel) && <Plus className="h-4 w-4" />}
             {ctaLabel}
           </button>
         )}

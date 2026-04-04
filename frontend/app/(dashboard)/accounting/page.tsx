@@ -188,7 +188,6 @@ export default function AccountingPage() {
       accessorKey: "settlement_number",
       cell: (row) => (
         <EntityLink
-          href="#"
           label={row.settlement_number}
           copyable
           onClick={() => handleOpenDetail(row)}

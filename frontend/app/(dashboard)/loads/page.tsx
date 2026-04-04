@@ -304,19 +304,32 @@ export default function LoadsPage() {
           }
           bulkActions={[
             {
-              label: "Export Selected",
-              onClick: (ids) => console.log("Export:", ids),
-            },
-            {
               label: "Cancel Selected",
               variant: "danger",
-              onClick: (ids) => console.log("Cancel:", ids),
+              onClick: async (ids) => {
+                if (!confirm(`Cancel ${ids.length} selected load(s)?`)) return;
+                for (const id of ids) {
+                  try {
+                    await api.patch(`/loads/${id}/status`, { status: "cancelled" });
+                  } catch { /* skip if transition not allowed */ }
+                }
+                fetchLoads();
+              },
             },
           ]}
           rowActions={[
             { label: "View Detail", onClick: (row) => window.location.href = `/loads/${row.id}` },
-            { label: "Duplicate", onClick: (row) => console.log("Duplicate:", row.id) },
-            { label: "Cancel Load", onClick: (row) => console.log("Cancel:", row.id), destructive: true },
+            {
+              label: "Cancel Load",
+              onClick: async (row) => {
+                if (!confirm(`Cancel load ${row.load_number}?`)) return;
+                try {
+                  await api.patch(`/loads/${row.id}/status`, { status: "cancelled" });
+                  fetchLoads();
+                } catch { /* status transition may fail if not allowed */ }
+              },
+              destructive: true,
+            },
           ]}
           totalCount={total}
           currentPage={page}

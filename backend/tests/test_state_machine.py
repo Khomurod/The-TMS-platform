@@ -1,73 +1,101 @@
-"""Unit tests for the Load State Machine (4.2).
+"""Unit tests for the Load State Machine.
 
-Tests all valid and invalid transitions against VALID_TRANSITIONS map.
+Tests all valid and invalid transitions against LOAD_TRANSITIONS map
+which uses the 8-stage LoadStatus enum pipeline.
 """
 
 import pytest
 
-from app.loads.service import VALID_TRANSITIONS
+from app.loads.service import LOAD_TRANSITIONS
+from app.models.base import LoadStatus
 
 
 class TestStateMachine:
-    """Verify the state machine transition map."""
+    """Verify the LOAD_TRANSITIONS state machine map."""
 
-    def test_planned_can_dispatch(self):
-        assert "dispatched" in VALID_TRANSITIONS["planned"]
+    # ── Valid forward transitions ────────────────────────────────
 
-    def test_planned_can_cancel(self):
-        assert "cancelled" in VALID_TRANSITIONS["planned"]
+    def test_offer_can_book(self):
+        assert LoadStatus.booked in LOAD_TRANSITIONS[LoadStatus.offer]
 
-    def test_dispatched_can_arrive_at_pickup(self):
-        assert "at_pickup" in VALID_TRANSITIONS["dispatched"]
+    def test_offer_can_cancel(self):
+        assert LoadStatus.cancelled in LOAD_TRANSITIONS[LoadStatus.offer]
 
-    def test_dispatched_can_cancel(self):
-        assert "cancelled" in VALID_TRANSITIONS["dispatched"]
+    def test_booked_can_assign(self):
+        assert LoadStatus.assigned in LOAD_TRANSITIONS[LoadStatus.booked]
 
-    def test_at_pickup_can_start_transit(self):
-        assert "in_transit" in VALID_TRANSITIONS["at_pickup"]
+    def test_booked_can_cancel(self):
+        assert LoadStatus.cancelled in LOAD_TRANSITIONS[LoadStatus.booked]
 
-    def test_at_pickup_cannot_cancel(self):
-        assert "cancelled" not in VALID_TRANSITIONS["at_pickup"]
+    def test_assigned_can_dispatch(self):
+        assert LoadStatus.dispatched in LOAD_TRANSITIONS[LoadStatus.assigned]
+
+    def test_assigned_can_revert_to_booked(self):
+        assert LoadStatus.booked in LOAD_TRANSITIONS[LoadStatus.assigned]
+
+    def test_assigned_can_cancel(self):
+        assert LoadStatus.cancelled in LOAD_TRANSITIONS[LoadStatus.assigned]
+
+    def test_dispatched_can_start_transit(self):
+        assert LoadStatus.in_transit in LOAD_TRANSITIONS[LoadStatus.dispatched]
+
+    def test_dispatched_can_revert_to_assigned(self):
+        assert LoadStatus.assigned in LOAD_TRANSITIONS[LoadStatus.dispatched]
 
     def test_in_transit_can_deliver(self):
-        assert "delivered" in VALID_TRANSITIONS["in_transit"]
+        assert LoadStatus.delivered in LOAD_TRANSITIONS[LoadStatus.in_transit]
 
-    def test_in_transit_can_delay(self):
-        assert "delayed" in VALID_TRANSITIONS["in_transit"]
+    def test_delivered_can_invoice(self):
+        assert LoadStatus.invoiced in LOAD_TRANSITIONS[LoadStatus.delivered]
 
-    def test_delayed_can_resume_transit(self):
-        assert "in_transit" in VALID_TRANSITIONS["delayed"]
+    def test_invoiced_can_mark_paid(self):
+        assert LoadStatus.paid in LOAD_TRANSITIONS[LoadStatus.invoiced]
 
-    def test_delayed_can_deliver(self):
-        assert "delivered" in VALID_TRANSITIONS["delayed"]
-
-    def test_delivered_can_bill(self):
-        assert "billed" in VALID_TRANSITIONS["delivered"]
-
-    def test_delivered_cannot_cancel(self):
-        assert "cancelled" not in VALID_TRANSITIONS["delivered"]
-
-    def test_billed_can_pay(self):
-        assert "paid" in VALID_TRANSITIONS["billed"]
+    # ── Terminal states ──────────────────────────────────────────
 
     def test_paid_is_terminal(self):
-        assert "paid" not in VALID_TRANSITIONS  # No transitions from paid
+        assert LOAD_TRANSITIONS[LoadStatus.paid] == []
 
     def test_cancelled_is_terminal(self):
-        assert "cancelled" not in VALID_TRANSITIONS  # No transitions from cancelled
+        assert LOAD_TRANSITIONS[LoadStatus.cancelled] == []
 
-    def test_no_backwards_transitions(self):
-        """Verify no status can go backwards to planned."""
-        for status, targets in VALID_TRANSITIONS.items():
-            if status != "planned":
-                assert "planned" not in targets, f"{status} should not transition to planned"
+    # ── Invalid transitions ──────────────────────────────────────
+
+    def test_in_transit_cannot_cancel(self):
+        assert LoadStatus.cancelled not in LOAD_TRANSITIONS[LoadStatus.in_transit]
+
+    def test_delivered_cannot_cancel(self):
+        assert LoadStatus.cancelled not in LOAD_TRANSITIONS[LoadStatus.delivered]
+
+    def test_invoiced_cannot_cancel(self):
+        assert LoadStatus.cancelled not in LOAD_TRANSITIONS[LoadStatus.invoiced]
+
+    # ── Structural invariants ────────────────────────────────────
 
     def test_all_statuses_covered(self):
         """Verify the expected statuses are in the map."""
-        expected = {"planned", "dispatched", "at_pickup", "in_transit", "delayed", "delivered", "billed"}
-        assert set(VALID_TRANSITIONS.keys()) == expected
+        expected = {
+            LoadStatus.offer,
+            LoadStatus.booked,
+            LoadStatus.assigned,
+            LoadStatus.dispatched,
+            LoadStatus.in_transit,
+            LoadStatus.delivered,
+            LoadStatus.invoiced,
+            LoadStatus.paid,
+            LoadStatus.cancelled,
+        }
+        assert set(LOAD_TRANSITIONS.keys()) == expected
 
     def test_no_self_transitions(self):
         """No status should transition to itself."""
-        for status, targets in VALID_TRANSITIONS.items():
-            assert status not in targets, f"{status} should not transition to itself"
+        for status, targets in LOAD_TRANSITIONS.items():
+            assert status not in targets, f"{status.value} should not transition to itself"
+
+    def test_no_backwards_to_offer(self):
+        """Verify no status can go backwards to offer."""
+        for status, targets in LOAD_TRANSITIONS.items():
+            if status != LoadStatus.offer:
+                assert LoadStatus.offer not in targets, (
+                    f"{status.value} should not transition to offer"
+                )

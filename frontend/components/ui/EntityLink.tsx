@@ -99,7 +99,7 @@ export default function EntityLink({
 
   return (
     <span
-      className="inline-flex max-w-full cursor-default"
+      className={`inline-flex max-w-full ${onClick ? "cursor-pointer" : "cursor-default"}`}
       onClick={onClick}
     >
       {content}

@@ -9,7 +9,7 @@ import { MODULE_EMPTY_STATES } from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
 import { FormField } from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
-import { Loader2, Hash, Plus, Upload } from "lucide-react";
+import { Loader2, Hash, Plus } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
    Fleet Page — Enterprise Asset Management
@@ -297,12 +297,7 @@ export default function FleetPage() {
           stickyFooter={stickyFooter}
           emptyState={MODULE_EMPTY_STATES.fleet}
           getRowId={(row) => row.id}
-          toolbarLeft={
-            <button className="btn btn-secondary btn-sm">
-              <Upload className="h-3.5 w-3.5" />
-              Import file
-            </button>
-          }
+
           primaryAction={
             <button
               onClick={() => setShowCreate(true)}
@@ -314,8 +309,6 @@ export default function FleetPage() {
           }
           rowActions={[
             { label: "View Detail", onClick: (row) => window.location.href = `/fleet/${row.id}` },
-            { label: "Edit Truck", onClick: (row) => console.log("Edit:", row.id) },
-            { label: "Deactivate", onClick: (row) => console.log("Deactivate:", row.id), destructive: true },
           ]}
           totalCount={total}
           currentPage={page}

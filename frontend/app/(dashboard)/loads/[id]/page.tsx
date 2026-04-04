@@ -11,9 +11,9 @@ import ActivityPanel from "@/components/ui/ActivityPanel";
 import StatusBadge, { statusToIntent } from "@/components/ui/StatusBadge";
 import EntityLink from "@/components/ui/EntityLink";
 import {
-  Pencil, Save, Copy, ExternalLink, UserPlus, MapPin,
+  Pencil, Save, MapPin,
   Truck, Users, Calendar, DollarSign, Package,
-  FileText, CheckSquare, BarChart3, Clock, Loader2,
+  FileText, Clock, Loader2,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -176,18 +176,24 @@ export default function LoadDetailPage() {
             ? { label: nextAction.label, onClick: advanceStatus, loading: advancingStatus }
             : undefined
         }
-        secondaryActions={[
-          { label: "Follow load", icon: <UserPlus className="h-3.5 w-3.5" />, onClick: () => {} },
-          { label: "Share", icon: <ExternalLink className="h-3.5 w-3.5" />, onClick: () => {} },
-        ]}
+        secondaryActions={[]}
         editAction={
           isEditing
             ? { label: "Save load", icon: <Save className="h-3.5 w-3.5" />, onClick: () => setIsEditing(false) }
             : { label: "Edit load", icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => setIsEditing(true) }
         }
         kebabActions={[
-          { label: "Duplicate load", icon: <Copy className="h-3 w-3" />, onClick: () => {}, destructive: false },
-          { label: "Cancel load", onClick: () => {}, destructive: true },
+          {
+            label: "Cancel load",
+            onClick: async () => {
+              if (!confirm(`Cancel load ${load.load_number}?`)) return;
+              try {
+                await api.patch(`/loads/${loadId}/status`, { status: "cancelled" });
+                fetchLoad();
+              } catch { /* transition may be disallowed */ }
+            },
+            destructive: true,
+          },
         ]}
       />
 
@@ -425,7 +431,7 @@ export default function LoadDetailPage() {
                   <p className="text-xs" style={{ color: "var(--on-surface-variant)" }}>
                     Upload BOL, POD, or rate confirmations
                   </p>
-                  <button className="btn btn-primary btn-sm">
+                  <button className="btn btn-primary btn-sm" disabled title="Document uploads coming soon">
                     Upload Document
                   </button>
                 </div>
