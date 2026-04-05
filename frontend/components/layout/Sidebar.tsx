@@ -2,216 +2,238 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
-  Building2, LayoutDashboard, Truck, Map, Users, Settings, Wallet,
-  ChevronDown, ChevronRight, LogOut,
+  Truck, LayoutDashboard, Map, Users, Settings, Wallet,
+  ChevronDown, ChevronRight, LogOut, PanelLeft, Building2,
 } from "lucide-react";
 
-/* ═══════════════════════════════════════════════════════════════
-   Sidebar — Enterprise Operations UI
-   Clean, trust-building navigation. Only shows implemented routes.
-   ═══════════════════════════════════════════════════════════════ */
+const STORAGE_KEY = "tms-sidebar-collapsed";
 
-interface NavChild {
-  name: string;
-  href: string;
-}
-
+interface NavChild { name: string; href: string; }
+interface NavGroup { label: string; items: NavItem[]; }
 interface NavItem {
-  name: string;
-  href?: string;
-  icon: React.ElementType;
-  children?: NavChild[];
+  name: string; href?: string;
+  icon: React.ElementType; children?: NavChild[];
 }
 
-/**
- * Only implemented, working routes.
- * Unimplemented routes have been removed to avoid trust-breaking UX.
- */
-const navItems: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+const navGroups: NavGroup[] = [
   {
-    name: "Load Management", icon: Map,
-    children: [
-      { name: "All Loads", href: "/loads" },
-    ]
+    label: "Operations",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    ],
   },
   {
-    name: "Accounting", icon: Wallet,
-    children: [
-      { name: "Settlements", href: "/accounting" },
-    ]
+    label: "Dispatch",
+    items: [
+      { name: "Load Management", icon: Map, children: [{ name: "All Loads", href: "/loads" }] },
+    ],
   },
   {
-    name: "Fleet", icon: Truck,
-    children: [
-      { name: "Trucks", href: "/fleet" },
-    ]
+    label: "Accounting",
+    items: [
+      { name: "Accounting", icon: Wallet, children: [{ name: "Settlements", href: "/accounting" }] },
+    ],
   },
   {
-    name: "HR", icon: Users,
-    children: [
-      { name: "Drivers", href: "/drivers" },
-    ]
+    label: "Fleet",
+    items: [
+      { name: "Fleet", icon: Truck, children: [{ name: "Trucks", href: "/fleet" }] },
+    ],
   },
-  { name: "Settings", href: "/settings", icon: Settings },
+  {
+    label: "People",
+    items: [
+      { name: "HR", icon: Users, children: [{ name: "Drivers", href: "/drivers" }] },
+    ],
+  },
 ];
 
-
+const settingsItem: NavItem = { name: "Settings", href: "/settings", icon: Settings };
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
 
-  // Single-expand accordion
-  const [openSection, setOpenSection] = useState<string | null>(() => {
-    for (const item of navItems) {
-      if (item.children?.some(c => pathname === c.href.split("?")[0] || pathname.startsWith(c.href.split("?")[0] + "/"))) {
-        return item.name;
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored !== null) setCollapsed(stored === "true");
+    } catch { /* noop */ }
+  }, []);
+
+  // Auto-open the section containing the active route
+  const findActiveGroup = () => {
+    for (const g of navGroups) {
+      for (const item of g.items) {
+        if (item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+          return item.name;
+        }
       }
     }
     return null;
-  });
+  };
+
+  const [openSection, setOpenSection] = useState<string | null>(findActiveGroup);
+
+  const toggleCollapsed = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(STORAGE_KEY, String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
 
   const toggleExpand = (name: string) => {
+    if (collapsed) return;
     setOpenSection(prev => prev === name ? null : name);
   };
 
-  const isActivePath = (href: string) => {
-    const baseHref = href.split("?")[0];
-    return pathname === baseHref || pathname.startsWith(baseHref + "/");
+  const isActivePath = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
+  const isParentActive = (item: NavItem) =>
+    item.children?.some(c => isActivePath(c.href)) ?? false;
+
+  const renderNavItem = (item: NavItem) => {
+    const Icon = item.icon;
+    const hasChildren = !!item.children;
+    const parentActive = hasChildren && isParentActive(item);
+    const itemActive = item.href ? isActivePath(item.href) : false;
+    const isOpen = openSection === item.name;
+
+    return (
+      <div key={item.name}>
+        {hasChildren ? (
+          <button
+            onClick={() => toggleExpand(item.name)}
+            className={`sidebar-nav-item${parentActive ? " sidebar-nav-item--active" : ""}`}
+            title={collapsed ? item.name : undefined}
+            aria-expanded={collapsed ? undefined : isOpen}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="sidebar-label flex-1 text-left">{item.name}</span>
+            {!collapsed && (
+              isOpen
+                ? <ChevronDown className="w-3 h-3 sidebar-collapse-hide" style={{ opacity: 0.5 }} />
+                : <ChevronRight className="w-3 h-3 sidebar-collapse-hide" style={{ opacity: 0.5 }} />
+            )}
+          </button>
+        ) : (
+          <Link
+            href={item.href!}
+            className={`sidebar-nav-item${itemActive ? " sidebar-nav-item--active" : ""}`}
+            aria-current={itemActive ? "page" : undefined}
+            title={collapsed ? item.name : undefined}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="sidebar-label flex-1">{item.name}</span>
+          </Link>
+        )}
+
+        {hasChildren && isOpen && !collapsed && (
+          <div className="sidebar-nav-children mb-0.5" style={{ marginLeft: 16, paddingLeft: 12, borderLeft: "1px solid var(--sidebar-border)" }}>
+            {item.children!.map(child => {
+              const childActive = isActivePath(child.href);
+              return (
+                <Link
+                  key={child.name}
+                  href={child.href}
+                  className={`sidebar-nav-child${childActive ? " sidebar-nav-child--active" : ""}`}
+                  aria-current={childActive ? "page" : undefined}
+                >
+                  <span className="flex-1">{child.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
   };
 
-  const isParentActive = (item: NavItem) => item.children?.some(c => isActivePath(c.href)) ?? false;
+  const initials = user
+    ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
+    : "?";
 
   return (
-    <aside className="sidebar">
+    <aside
+      className={`sidebar${collapsed ? " sidebar--collapsed" : ""}`}
+      data-collapsed={String(collapsed)}
+    >
       {/* ── Brand ── */}
       <div className="sidebar-brand">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: "var(--primary)" }}
-        >
-          <Truck className="w-3.5 h-3.5 text-white" />
+        <div className="sidebar-brand-icon" aria-hidden="true">
+          <Truck className="w-4 h-4 text-white" />
         </div>
-        <span
-          className="text-[14px] font-bold tracking-tight"
-          style={{ color: "var(--on-surface)" }}
+        <span className="sidebar-brand-text">Safehaul</span>
+        <button
+          onClick={toggleCollapsed}
+          className="sidebar-toggle-btn"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          Safehaul TMS
-        </span>
+          <PanelLeft
+            className="w-4 h-4"
+            style={{
+              transform: collapsed ? "rotate(180deg)" : "none",
+              transition: "transform var(--transition-slow)",
+            }}
+          />
+        </button>
       </div>
 
       {/* ── Nav ── */}
-      <nav className="flex-1 overflow-y-auto py-1.5 px-2" aria-label="Main navigation">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const hasChildren = !!item.children;
-          const parentActive = hasChildren && isParentActive(item);
-          const itemActive = item.href ? isActivePath(item.href) : false;
-          const isOpen = openSection === item.name;
+      <nav className="sidebar-nav" aria-label="Main navigation">
+        {navGroups.map(group => (
+          <div key={group.label}>
+            <div className="sidebar-section-label">{group.label}</div>
+            {group.items.map(renderNavItem)}
+          </div>
+        ))}
 
-          return (
-            <div key={item.name}>
-              {hasChildren ? (
-                <button
-                  onClick={() => toggleExpand(item.name)}
-                  className={`sidebar-nav-item ${parentActive ? "sidebar-nav-item--active" : ""}`}
-                  aria-expanded={isOpen}
-                >
-                  <Icon className="w-[16px] h-[16px] shrink-0" />
-                  <span className="flex-1 text-left">{item.name}</span>
-                  {isOpen
-                    ? <ChevronDown className="w-3 h-3 opacity-50" />
-                    : <ChevronRight className="w-3 h-3 opacity-50" />
-                  }
-                </button>
-              ) : (
-                <Link
-                  href={item.href!}
-                  className={`sidebar-nav-item ${itemActive ? "sidebar-nav-item--active" : ""}`}
-                  aria-current={itemActive ? "page" : undefined}
-                >
-                  <Icon className="w-[16px] h-[16px] shrink-0" />
-                  <span className="flex-1">{item.name}</span>
-                </Link>
-              )}
-
-              {/* Children */}
-              {hasChildren && isOpen && (
-                <div
-                  className="mb-0.5"
-                  style={{
-                    marginLeft: "20px",
-                    paddingLeft: "12px",
-                    borderLeft: "1px solid var(--outline-variant)",
-                  }}
-                >
-                  {item.children!.map(child => {
-                    const childActive = isActivePath(child.href);
-                    return (
-                      <Link
-                        key={child.name}
-                        href={child.href}
-                        className={`sidebar-nav-child ${childActive ? "sidebar-nav-child--active" : ""}`}
-                        aria-current={childActive ? "page" : undefined}
-                      >
-                        <span className="flex-1">{child.name}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
+        {/* Settings — always visible at bottom of nav */}
+        <div style={{ marginTop: 8 }}>
+          {renderNavItem(settingsItem)}
+        </div>
       </nav>
 
-      {/* ── Footer — Company + User Identity ── */}
+      {/* ── Footer ── */}
       <div className="sidebar-footer">
+        {/* Company block */}
         <div
-          className="sidebar-nav-item"
-          style={{
-            marginBottom: "8px",
-            fontSize: "11px",
-            fontWeight: 600,
-            backgroundColor: "var(--surface-lowest)",
-            border: "1px solid var(--outline-variant)",
-            borderRadius: "var(--radius-md)",
-            borderLeft: "1px solid var(--outline-variant)",
-          }}
+          className="sidebar-company-block"
+          title={collapsed ? (user?.company_name || "Company") : undefined}
         >
-          <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--on-surface-variant)" }} />
-          <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+          <Building2 className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--sidebar-text-muted)" }} />
+          <span className="sidebar-label flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs">
             {user?.company_name || "Company"}
           </span>
-          <ChevronRight className="w-3 h-3" style={{ color: "var(--on-surface-variant)" }} />
         </div>
-        <div className="flex items-center gap-2.5 px-1">
+
+        {/* User row */}
+        <div className="sidebar-user">
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-            style={{ backgroundColor: "var(--primary)" }}
+            className="sidebar-user-avatar"
+            title={collapsed ? (user ? `${user.first_name} ${user.last_name}` : "User") : undefined}
           >
-            {user ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}` : "?"}
+            {initials}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-semibold leading-tight" style={{ color: "var(--on-surface)" }}>
+          <div className="sidebar-user-info">
+            <div className="sidebar-user-name">
               {user ? `${user.first_name} ${user.last_name}` : "User"}
             </div>
-            <div className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--on-surface-variant)" }}>
-              {user?.email || ""}
-            </div>
+            <div className="sidebar-user-email">{user?.email || ""}</div>
           </div>
           <button
             onClick={() => logout()}
-            className="topbar-icon-btn focus-ring"
+            className="sidebar-toggle-btn"
             title="Sign out"
             aria-label="Sign out"
           >
-            <LogOut className="w-[14px] h-[14px]" />
+            <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

@@ -64,13 +64,7 @@ export default function EmptyState({
     <div className="flex flex-col items-center justify-center min-h-[400px] flex-1 px-6 text-center">
       {/* Illustration Circle */}
       {icon && (
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
-          style={{
-            backgroundColor: "var(--primary-fixed)",
-            color: "var(--primary)",
-          }}
-        >
+        <div className="empty-state-icon">
           {icon}
         </div>
       )}

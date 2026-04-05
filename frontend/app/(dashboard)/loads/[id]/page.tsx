@@ -514,7 +514,7 @@ export default function LoadDetailPage() {
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[11px] font-medium uppercase tracking-wide mb-1" style={{ color: "var(--on-surface-variant)" }}>
+      <div className="text-[11px] font-semibold tracking-wide mb-1" style={{ color: "var(--on-surface-variant)" }}>
         {label}
       </div>
       {children}

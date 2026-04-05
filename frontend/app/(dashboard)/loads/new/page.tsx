@@ -316,9 +316,8 @@ export default function CreateLoadPage() {
                   />
                 </FormField>
 
-                {/* Rate-per-mile summary */}
-                <div className="rounded-xl p-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #f0f4ff 0%, #e8f5e9 100%)", border: "1px solid #d8e2f4" }}>
-                  <span className="text-xs font-semibold tracking-wide" style={{ color: "var(--on-surface-variant)" }}>
+                <div className="rpm-summary-box mt-2">
+                  <span className="label-sm" style={{ color: "var(--on-surface-variant)" }}>
                     Rate / Mile
                   </span>
                   <span className="text-xl font-bold tabular-nums" style={{ color: "var(--primary)" }}>

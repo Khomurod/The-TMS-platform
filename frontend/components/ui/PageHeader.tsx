@@ -42,14 +42,7 @@ export default function PageHeader({
   const [showKebab, setShowKebab] = useState(false);
 
   return (
-    <div
-      className="sticky top-0 z-20 px-6 py-3 flex items-center justify-between gap-4"
-      style={{
-        backgroundColor: "var(--surface-lowest)",
-        borderBottom: "1px solid var(--outline-variant)",
-        boxShadow: "0 1px 3px var(--shadow-ambient)",
-      }}
-    >
+    <div className="page-form-header sticky top-0 z-20 px-6 flex items-center justify-between gap-4">
       {/* Left: Breadcrumbs + Status */}
       <div className="flex items-center gap-3 min-w-0">
         {/* Breadcrumbs */}
@@ -57,18 +50,14 @@ export default function PageHeader({
           {breadcrumbs.map((crumb, i) => (
             <React.Fragment key={i}>
               {i > 0 && (
-                <ChevronRight className="h-3 w-3 shrink-0" style={{ color: "var(--outline)" }} />
+                <ChevronRight className="h-3 w-3 shrink-0 topbar-breadcrumb-sep" />
               )}
               {crumb.href ? (
-                <Link
-                  href={crumb.href}
-                  className="font-medium hover:underline underline-offset-2 transition-colors"
-                  style={{ color: "var(--on-surface-variant)" }}
-                >
+                <Link href={crumb.href} className="topbar-breadcrumb-link">
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="font-semibold" style={{ color: "var(--on-surface)" }}>
+                <span className="topbar-breadcrumb-current">
                   {crumb.label}
                 </span>
               )}
@@ -88,16 +77,7 @@ export default function PageHeader({
       <div className="flex items-center gap-2 shrink-0">
         {/* Secondary Actions */}
         {secondaryActions?.map((action, i) => (
-          <button
-            key={i}
-            onClick={action.onClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{
-              border: "1px solid var(--outline-variant)",
-              color: "var(--on-surface)",
-              backgroundColor: "var(--surface-lowest)",
-            }}
-          >
+          <button key={i} onClick={action.onClick} className="btn btn-secondary btn-sm">
             {action.icon}
             {action.label}
           </button>
@@ -105,15 +85,7 @@ export default function PageHeader({
 
         {/* Edit / Save Toggle */}
         {editAction && (
-          <button
-            onClick={editAction.onClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{
-              border: "1px solid var(--outline-variant)",
-              color: "var(--primary)",
-              backgroundColor: "var(--primary-fixed)",
-            }}
-          >
+          <button onClick={editAction.onClick} className="btn btn-soft btn-sm">
             {editAction.icon}
             {editAction.label}
           </button>
@@ -136,35 +108,18 @@ export default function PageHeader({
         {/* Kebab Menu */}
         {kebabActions && kebabActions.length > 0 && (
           <div className="relative">
-            <button
-              onClick={() => setShowKebab(!showKebab)}
-              className="p-1.5 rounded-lg transition-colors"
-              style={{
-                border: "1px solid var(--outline-variant)",
-                color: "var(--on-surface-variant)",
-              }}
-            >
+            <button onClick={() => setShowKebab(!showKebab)} className="btn btn-secondary btn-sm">
               <MoreVertical className="h-4 w-4" />
             </button>
-
             {showKebab && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowKebab(false)} />
-                <div
-                  className="absolute right-0 top-full mt-1 z-20 rounded-lg shadow-lg py-1 min-w-[180px]"
-                  style={{
-                    backgroundColor: "var(--surface-lowest)",
-                    border: "1px solid var(--outline-variant)",
-                  }}
-                >
+                <div className="absolute right-0 top-full mt-1 z-20 dropdown-menu">
                   {kebabActions.map((action, i) => (
                     <button
                       key={i}
                       onClick={() => { action.onClick(); setShowKebab(false); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors text-left"
-                      style={{
-                        color: action.destructive ? "var(--error)" : "var(--on-surface)",
-                      }}
+                      className={`dropdown-item${action.destructive ? " dropdown-item--danger" : ""}`}
                     >
                       {action.icon}
                       {action.label}

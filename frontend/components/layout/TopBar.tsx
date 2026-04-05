@@ -10,11 +10,6 @@ import {
   ChevronDown, ChevronRight, Package, Users, Truck,
 } from "lucide-react";
 
-/* ═══════════════════════════════════════════════════════════════
-   TopBar — Enterprise Operations Header
-   Route-metadata-driven breadcrumbs, compact action controls.
-   ═══════════════════════════════════════════════════════════════ */
-
 interface TopBarProps {
   onSearchClick?: () => void;
 }
@@ -28,17 +23,15 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
 
   useEffect(() => setMounted(true), []);
 
-  // Platform-aware shortcut label
   const isMac = mounted && typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
   const shortcutLabel = isMac ? "⌘K" : "Ctrl+K";
 
-  // Route-metadata-driven breadcrumbs (replaces hardcoded string matching)
   const breadcrumbs = getBreadcrumbs(pathname);
 
   const createOptions = [
-    { label: "New Load", href: "/loads/new", icon: <Package className="h-3.5 w-3.5" /> },
-    { label: "New Driver", href: "/drivers/new", icon: <Users className="h-3.5 w-3.5" /> },
-    { label: "New Truck", href: "/fleet/new", icon: <Truck className="h-3.5 w-3.5" /> },
+    { label: "New Load",   href: "/loads/new",   icon: <Package className="h-3.5 w-3.5" /> },
+    { label: "New Driver", href: "/drivers/new",  icon: <Users   className="h-3.5 w-3.5" /> },
+    { label: "New Truck",  href: "/fleet/new",    icon: <Truck   className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -48,30 +41,14 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
         {breadcrumbs.map((crumb, i) => (
           <span key={`${crumb.label}-${i}`} className="flex items-center">
             {i > 0 && (
-              <ChevronRight
-                className="mx-1.5 w-3 h-3"
-                style={{ color: "var(--outline)" }}
-              />
+              <ChevronRight className="mx-1.5 w-3 h-3 topbar-breadcrumb-sep" />
             )}
             {crumb.href ? (
-              <Link
-                href={crumb.href}
-                className="body-md"
-                style={{
-                  color: "var(--on-surface-variant)",
-                  textDecoration: "none",
-                }}
-              >
+              <Link href={crumb.href} className="topbar-breadcrumb-link body-md">
                 {crumb.label}
               </Link>
             ) : (
-              <span
-                style={{
-                  fontSize: "13px",
-                  fontWeight: i === breadcrumbs.length - 1 ? 700 : 500,
-                  color: i === breadcrumbs.length - 1 ? "var(--on-surface)" : "var(--on-surface-variant)",
-                }}
-              >
+              <span className={i === breadcrumbs.length - 1 ? "topbar-breadcrumb-current" : "topbar-breadcrumb-parent"}>
                 {crumb.label}
               </span>
             )}
@@ -81,44 +58,29 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
-        {/* Search */}
+
+        {/* Search pill — prominent, center-of-bar feel */}
         <button
           onClick={onSearchClick}
-          className="btn btn-secondary btn-sm"
+          className="topbar-search-pill"
+          aria-label={`Search (${shortcutLabel})`}
         >
-          <Search className="w-3.5 h-3.5" style={{ color: "var(--on-surface-variant)" }} />
-          <span style={{ color: "var(--on-surface-variant)", fontSize: "12px" }}>
-            Search
-          </span>
-          <kbd
-            style={{
-              fontSize: "9px",
-              fontWeight: 700,
-              padding: "1px 4px",
-              borderRadius: "3px",
-              backgroundColor: "var(--surface-container)",
-              color: "var(--on-surface-variant)",
-              marginLeft: "4px",
-              border: "1px solid var(--outline-variant)",
-            }}
-          >
-            {shortcutLabel}
-          </kbd>
+          <Search className="w-3.5 h-3.5 shrink-0" />
+          <span className="topbar-search-label hidden sm:inline">Search everything...</span>
+          <kbd className="topbar-kbd ml-auto hidden sm:inline-flex">{shortcutLabel}</kbd>
         </button>
 
-        <div className="topbar-divider" />
-
-        {/* Create New */}
+        {/* Create new — solid primary button for clear hierarchy */}
         <div className="relative">
           <button
             onClick={() => setShowCreateMenu(!showCreateMenu)}
-            className="btn btn-secondary btn-sm"
+            className="btn btn-primary btn-sm"
             aria-expanded={showCreateMenu}
             aria-haspopup="true"
           >
-            <Plus className="w-3.5 h-3.5" style={{ color: "var(--on-surface-variant)" }} />
+            <Plus className="w-3.5 h-3.5" />
             Create new
-            <ChevronDown className="w-3 h-3" style={{ color: "var(--on-surface-variant)" }} />
+            <ChevronDown className="w-3 h-3" />
           </button>
 
           {showCreateMenu && (
@@ -143,9 +105,8 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
 
         <div className="topbar-divider" />
 
-        {/* Icon Actions */}
+        {/* Icon cluster */}
         <div className="flex items-center gap-0.5">
-          {/* Dark Mode Toggle */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="topbar-icon-btn focus-ring"
@@ -158,7 +119,6 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
             )}
           </button>
 
-          {/* Settings */}
           <button
             onClick={() => router.push("/settings")}
             className="topbar-icon-btn focus-ring"
@@ -166,7 +126,6 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
           >
             <Settings className="w-4 h-4" />
           </button>
-
         </div>
       </div>
     </header>

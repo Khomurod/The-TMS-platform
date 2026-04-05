@@ -183,8 +183,6 @@ export default function DataTable<T>({
   );
 
   const isCompact = density === "compact";
-  const cellPy = isCompact ? "6px" : "10px";
-  const cellPx = "12px";
   const rowIds = useMemo(() => data.map(getRowId), [data, getRowId]);
   const allSelected = data.length > 0 && selectedIds.length === data.length;
   const someSelected = selectedIds.length > 0 && selectedIds.length < data.length;
@@ -243,14 +241,7 @@ export default function DataTable<T>({
   }, [data, visibleColumns]);
 
   return (
-    <div
-      className="flex flex-col h-full w-full"
-      style={{
-        backgroundColor: "var(--surface-lowest)",
-        fontSize: "12px",
-        borderRadius: "var(--radius-lg)",
-      }}
-    >
+    <div className={`dt-wrapper flex flex-col h-full w-full${density === "comfortable" ? " dt-comfortable" : ""}`}>
       {/* ═══ Tabs ═══ */}
       {tabs && tabs.length > 0 && (
         <div
@@ -264,34 +255,11 @@ export default function DataTable<T>({
             <button
               key={tab.key}
               onClick={() => onTabChange?.(tab.key)}
-              className="flex items-center gap-1.5 transition-colors"
-              style={{
-                padding: "10px 14px",
-                fontSize: "12px",
-                fontWeight: tab.isActive ? 600 : 500,
-                color: tab.isActive ? "var(--primary)" : "var(--on-surface-variant)",
-                borderBottom: tab.isActive ? "2px solid var(--primary)" : "2px solid transparent",
-                background: "transparent",
-                border: "none",
-                borderBottomWidth: "2px",
-                borderBottomStyle: "solid",
-                borderBottomColor: tab.isActive ? "var(--primary)" : "transparent",
-                cursor: "pointer",
-              }}
+              className={`dt-tab${tab.isActive ? " dt-tab--active" : ""}`}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span
-                  className="tabular-nums"
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    padding: "1px 6px",
-                    borderRadius: "var(--radius-full)",
-                    backgroundColor: tab.isActive ? "var(--primary-fixed)" : "var(--surface-container)",
-                    color: tab.isActive ? "var(--primary)" : "var(--on-surface-variant)",
-                  }}
-                >
+                <span className="dt-tab-badge tabular-nums">
                   {tab.count}
                 </span>
               )}
@@ -302,15 +270,8 @@ export default function DataTable<T>({
 
       {/* ═══ Bulk Actions Bar ═══ */}
       {selectedIds.length > 0 && bulkActions && (
-        <div
-          className="flex items-center gap-3 shrink-0"
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "var(--primary-fixed)",
-            borderBottom: "1px solid var(--outline-variant)",
-          }}
-        >
-          <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--primary)" }}>
+        <div className="dt-bulk-bar">
+          <span className="dt-bulk-count">
             {selectedIds.length} selected
           </span>
           <div className="flex items-center gap-2 ml-2">
@@ -327,15 +288,7 @@ export default function DataTable<T>({
           </div>
           <button
             onClick={() => setSelectedIds([])}
-            className="ml-auto flex items-center gap-1 transition-colors"
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "12px",
-              fontWeight: 500,
-              color: "var(--on-surface-variant)",
-            }}
+            className="dt-bulk-clear"
           >
             <X className="h-3 w-3" />
             Clear
@@ -345,13 +298,7 @@ export default function DataTable<T>({
 
       {/* ═══ Table Action Bar ═══ */}
       {selectedIds.length === 0 && (
-        <div
-          className="flex items-center justify-between shrink-0"
-          style={{
-            padding: "6px 16px",
-            borderBottom: "1px solid var(--outline-variant)",
-          }}
-        >
+        <div className="dt-toolbar">
           <div className="flex items-center gap-2">
             {onFilterClick && (
               <button
@@ -363,12 +310,8 @@ export default function DataTable<T>({
                 Filter
                 {!!filterCount && filterCount > 0 && (
                   <span
-                    className="tabular-nums"
+                    className="dt-tab-badge tabular-nums"
                     style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      padding: "0 5px",
-                      borderRadius: "var(--radius-full)",
                       backgroundColor: "var(--primary)",
                       color: "var(--on-primary)",
                       marginLeft: "2px",
@@ -417,26 +360,8 @@ export default function DataTable<T>({
                 {showColumnMenu && (
                   <>
                     <div className="fixed inset-0 z-20" onClick={() => setShowColumnMenu(false)} />
-                    <div
-                      className="absolute right-0 top-full mt-1 z-30 rounded-md py-1 min-w-[200px]"
-                      style={{
-                        backgroundColor: "var(--surface-lowest)",
-                        border: "1px solid var(--outline-variant)",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          color: "var(--on-surface-variant)",
-                          letterSpacing: "0.04em",
-                          borderBottom: "1px solid var(--outline-variant)",
-                        }}
-                      >
-                        Toggle Columns
-                      </div>
+                    <div className="dt-col-menu">
+                      <div className="dt-col-menu-label">Toggle Columns</div>
                       {columns
                         .filter((col) => col.hideable !== false)
                         .map((col) => {
@@ -446,29 +371,9 @@ export default function DataTable<T>({
                             <button
                               key={key}
                               onClick={() => toggleColumn(key)}
-                              className="w-full flex items-center gap-2 text-left transition-colors"
-                              style={{
-                                padding: "6px 12px",
-                                fontSize: "12px",
-                                fontWeight: 500,
-                                color: "var(--on-surface)",
-                                background: "transparent",
-                                border: "none",
-                                cursor: "pointer",
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                              className="dt-menu-item"
                             >
-                              <span
-                                className="flex items-center justify-center shrink-0"
-                                style={{
-                                  width: "16px",
-                                  height: "16px",
-                                  borderRadius: "3px",
-                                  border: `1.5px solid ${isVisible ? "var(--primary)" : "var(--outline-variant)"}`,
-                                  backgroundColor: isVisible ? "var(--primary)" : "transparent",
-                                }}
-                              >
+                              <span className={`dt-col-check ${isVisible ? "dt-col-check--on" : "dt-col-check--off"}`}>
                                 {isVisible && <Check className="h-2.5 w-2.5 text-white" />}
                               </span>
                               {col.header}
@@ -492,35 +397,16 @@ export default function DataTable<T>({
           emptyState ? (
             <EmptyState {...emptyState} />
           ) : (
-            <div
-              className="flex items-center justify-center py-16"
-              style={{ color: "var(--on-surface-variant)", fontSize: "13px" }}
-            >
+            <div className="dt-empty">
               No data available
             </div>
           )
         ) : (
-          <table
-            className="w-full text-left min-w-max"
-            style={{ borderCollapse: "collapse" }}
-          >
-            <thead
-              className="sticky top-0 z-10"
-              style={{
-                backgroundColor: "var(--surface-low)",
-                boxShadow: "inset 0 -1px 0 var(--outline-variant)",
-              }}
-            >
+          <table className="dt-table">
+            <thead className="sticky top-0 z-10">
               <tr>
                 {selectable && (
-                  <th
-                    style={{
-                      padding: `8px ${cellPx}`,
-                      width: "40px",
-                      textAlign: "center",
-                      borderRight: "1px solid var(--outline-variant)",
-                    }}
-                  >
+                  <th className="dt-th dt-th--check">
                     <input
                       type="checkbox"
                       style={{ accentColor: "var(--primary)", cursor: "pointer" }}
@@ -533,18 +419,8 @@ export default function DataTable<T>({
                 {visibleColumns.map((col, idx) => (
                   <th
                     key={idx}
-                    style={{
-                      padding: `8px ${cellPx}`,
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: "var(--on-surface-variant)",
-                      whiteSpace: "nowrap",
-                      borderRight: "1px solid var(--outline-variant)",
-                      width: col.width,
-                      textAlign: col.align || "left",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
+                    className={`dt-th${col.align === "center" ? " dt-th--center" : col.align === "right" ? " dt-th--right" : ""}`}
+                    style={{ width: col.width }}
                   >
                     <div className="flex items-center gap-1.5 cursor-pointer">
                       <ChevronsUpDown
@@ -556,13 +432,7 @@ export default function DataTable<T>({
                   </th>
                 ))}
                 {rowActions && (
-                  <th
-                    style={{
-                      padding: `8px ${cellPx}`,
-                      width: "40px",
-                      borderRight: "1px solid var(--outline-variant)",
-                    }}
-                  />
+                  <th className="dt-th" style={{ width: "40px" }} />
                 )}
               </tr>
             </thead>
@@ -574,34 +444,15 @@ export default function DataTable<T>({
                   <tr
                     key={rowIndex}
                     onClick={() => onRowClick?.(row)}
-                    className={onRowClick ? "cursor-pointer" : ""}
-                    style={{
-                      borderBottom: "1px solid var(--outline-variant)",
-                      backgroundColor: isSelected
-                        ? "var(--primary-fixed)"
-                        : zebraStripe && rowIndex % 2 === 1
-                        ? "var(--surface-low)"
-                        : undefined,
-                      transition: "background-color 0.1s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected)
-                        e.currentTarget.style.backgroundColor = "var(--surface-low)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected)
-                        e.currentTarget.style.backgroundColor =
-                          zebraStripe && rowIndex % 2 === 1 ? "var(--surface-low)" : "";
-                    }}
+                    className={[
+                      "dt-row",
+                      isSelected ? "dt-row--selected" : "",
+                      zebraStripe ? "dt-row--zebra" : "",
+                      onRowClick ? "cursor-pointer" : "",
+                    ].filter(Boolean).join(" ")}
                   >
                     {selectable && (
-                      <td
-                        style={{
-                          padding: `${cellPy} ${cellPx}`,
-                          textAlign: "center",
-                          borderRight: "1px solid var(--outline-variant)",
-                        }}
-                      >
+                      <td className="dt-td--check">
                         <input
                           type="checkbox"
                           style={{ accentColor: "var(--primary)", cursor: "pointer" }}
@@ -614,44 +465,20 @@ export default function DataTable<T>({
                     {visibleColumns.map((col, colIndex) => (
                       <td
                         key={colIndex}
-                        style={{
-                          padding: `${cellPy} ${cellPx}`,
-                          fontSize: "12px",
-                          color: "var(--on-surface)",
-                          borderRight: "1px solid var(--outline-variant)",
-                          textAlign: col.align || "left",
-                          maxWidth: "220px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
+                        className={`dt-td${col.align === "center" ? " dt-td--center" : col.align === "right" ? " dt-td--right" : ""}`}
                       >
                         {col.cell ? col.cell(row) : (row as any)[col.accessorKey]}
                       </td>
                     ))}
                     {rowActions && (
-                      <td
-                        style={{
-                          padding: `${cellPy} ${cellPx}`,
-                          textAlign: "center",
-                          borderRight: "1px solid var(--outline-variant)",
-                          position: "relative",
-                        }}
-                      >
+                      <td className="dt-td--actions">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveRowAction(activeRowAction === rowId ? null : rowId);
                           }}
-                          className="focus-ring"
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "var(--on-surface-variant)",
-                            padding: "2px",
-                            borderRadius: "var(--radius-sm)",
-                          }}
+                          className="dt-row-action-btn focus-ring"
+                          aria-label="Row actions"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
@@ -659,14 +486,7 @@ export default function DataTable<T>({
                         {activeRowAction === rowId && (
                           <>
                             <div className="fixed inset-0 z-15" onClick={() => setActiveRowAction(null)} />
-                            <div
-                              className="absolute right-0 top-full mt-1 z-20 rounded-md py-1 min-w-[160px]"
-                              style={{
-                                backgroundColor: "var(--surface-lowest)",
-                                border: "1px solid var(--outline-variant)",
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                              }}
-                            >
+                            <div className="dt-col-menu">
                               {rowActions.map((action, i) => (
                                 <button
                                   key={i}
@@ -675,18 +495,7 @@ export default function DataTable<T>({
                                     action.onClick(row);
                                     setActiveRowAction(null);
                                   }}
-                                  className="w-full flex items-center gap-2 text-left transition-colors"
-                                  style={{
-                                    padding: "6px 12px",
-                                    fontSize: "12px",
-                                    fontWeight: 500,
-                                    color: action.destructive ? "var(--error)" : "var(--on-surface)",
-                                    background: "transparent",
-                                    border: "none",
-                                    cursor: "pointer",
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--surface-low)"; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                                  className={`dt-menu-item${action.destructive ? " dt-menu-item--danger" : ""}`}
                                 >
                                   {action.icon || (action.destructive && <Trash2 className="h-3 w-3" />)}
                                   {action.label}
@@ -707,22 +516,10 @@ export default function DataTable<T>({
 
       {/* ═══ Sticky Aggregate Footer ═══ */}
       {stickyFooter && stickyFooter.length > 0 && (
-        <div
-          className="sticky bottom-0 z-10 flex flex-wrap gap-x-6 gap-y-1 shrink-0"
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "var(--surface-low)",
-            borderTop: "1px solid var(--outline-variant)",
-            fontSize: "12px",
-            fontWeight: 600,
-            color: "var(--on-surface)",
-          }}
-        >
+        <div className="dt-agg-footer tabular-nums">
           {stickyFooter.map((agg, i) => (
-            <span key={i} className="tabular-nums">
-              <span style={{ color: "var(--on-surface-variant)", fontWeight: 500 }}>
-                {agg.label}:{" "}
-              </span>
+            <span key={i}>
+              <span className="dt-agg-label">{agg.label}:{" "}</span>
               {agg.value}
             </span>
           ))}
@@ -731,32 +528,13 @@ export default function DataTable<T>({
 
       {/* ═══ Legacy Footer ═══ */}
       {renderFooter && !stickyFooter && (
-        <div
-          className="flex w-full shrink-0"
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "var(--surface-low)",
-            borderTop: "1px solid var(--outline-variant)",
-            fontSize: "12px",
-            fontWeight: 600,
-            color: "var(--on-surface)",
-          }}
-        >
+        <div className="dt-agg-footer">
           {renderFooter()}
         </div>
       )}
 
       {/* ═══ Pagination ═══ */}
-      <div
-        className="flex items-center justify-between shrink-0"
-        style={{
-          padding: "6px 16px",
-          borderTop: "1px solid var(--outline-variant)",
-          backgroundColor: "var(--surface-lowest)",
-          color: "var(--on-surface-variant)",
-          fontSize: "12px",
-        }}
-      >
+      <div className="dt-pagination">
         <span className="tabular-nums">
           {totalCount !== undefined
             ? `${data.length > 0 ? ((currentPage ?? 1) - 1) * (controlledPageSize ?? 20) + 1 : 0}–${Math.min(
@@ -770,22 +548,12 @@ export default function DataTable<T>({
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
             <select
-              className="focus-ring"
-              style={{
-                border: "none",
-                background: "transparent",
-                color: "var(--on-surface)",
-                fontWeight: 500,
-                cursor: "pointer",
-                fontSize: "12px",
-              }}
+              className="dt-page-select focus-ring"
               value={controlledPageSize ?? 20}
               onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
             >
               {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
+                <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
           </div>
@@ -795,26 +563,14 @@ export default function DataTable<T>({
               <button
                 onClick={() => onPageChange((currentPage ?? 1) - 1)}
                 disabled={(currentPage ?? 1) <= 1}
-                className="focus-ring"
-                style={{
-                  padding: "3px",
-                  borderRadius: "var(--radius-sm)",
-                  color: "var(--on-surface)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  opacity: (currentPage ?? 1) <= 1 ? 0.3 : 1,
-                }}
+                className="dt-page-btn focus-ring"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <span
                 className="tabular-nums"
-                style={{
-                  fontWeight: 500,
-                  padding: "0 4px",
-                  color: "var(--on-surface)",
-                }}
+                style={{ fontWeight: 500, padding: "0 4px", color: "var(--on-surface)" }}
               >
                 {currentPage ?? 1}
               </span>
@@ -824,17 +580,8 @@ export default function DataTable<T>({
                   totalCount !== undefined &&
                   (currentPage ?? 1) * (controlledPageSize ?? 20) >= totalCount
                 }
-                className="focus-ring"
-                style={{
-                  padding: "3px",
-                  borderRadius: "var(--radius-sm)",
-                  color: "var(--on-surface)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  opacity: totalCount !== undefined &&
-                    (currentPage ?? 1) * (controlledPageSize ?? 20) >= totalCount ? 0.3 : 1,
-                }}
+                className="dt-page-btn focus-ring"
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

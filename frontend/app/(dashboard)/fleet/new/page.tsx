@@ -205,19 +205,19 @@ export default function CreateTruckPage() {
               </h3>
               <div className="space-y-3.5 text-[13px]" style={{ color: "var(--on-surface-variant)" }}>
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(37, 99, 235, 0.1)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>
                     <Truck className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
                   </div>
                   <p className="pt-0.5">Unit number must be unique across your fleet</p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(22, 163, 74, 0.1)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--success) 10%, transparent)" }}>
                     <Shield className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
                   </div>
                   <p className="pt-0.5">DOT inspection dates trigger compliance alerts</p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(245, 158, 11, 0.1)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--warning) 10%, transparent)" }}>
                     <Calendar className="h-3.5 w-3.5" style={{ color: "var(--warning)" }} />
                   </div>
                   <p className="pt-0.5">Trucks are automatically set to &apos;available&apos; status</p>

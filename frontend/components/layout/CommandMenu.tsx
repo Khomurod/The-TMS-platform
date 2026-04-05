@@ -159,8 +159,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
       >
         {/* Search Input */}
         <div
-          className="flex items-center gap-3 px-5"
-          style={{ borderBottom: "1px solid var(--outline-variant)", backgroundColor: "rgba(37, 99, 235, 0.04)" }}
+          className="flex items-center gap-3 px-5 cmd-search-header"
         >
           <Search className="h-6 w-6 shrink-0" style={{ color: "var(--primary)" }} />
           <input
@@ -190,12 +189,7 @@ export default function CommandMenu({ isOpen, onClose }: CommandMenuProps) {
             <button
               key={cat}
               onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-              className="px-3.5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03]"
-              style={{
-                backgroundColor: categoryFilter === cat ? CATEGORY_COLORS[cat] : "var(--surface-container-high)",
-                color: categoryFilter === cat ? "#fff" : "var(--on-surface-variant)",
-                border: categoryFilter === cat ? `1px solid ${CATEGORY_COLORS[cat]}` : "1px solid var(--outline-variant)",
-              }}
+              className={`px-3.5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.03] ${categoryFilter === cat ? "btn btn-primary btn-xs" : "btn btn-secondary btn-xs"}`}
             >
               {cat}
             </button>

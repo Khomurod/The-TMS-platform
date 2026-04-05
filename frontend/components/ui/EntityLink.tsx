@@ -44,7 +44,7 @@ export default function EntityLink({
   const content = (
     <span className="inline-flex items-center gap-1.5 group/entity max-w-full">
       <span
-        className="font-medium truncate transition-colors"
+        className="font-medium truncate transition-colors topbar-breadcrumb-link"
         style={{ color: "var(--primary)" }}
       >
         {label}
