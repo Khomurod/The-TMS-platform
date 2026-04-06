@@ -8,16 +8,16 @@ import { FormField } from "@/components/ui/Input";
 import {
   ArrowLeft,
   Truck,
-  Calendar,
   Shield,
   Loader2,
   AlertCircle,
   Settings2,
+  Clock,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════
-   Create Truck Page — Full-page form with 70/30 split
-   Matches CreateLoadPage visual pattern
+   Create Truck Page — Single-column centered layout
+   De-boxed sections with flat typography-driven hierarchy
    ═══════════════════════════════════════════════════════════════ */
 
 export default function CreateTruckPage() {
@@ -76,7 +76,7 @@ export default function CreateTruckPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/fleet"
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[var(--surface-low)]"
             style={{ color: "var(--on-surface-variant)" }}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -94,7 +94,7 @@ export default function CreateTruckPage() {
             className="btn btn-primary btn-sm"
           >
             {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
-            {creating ? "Creating..." : "Register Truck"}
+            {creating ? "Creating…" : "Register Truck"}
           </button>
         </div>
       </div>
@@ -110,121 +110,99 @@ export default function CreateTruckPage() {
         </div>
       )}
 
-      {/* ═══ 70/30 Body ═══ */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 340px" }}>
+      {/* ═══ Single-Column Centered Form ═══ */}
+      <div className="flex-1 overflow-y-auto px-6 py-8">
+        <div className="max-w-3xl mx-auto flex flex-col gap-0">
 
-          {/* ── LEFT 70% — Form ── */}
-          <div className="space-y-6">
-            {/* Unit Information */}
-            <div className="card-section">
-              <h2 className="card-section-header">
-                <Truck className="icon" style={{ color: "var(--primary)" }} />
-                Unit Information
-              </h2>
-              <div className="grid grid-cols-2 gap-5">
-                <FormField label="Unit Number" required>
-                  <input className="input-base" placeholder="TRK-001" value={unitNumber} onChange={e => setUnitNumber(e.target.value)} />
-                </FormField>
-                <FormField label="Year">
-                  <input className="input-base" type="number" placeholder="2024" value={year} onChange={e => setYear(e.target.value)} />
-                </FormField>
-                <FormField label="Make">
-                  <select className="select-base" value={make} onChange={e => setMake(e.target.value)}>
-                    <option value="">Select make</option>
-                    <option value="Freightliner">Freightliner</option>
-                    <option value="Peterbilt">Peterbilt</option>
-                    <option value="Kenworth">Kenworth</option>
-                    <option value="Volvo">Volvo</option>
-                    <option value="International">International</option>
-                    <option value="Mack">Mack</option>
-                    <option value="Western Star">Western Star</option>
-                  </select>
-                </FormField>
-                <FormField label="Model">
-                  <input className="input-base" placeholder="e.g. Cascadia" value={model} onChange={e => setModel(e.target.value)} />
-                </FormField>
-                <FormField label="VIN">
-                  <input className="input-base" placeholder="17-digit VIN" maxLength={17} value={vin} onChange={e => setVin(e.target.value)} />
-                </FormField>
-                <FormField label="License Plate">
-                  <input className="input-base" placeholder="Plate number" value={licensePlate} onChange={e => setLicensePlate(e.target.value)} />
-                </FormField>
-                <FormField label="Ownership Type">
-                  <select className="select-base" value={ownershipType} onChange={e => setOwnershipType(e.target.value)}>
-                    <option value="">Select type</option>
-                    <option value="company_owned">Company Owned</option>
-                    <option value="leased">Leased</option>
-                    <option value="owner_operator">Owner Operator</option>
-                  </select>
-                </FormField>
-              </div>
+          {/* ── Section: Unit Information ── */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Truck className="h-4 w-4 shrink-0" style={{ color: "var(--primary)" }} />
+              <h3 className="title-md" style={{ color: "var(--on-surface)" }}>Unit Information</h3>
             </div>
-
-            {/* DOT Inspection */}
-            <div className="card-section card-section--green">
-              <h2 className="card-section-header">
-                <Shield className="icon" style={{ color: "var(--success)" }} />
-                DOT Inspection
-              </h2>
-              <div className="grid grid-cols-2 gap-5">
-                <FormField label="Last Inspection Date">
-                  <input className="input-base" type="date" value={dotInspectionDate} onChange={e => setDotInspectionDate(e.target.value)} />
-                </FormField>
-                <FormField label="Inspection Expiry">
-                  <input className="input-base" type="date" value={dotInspectionExpiry} onChange={e => setDotInspectionExpiry(e.target.value)} />
-                </FormField>
-              </div>
-            </div>
-
-            {/* Specifications (future) */}
-            <div className="card-section card-section--amber">
-              <h2 className="card-section-header">
-                <Settings2 className="icon" style={{ color: "var(--warning)" }} />
-                Specifications
-              </h2>
-              <div className="grid grid-cols-2 gap-5">
-                <FormField label="Engine Type">
-                  <input className="input-base" placeholder="e.g. Diesel" disabled title="Coming in a future update" />
-                </FormField>
-                <FormField label="Fuel Type">
-                  <select className="select-base" disabled title="Coming in a future update">
-                    <option value="">Select fuel type</option>
-                  </select>
-                </FormField>
-              </div>
+            <div className="grid grid-cols-2 gap-5">
+              <FormField label="Unit Number" required>
+                <input className="input-base" placeholder="TRK-001" value={unitNumber} onChange={e => setUnitNumber(e.target.value)} />
+              </FormField>
+              <FormField label="Year">
+                <input className="input-base" type="number" placeholder="2024" value={year} onChange={e => setYear(e.target.value)} />
+              </FormField>
+              <FormField label="Make">
+                <select className="select-base" value={make} onChange={e => setMake(e.target.value)}>
+                  <option value="">Select make</option>
+                  <option value="Freightliner">Freightliner</option>
+                  <option value="Peterbilt">Peterbilt</option>
+                  <option value="Kenworth">Kenworth</option>
+                  <option value="Volvo">Volvo</option>
+                  <option value="International">International</option>
+                  <option value="Mack">Mack</option>
+                  <option value="Western Star">Western Star</option>
+                </select>
+              </FormField>
+              <FormField label="Model">
+                <input className="input-base" placeholder="e.g. Cascadia" value={model} onChange={e => setModel(e.target.value)} />
+              </FormField>
+              <FormField label="VIN">
+                <input className="input-base" placeholder="17-digit VIN" maxLength={17} value={vin} onChange={e => setVin(e.target.value)} />
+              </FormField>
+              <FormField label="License Plate">
+                <input className="input-base" placeholder="Plate number" value={licensePlate} onChange={e => setLicensePlate(e.target.value)} />
+              </FormField>
+              <FormField label="Ownership Type">
+                <select className="select-base" value={ownershipType} onChange={e => setOwnershipType(e.target.value)}>
+                  <option value="">Select type</option>
+                  <option value="company_owned">Company Owned</option>
+                  <option value="leased">Leased</option>
+                  <option value="owner_operator">Owner Operator</option>
+                </select>
+              </FormField>
             </div>
           </div>
 
-          {/* ── RIGHT 30% — Side Info ── */}
-          <aside className="space-y-5" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
-            {/* Quick Tips */}
-            <div className="card-tinted space-y-4">
-              <h3 className="card-section-header" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: "none" }}>
-                Quick Tips
-              </h3>
-              <div className="space-y-3.5 text-[13px]" style={{ color: "var(--on-surface-variant)" }}>
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>
-                    <Truck className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
-                  </div>
-                  <p className="pt-0.5">Unit number must be unique across your fleet</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--success) 10%, transparent)" }}>
-                    <Shield className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
-                  </div>
-                  <p className="pt-0.5">DOT inspection dates trigger compliance alerts</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--warning) 10%, transparent)" }}>
-                    <Calendar className="h-3.5 w-3.5" style={{ color: "var(--warning)" }} />
-                  </div>
-                  <p className="pt-0.5">Trucks are automatically set to &apos;available&apos; status</p>
-                </div>
-              </div>
+          <hr className="my-7" style={{ borderColor: "var(--outline-variant)" }} />
+
+          {/* ── Section: DOT Inspection ── */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Shield className="h-4 w-4 shrink-0" style={{ color: "var(--success)" }} />
+              <h3 className="title-md" style={{ color: "var(--on-surface)" }}>DOT Inspection</h3>
             </div>
-          </aside>
+            <div className="grid grid-cols-2 gap-5">
+              <FormField label="Last Inspection Date">
+                <input className="input-base" type="date" value={dotInspectionDate} onChange={e => setDotInspectionDate(e.target.value)} />
+              </FormField>
+              <FormField label="Inspection Expiry">
+                <input className="input-base" type="date" value={dotInspectionExpiry} onChange={e => setDotInspectionExpiry(e.target.value)} />
+              </FormField>
+            </div>
+          </div>
+
+          <hr className="my-7" style={{ borderColor: "var(--outline-variant)" }} />
+
+          {/* ── Section: Specifications (Coming Soon) ── */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Settings2 className="h-4 w-4 shrink-0" style={{ color: "var(--on-surface-variant)" }} />
+              <h3 className="title-md" style={{ color: "var(--on-surface-variant)" }}>Specifications</h3>
+              <span
+                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: "var(--surface-container)",
+                  color: "var(--on-surface-variant)",
+                  border: "1px solid var(--outline-variant)",
+                }}
+              >
+                <Clock className="h-2.5 w-2.5" />
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-[13px]" style={{ color: "var(--on-surface-variant)" }}>
+              Engine type, fuel type, and trailer capacity will be configurable in a future release. These fields are tracked automatically once enabled.
+            </p>
+          </div>
+
+          {/* Bottom padding spacer */}
+          <div className="h-8" />
         </div>
       </div>
     </div>

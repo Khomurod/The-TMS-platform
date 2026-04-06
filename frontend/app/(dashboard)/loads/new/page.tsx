@@ -108,7 +108,7 @@ export default function CreateLoadPage() {
   const ratePerMile =
     baseRate && totalMiles && Number(totalMiles) > 0
       ? (Number(baseRate) / Number(totalMiles)).toFixed(2)
-      : "—";
+      : null;
 
   const hasValidStop = stops.some((s) => s.city.trim());
 
@@ -126,7 +126,7 @@ export default function CreateLoadPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/loads"
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[var(--surface-low)]"
             style={{ color: "var(--on-surface-variant)" }}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -144,7 +144,7 @@ export default function CreateLoadPage() {
             className="btn btn-primary btn-sm"
           >
             {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-            {creating ? "Creating..." : "Create Load"}
+            {creating ? "Creating…" : "Create Load"}
           </button>
         </div>
       </div>
@@ -160,16 +160,20 @@ export default function CreateLoadPage() {
         </div>
       )}
 
+      {/* ═══ Body ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
-        <div className="grid gap-6" style={{ gridTemplateColumns: "1fr 340px" }}>
-          {/* ════════════ LEFT COLUMN — 70% ════════════ */}
-          <div className="flex flex-col gap-6">
-            {/* ── Broker Info Card ── */}
-            <div className="card-section">
-              <h2 className="card-section-header">
-                <FileText className="icon" style={{ color: "var(--primary)" }} />
-                Broker Information
-              </h2>
+        {/* Constrained two-column layout: form (max-w-3xl) + right panel (340px) */}
+        <div className="flex gap-8 max-w-6xl mx-auto">
+
+          {/* ════════════ LEFT COLUMN — Constrained form ════════════ */}
+          <div className="flex-1 min-w-0 max-w-3xl flex flex-col gap-0">
+
+            {/* ── Section: Broker Information ── */}
+            <div>
+              <div className="flex items-center gap-2.5 mb-4">
+                <FileText className="h-4 w-4 shrink-0" style={{ color: "var(--primary)" }} />
+                <h3 className="title-md" style={{ color: "var(--on-surface)" }}>Broker Information</h3>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <FormField label="Broker Load ID">
                   <input
@@ -195,30 +199,37 @@ export default function CreateLoadPage() {
                     title="Coming in a future update"
                   />
                 </FormField>
-                </div>
               </div>
+            </div>
 
-            {/* ── Routing Timeline Card ── */}
-            <div className="card-section card-section--green">
-              <div className="flex items-center justify-between" style={{ paddingBottom: 14, marginBottom: 20, borderBottom: "1px solid var(--outline-variant)" }}>
-                <h2 className="flex items-center gap-2.5" style={{ fontSize: 15, fontWeight: 600, color: "var(--on-surface)" }}>
-                  <MapPin className="icon" style={{ color: "var(--success)" }} />
-                  Routing Timeline
-                </h2>
+            <hr className="my-6" style={{ borderColor: "var(--outline-variant)" }} />
+
+            {/* ── Section: Routing Timeline ── */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <MapPin className="h-4 w-4 shrink-0" style={{ color: "var(--success)" }} />
+                  <h3 className="title-md" style={{ color: "var(--on-surface)" }}>Routing Timeline</h3>
+                </div>
                 <button
                   onClick={addStop}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors text-[var(--primary)] border border-[var(--primary)] bg-[var(--primary-fixed)] hover:brightness-95 active:scale-[0.98]"
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md transition-colors"
+                  style={{
+                    color: "var(--primary)",
+                    border: "1px solid var(--primary)",
+                    backgroundColor: "var(--primary-fixed)",
+                  }}
                 >
                   <Plus className="h-3 w-3" />
                   Add Stop
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 {stops.map((stop, idx) => (
                   <div key={idx} className="flex items-start gap-4">
                     {/* Timeline indicator */}
-                    <div className="flex flex-col items-center pt-2 shrink-0">
+                    <div className="flex flex-col items-center pt-3 shrink-0">
                       <div
                         className={`w-3 h-3 rounded-full border-2 ${
                           stop.stop_type === "pickup"
@@ -227,23 +238,17 @@ export default function CreateLoadPage() {
                         }`}
                       />
                       {idx < stops.length - 1 && (
-                        <div className="w-0.5 flex-1 min-h-[40px] mt-1 bg-[var(--outline-variant)]" />
+                        <div className="w-0.5 flex-1 min-h-[44px] mt-1 bg-[var(--outline-variant)]" />
                       )}
                     </div>
 
-                    {/* Stop fields */}
-                    <div className="flex-1 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--surface-low)] border border-[var(--outline-variant)]">
+                    {/* Stop fields — flat, no border box */}
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 pb-3">
                       <FormField label="Stop Type">
                         <select
                           className="select-base"
                           value={stop.stop_type}
-                          onChange={(e) =>
-                            updateStop(
-                              idx,
-                              "stop_type",
-                              e.target.value as "pickup" | "delivery"
-                            )
-                          }
+                          onChange={(e) => updateStop(idx, "stop_type", e.target.value as "pickup" | "delivery")}
                         >
                           <option value="pickup">Pickup</option>
                           <option value="delivery">Delivery</option>
@@ -254,9 +259,7 @@ export default function CreateLoadPage() {
                           className="input-base"
                           placeholder="City"
                           value={stop.city}
-                          onChange={(e) =>
-                            updateStop(idx, "city", e.target.value)
-                          }
+                          onChange={(e) => updateStop(idx, "city", e.target.value)}
                         />
                       </FormField>
                       <FormField label="State">
@@ -265,18 +268,17 @@ export default function CreateLoadPage() {
                           placeholder="ST"
                           maxLength={2}
                           value={stop.state}
-                          onChange={(e) =>
-                            updateStop(idx, "state", e.target.value)
-                          }
+                          onChange={(e) => updateStop(idx, "state", e.target.value)}
                         />
                       </FormField>
                     </div>
 
-                    {/* Remove button (if more than 2 stops) */}
+                    {/* Remove button */}
                     {stops.length > 2 && (
                       <button
                         onClick={() => removeStop(idx)}
-                        className="mt-3 p-2 rounded-md transition-colors text-[var(--error)] hover:bg-[var(--error-container)] active:scale-[0.98]"
+                        className="mt-3 p-2 rounded-md transition-colors"
+                        style={{ color: "var(--error)" }}
                         title="Remove stop"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -286,11 +288,25 @@ export default function CreateLoadPage() {
                 ))}
               </div>
             </div>
+
+            <hr className="my-6" style={{ borderColor: "var(--outline-variant)" }} />
+
+            {/* ── Section: Notes ── */}
+            <div>
+              <h3 className="title-md mb-4" style={{ color: "var(--on-surface)" }}>Notes</h3>
+              <textarea
+                className="input-base min-h-[120px] resize-y"
+                placeholder="Special instructions, detention alerts, customer reference…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
           </div>
 
-          {/* ════════════ RIGHT COLUMN — 30% ════════════ */}
-          <aside className="flex flex-col gap-5" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
-            {/* ── Financials Card ── */}
+          {/* ════════════ RIGHT COLUMN — Financials (sticky) ════════════ */}
+          <aside className="w-[300px] shrink-0 flex flex-col gap-5" style={{ position: "sticky", top: 80, alignSelf: "start" }}>
+
+            {/* Financials Card */}
             <div className="card-section card-section--amber">
               <h2 className="card-section-header">
                 <DollarSign className="icon" style={{ color: "var(--warning)" }} />
@@ -316,28 +332,37 @@ export default function CreateLoadPage() {
                   />
                 </FormField>
 
-                <div className="rpm-summary-box mt-2">
-                  <span className="label-sm" style={{ color: "var(--on-surface-variant)" }}>
-                    Rate / Mile
-                  </span>
-                  <span className="text-xl font-bold tabular-nums" style={{ color: "var(--primary)" }}>
-                    {ratePerMile === "—" ? "—" : `$${ratePerMile}`}
+                {/* RPM summary */}
+                <div className="rpm-summary-box mt-1">
+                  <div>
+                    <div className="label-sm" style={{ color: "var(--on-surface-variant)" }}>Rate / Mile</div>
+                    {ratePerMile && (
+                      <div className="text-[11px] mt-0.5" style={{ color: "var(--on-surface-variant)" }}>
+                        Live calculation
+                      </div>
+                    )}
+                  </div>
+                  <span
+                    className="text-2xl font-bold tabular-nums"
+                    style={{ color: ratePerMile ? "var(--primary)" : "var(--on-surface-variant)" }}
+                  >
+                    {ratePerMile ? `$${ratePerMile}` : "—"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* ── Notes Card ── */}
-            <div className="card-section">
-              <h2 className="card-section-header" style={{ marginBottom: 12 }}>
-                Notes
-              </h2>
-              <textarea
-                className="input-base min-h-[140px] resize-y"
-                placeholder="Add any special instructions, detention alerts, etc..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+            {/* Hint box */}
+            <div
+              className="rounded-xl p-4 text-[12px] leading-relaxed"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--primary) 5%, var(--surface-lowest))",
+                border: "1px solid color-mix(in srgb, var(--primary) 12%, var(--outline-variant))",
+                color: "var(--on-surface-variant)",
+              }}
+            >
+              <span className="font-semibold" style={{ color: "var(--primary)" }}>Tip:</span>{" "}
+              Enter base rate and total miles to calculate your live rate-per-mile. A good target is $2.50+/mi for dry van.
             </div>
           </aside>
         </div>
