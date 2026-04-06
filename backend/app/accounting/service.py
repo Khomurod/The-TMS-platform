@@ -414,6 +414,50 @@ class AccountingService:
             created_at=load.created_at,
         )
 
+    # ── Pay Calculation Helper (sync, no DB required) ─────────────
+
+    def _calculate_load_gross(
+        self,
+        pay_rate_type: str,
+        pay_rate_value: "Decimal",
+        load_total_miles: "Optional[Decimal]",
+        load_base_rate: "Optional[Decimal]",
+    ) -> "Decimal":
+        """Calculate driver gross pay for a single load.
+
+        Mirrors the logic in calculate_settlement_for_trips() but operates on
+        raw scalar inputs so it can be called synchronously in unit tests
+        without a database session.
+
+        Pay types:
+          - percentage : pay_rate_value % of load_base_rate
+          - cpm        : pay_rate_value × load_total_miles
+          - fixed_per_load / fixed : pay_rate_value (flat)
+          - hourly     : pay_rate_value × 8 hours (standard approximation)
+          - salary     : pay_rate_value / 52 weeks
+          - any other  : $0.00
+        """
+        from decimal import Decimal as _D, ROUND_HALF_UP as _RHU
+
+        rate   = _D(str(pay_rate_value))   if pay_rate_value   is not None else _D("0")
+        miles  = _D(str(load_total_miles)) if load_total_miles is not None else _D("0")
+        base   = _D(str(load_base_rate))   if load_base_rate   is not None else _D("0")
+        quant  = _D("0.01")
+
+        pt = pay_rate_type.lower()
+        if pt == "percentage":
+            return (base * rate / _D("100")).quantize(quant, rounding=_RHU)
+        elif pt == "cpm":
+            return (miles * rate).quantize(quant, rounding=_RHU)
+        elif pt in ("fixed_per_load", "fixed"):
+            return rate.quantize(quant, rounding=_RHU)
+        elif pt == "hourly":
+            return (rate * _D("8")).quantize(quant, rounding=_RHU)
+        elif pt == "salary":
+            return (rate / _D("52")).quantize(quant, rounding=_RHU)
+        else:
+            return _D("0")
+
     # ── Helpers ──────────────────────────────────────────────────
 
     def _to_response(self, s) -> SettlementResponse:
