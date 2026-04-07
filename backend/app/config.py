@@ -36,11 +36,7 @@ class Settings(BaseSettings):
 
     @property
     def effective_cors_origins(self) -> List[str]:
-        """Returns CORS origins filtered for the current environment.
-        Production excludes localhost origins for hardened security.
-        """
-        if self.environment == "production":
-            return [o for o in self.cors_origins if not o.startswith("http://localhost")]
+        """Returns CORS origins for the current environment."""
         return self.cors_origins
 
     # ── Google Cloud Storage (Phase 3) ───────────────────────────
