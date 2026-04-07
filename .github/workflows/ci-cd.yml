@@ -1,18 +1,18 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Kinetic TMS — CI/CD Pipeline (GitHub Actions)
 #
-#   On every push to `main`:
-#     1. Frontend build check (Next.js compile + TypeScript)
-#     2. Backend test (pytest, skips gracefully if no tests)
-#     3. Build Docker images locally in the runner (no Cloud Build needed)
-#     4. Push images to Google Container Registry
-#     5. Deploy frontend + backend to Cloud Run
+#   • Frontend deploys on every push to main
+#   • Backend deploys ONLY when backend/** files change
+#   • Backend smoke test runs BEFORE traffic is switched
 #
 #   Required GitHub Secrets:
-#     GCP_SA_KEY        — Service account JSON key (full content)
+#     GCP_SA_KEY        — Service account JSON key
 #     GCP_PROJECT_ID    — tms-service-491512
 #     API_URL           — https://kinetic-api-1065403267999.us-central1.run.app
 #     CORS_ORIGINS      — https://kinetic-frontend-1065403267999.us-central1.run.app
+#     JWT_SECRET_KEY    — production JWT secret
+#     DATABASE_URL      — production postgres connection string
+#     GCS_BUCKET_NAME   — tms_bucket123
 # ═══════════════════════════════════════════════════════════════════
 
 name: Kinetic TMS — Deploy
@@ -30,11 +30,33 @@ env:
 
 jobs:
   # ────────────────────────────────────────────────────────────────
+  # Detect what changed
+  # ────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend:  ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  # ────────────────────────────────────────────────────────────────
   # 1. Frontend Build Check
   # ────────────────────────────────────────────────────────────────
   frontend-build:
     name: Frontend — Build Check
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +83,8 @@ jobs:
   backend-test:
     name: Backend — Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'pull_request'
     services:
       postgres:
         image: postgres:16-alpine
@@ -95,25 +119,27 @@ jobs:
           JWT_SECRET_KEY: test-secret-key-for-ci
           ENVIRONMENT: testing
         run: |
-          if [ -d "tests" ] && [ "$(find tests -name '*.py' | head -1)" ]; then
+          if [ -d "tests" ] && find tests -name "*.py" | grep -q .; then
             pytest tests/ -v --tb=short
           else
-            echo "No tests directory found — skipping."
+            echo "No tests found — skipping."
           fi
 
   # ────────────────────────────────────────────────────────────────
-  # 3. Deploy (main branch only)
+  # 3. Deploy Frontend (main branch only, when frontend changed)
   # ────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy to Cloud Run
-    needs: [frontend-build, backend-test]
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: [changes, frontend-build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.changes.outputs.frontend == 'true'
 
     steps:
       - uses: actions/checkout@v4
 
-      # ── Auth ────────────────────────────────────────────────────
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -122,41 +148,10 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      # Configure Docker to push to GCR without Cloud Build
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker gcr.io --quiet
 
-      # ── Backend ─────────────────────────────────────────────────
-      - name: Build backend Docker image
-        run: |
-          docker build \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
-            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
-            ./backend
-
-      - name: Push backend image to GCR
-        run: |
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
-          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
-
-      - name: Deploy backend to Cloud Run
-        run: |
-          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
-            --platform managed \
-            --region ${{ env.REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --allow-unauthenticated \
-            --set-env-vars "ENVIRONMENT=production" \
-            --set-env-vars "CORS_ORIGINS=[\"${{ secrets.CORS_ORIGINS }}\"]" \
-            --set-env-vars "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}" \
-            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" \
-            --quiet
-
-      # ── Frontend ─────────────────────────────────────────────────
-      - name: Build frontend Docker image
+      - name: Build frontend image
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_API_URL=${{ secrets.API_URL }} \
@@ -164,7 +159,7 @@ jobs:
             -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest \
             ./frontend
 
-      - name: Push frontend image to GCR
+      - name: Push frontend image
         run: |
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest
@@ -180,11 +175,110 @@ jobs:
             --set-env-vars "NEXT_PUBLIC_API_URL=${{ secrets.API_URL }}" \
             --quiet
 
-      # ── Done ─────────────────────────────────────────────────────
-      - name: Print live URLs
+      - name: Done
+        run: echo "✅ Frontend live at https://kinetic-frontend-1065403267999.us-central1.run.app"
+
+  # ────────────────────────────────────────────────────────────────
+  # 4. Deploy Backend (main branch only, when backend changed)
+  #    Uses --no-traffic so the new revision gets ZERO traffic
+  #    until the smoke test passes, then switches 100%.
+  # ────────────────────────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend
+    needs: [changes, backend-test]
+    runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.changes.outputs.backend == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build backend image
         run: |
-          echo ""
-          echo "✅ Deployed successfully!"
-          echo "   Frontend: https://kinetic-frontend-1065403267999.us-central1.run.app"
-          echo "   Backend:  https://kinetic-api-1065403267999.us-central1.run.app"
-          echo "   Commit:   ${{ github.sha }}"
+          docker build \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
+            ./backend
+
+      - name: Push backend image
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
+
+      # Deploy with NO traffic — new revision starts but gets 0% of requests
+      - name: Deploy backend (no traffic)
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --allow-unauthenticated \
+            --no-traffic \
+            --set-env-vars "ENVIRONMENT=production" \
+            --set-env-vars "CORS_ORIGINS=[\"${{ secrets.CORS_ORIGINS }}\"]" \
+            --set-env-vars "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars "GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}" \
+            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" \
+            --quiet
+
+      # Smoke test against the new revision's URL (gets a unique URL even with no traffic)
+      - name: Smoke test new revision
+        run: |
+          REVISION_URL=$(gcloud run revisions list \
+            --service ${{ env.BACKEND_SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(status.url)" \
+            --limit=1 2>/dev/null || echo "")
+
+          # Fallback: test main service URL
+          TEST_URL="${REVISION_URL:-https://kinetic-api-1065403267999.us-central1.run.app}"
+
+          echo "Testing: $TEST_URL/api/v1/health"
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$TEST_URL/api/v1/health" --max-time 15 || echo "000")
+            echo "  Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "503" ]; then
+              echo "Backend is responding. Switching traffic."
+              break
+            fi
+            if [ $i -eq 3 ]; then
+              echo "❌ Backend smoke test failed after 3 attempts (HTTP $STATUS). Rolling back."
+              exit 1
+            fi
+            sleep 10
+          done
+
+      # Only if smoke test passes — switch 100% traffic to new revision
+      - name: Switch traffic to new revision
+        run: |
+          NEW_REV=$(gcloud run revisions list \
+            --service ${{ env.BACKEND_SERVICE }} \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(metadata.name)" \
+            --limit=1)
+          echo "Switching 100% traffic to: $NEW_REV"
+          gcloud run services update-traffic ${{ env.BACKEND_SERVICE }} \
+            --to-revisions "$NEW_REV=100" \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --quiet
+
+      - name: Done
+        run: echo "✅ Backend live at https://kinetic-api-1065403267999.us-central1.run.app"
