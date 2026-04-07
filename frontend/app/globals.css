@@ -502,6 +502,17 @@ body {
 .sidebar--collapsed .sidebar-nav-children { display:none; }
 .sidebar--collapsed .sidebar-collapse-hide { display:none; }
 
+.sidebar-expand-btn {
+  display:flex; align-items:center; justify-content:center;
+  width:36px; height:36px; margin:4px auto 0;
+  border-radius:var(--radius-md); border:1px solid var(--sidebar-border);
+  background:var(--sidebar-hover-bg); color:var(--sidebar-text);
+  cursor:pointer; flex-shrink:0;
+  transition:background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.sidebar-expand-btn:hover { background:var(--sidebar-active-bg); color:var(--sidebar-active-text); border-color:var(--sidebar-active-text); }
+.sidebar--collapsed .sidebar-brand { justify-content:center; padding:0 14px; }
+
 .sidebar-footer { padding:10px; flex-shrink:0; border-top:1px solid var(--sidebar-border); }
 .sidebar-company-block {
   display:flex; align-items:center; width:100%; padding:7px 10px; gap:8px;
@@ -536,9 +547,13 @@ body {
   box-shadow: 0 1px 0 var(--outline-variant), 0 2px 8px rgba(0,0,0,0.04);
   padding: 0 20px;
 }
+.topbar-page-title {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--on-surface); letter-spacing: -0.01em;
+}
 .topbar-search-pill {
   display: flex; align-items: center; gap: 8px;
-  height: 36px; padding: 0 12px 0 10px;
+  height: 36px; padding: 0 14px;
   background: var(--surface-low);
   border: 1px solid var(--outline-variant);
   border-radius: 999px;
@@ -550,6 +565,25 @@ body {
 }
 .topbar-search-pill:hover { border-color: var(--outline); background: var(--surface-container); }
 .topbar-search-pill:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.topbar-create-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  height:34px; padding:0 14px;
+  border:none; border-radius:var(--radius-md);
+  background:#16a34a; color:#fff;
+  font-size:12px; font-weight:600; cursor:pointer;
+  font-family:var(--font-body); white-space:nowrap;
+  transition:background-color var(--transition-base);
+}
+.topbar-create-btn:hover { background:#15803d; }
+.topbar-avatar {
+  display:flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg, #5B5BD6, #818CF8);
+  color:#fff; font-size:11px; font-weight:700;
+  cursor:pointer; border:none;
+  transition:opacity var(--transition-fast);
+}
+.topbar-avatar:hover { opacity:0.85; }
 .topbar-icon-btn {
   display:flex; align-items:center; justify-content:center;
   padding:7px; border-radius:var(--radius-md);
@@ -735,6 +769,25 @@ body {
 .auth-card { width:100%; max-width:440px; background:var(--surface-lowest); border-radius:var(--radius-2xl); padding:40px; box-shadow:var(--shadow-lg); border:1px solid var(--outline-variant); }
 .auth-logo { font-family:var(--font-display); font-size:2rem; font-weight:800; letter-spacing:-0.03em; background:linear-gradient(135deg,var(--primary),var(--primary-container)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:4px; text-align:center; }
 .auth-subtitle { font-size:0.8125rem; color:var(--on-surface-variant); letter-spacing:0.02em; font-weight:600; text-align:center; }
+
+/* ── Settings Nav ── */
+.settings-nav-item {
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:8px 20px; font-size:13px; font-weight:500;
+  color:var(--on-surface-variant); background:transparent; border:none;
+  cursor:pointer; text-align:left;
+  transition:background-color var(--transition-fast), color var(--transition-fast);
+}
+.settings-nav-item:hover { background:var(--surface-low); color:var(--on-surface); }
+.settings-nav-item--active {
+  background:var(--primary-fixed); color:var(--primary); font-weight:600;
+  border-right:3px solid var(--primary);
+}
+.settings-nav-section-label {
+  font-size:10px; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--on-surface-variant);
+  padding:18px 20px 6px; opacity:0.7;
+}
 
 /* ── Utilities ── */
 .focus-ring:focus-visible { outline:none; box-shadow:var(--focus-ring); }

@@ -4,29 +4,51 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { getBreadcrumbs } from "@/lib/breadcrumb-config";
+import { useAuth } from "@/lib/auth-context";
 import {
-  Search, Sun, Moon, Settings, Plus,
-  ChevronDown, ChevronRight, Package, Users, Truck,
+  Search, Sun, Moon, Plus,
+  ChevronDown, Package, Users, Truck, Check,
 } from "lucide-react";
 
 interface TopBarProps {
   onSearchClick?: () => void;
 }
 
+/* Page title from pathname */
+function getPageTitle(pathname: string): string {
+  const map: Record<string, string> = {
+    "/dashboard": "Dashboard",
+    "/loads": "Load Management",
+    "/loads/new": "New Load",
+    "/drivers": "Drivers",
+    "/drivers/new": "New Driver",
+    "/fleet": "Fleet",
+    "/fleet/new": "New Equipment",
+    "/accounting": "Accounting",
+    "/settings": "Settings",
+  };
+  // Check exact match first, then prefix match
+  if (map[pathname]) return map[pathname];
+  for (const [path, title] of Object.entries(map)) {
+    if (pathname.startsWith(path)) return title;
+  }
+  return "Dashboard";
+}
+
 export default function TopBar({ onSearchClick }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { user } = useAuth();
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  const isMac = mounted && typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
-  const shortcutLabel = isMac ? "⌘K" : "Ctrl+K";
-
-  const breadcrumbs = getBreadcrumbs(pathname);
+  const pageTitle = getPageTitle(pathname);
+  const initials = user
+    ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
+    : "?";
 
   const createOptions = [
     { label: "New Load",   href: "/loads/new",   icon: <Package className="h-3.5 w-3.5" /> },
@@ -36,51 +58,48 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
 
   return (
     <header className="topbar">
-      {/* Left: Breadcrumbs */}
-      <nav className="flex items-center" aria-label="Breadcrumb">
-        {breadcrumbs.map((crumb, i) => (
-          <span key={`${crumb.label}-${i}`} className="flex items-center">
-            {i > 0 && (
-              <ChevronRight className="mx-1.5 w-3 h-3 topbar-breadcrumb-sep" />
-            )}
-            {crumb.href ? (
-              <Link href={crumb.href} className="topbar-breadcrumb-link body-md">
-                {crumb.label}
-              </Link>
-            ) : (
-              <span className={i === breadcrumbs.length - 1 ? "topbar-breadcrumb-current" : "topbar-breadcrumb-parent"}>
-                {crumb.label}
-              </span>
-            )}
-          </span>
-        ))}
-      </nav>
+      {/* Left: Page Title */}
+      <div className="flex items-center gap-3">
+        <h1 className="topbar-page-title">{pageTitle}</h1>
+      </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      {/* Right: Search + Actions */}
+      <div className="flex items-center gap-3">
 
-        {/* Search pill — prominent, center-of-bar feel */}
+        {/* Search pill */}
         <button
           onClick={onSearchClick}
           className="topbar-search-pill"
-          aria-label={`Search (${shortcutLabel})`}
+          aria-label="Search"
         >
           <Search className="w-3.5 h-3.5 shrink-0" />
-          <span className="topbar-search-label hidden sm:inline">Search everything...</span>
-          <kbd className="topbar-kbd ml-auto hidden sm:inline-flex">{shortcutLabel}</kbd>
+          <span className="topbar-search-label hidden sm:inline">Search anything...</span>
         </button>
 
-        {/* Create new — solid primary button for clear hierarchy */}
+        {/* Theme toggle */}
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="topbar-icon-btn focus-ring"
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        >
+          {mounted && theme === "dark" ? (
+            <Sun className="w-4 h-4" />
+          ) : (
+            <Moon className="w-4 h-4" />
+          )}
+        </button>
+
+        {/* Create new — green button */}
         <div className="relative">
           <button
             onClick={() => setShowCreateMenu(!showCreateMenu)}
-            className="btn btn-primary btn-sm"
+            className="topbar-create-btn"
             aria-expanded={showCreateMenu}
             aria-haspopup="true"
           >
             <Plus className="w-3.5 h-3.5" />
-            Create new
-            <ChevronDown className="w-3 h-3" />
+            <span className="hidden sm:inline">Create new</span>
+            <ChevronDown className="w-3 h-3 hidden sm:block" />
           </button>
 
           {showCreateMenu && (
@@ -103,30 +122,14 @@ export default function TopBar({ onSearchClick }: TopBarProps) {
           )}
         </div>
 
-        <div className="topbar-divider" />
-
-        {/* Icon cluster */}
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="topbar-icon-btn focus-ring"
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            {mounted && theme === "dark" ? (
-              <Sun className="w-4 h-4" />
-            ) : (
-              <Moon className="w-4 h-4" />
-            )}
-          </button>
-
-          <button
-            onClick={() => router.push("/settings")}
-            className="topbar-icon-btn focus-ring"
-            aria-label="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
+        {/* User Avatar */}
+        <button
+          onClick={() => router.push("/settings")}
+          className="topbar-avatar"
+          title={user ? `${user.first_name} ${user.last_name}` : "Profile"}
+        >
+          {initials}
+        </button>
       </div>
     </header>
   );

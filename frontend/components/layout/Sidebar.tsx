@@ -166,24 +166,49 @@ export default function Sidebar() {
     >
       {/* ── Brand ── */}
       <div className="sidebar-brand">
-        <div className="sidebar-brand-icon" aria-hidden="true">
-          <Truck className="w-4 h-4 text-white" />
-        </div>
-        <span className="sidebar-brand-text">Safehaul</span>
+        {collapsed ? (
+          /* Collapsed: just the icon + expand button centered */
+          <button
+            onClick={toggleCollapsed}
+            className="sidebar-brand-icon"
+            aria-label="Expand sidebar"
+            style={{ cursor: "pointer", border: "none" }}
+            title="Expand sidebar"
+          >
+            <Truck className="w-4 h-4 text-white" />
+          </button>
+        ) : (
+          /* Expanded: full brand row */
+          <>
+            <div className="sidebar-brand-icon" aria-hidden="true">
+              <Truck className="w-4 h-4 text-white" />
+            </div>
+            <span className="sidebar-brand-text">Safehaul</span>
+            <button
+              onClick={toggleCollapsed}
+              className="sidebar-toggle-btn"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeft
+                className="w-4 h-4"
+                style={{ transition: "transform var(--transition-slow)" }}
+              />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Collapsed expand hint — floating button at bottom of collapsed sidebar */}
+      {collapsed && (
         <button
           onClick={toggleCollapsed}
-          className="sidebar-toggle-btn"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="sidebar-expand-btn"
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
         >
-          <PanelLeft
-            className="w-4 h-4"
-            style={{
-              transform: collapsed ? "rotate(180deg)" : "none",
-              transition: "transform var(--transition-slow)",
-            }}
-          />
+          <ChevronRight className="w-4 h-4" />
         </button>
-      </div>
+      )}
 
       {/* ── Nav ── */}
       <nav className="sidebar-nav" aria-label="Main navigation">
