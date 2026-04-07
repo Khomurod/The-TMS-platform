@@ -1,7 +1,18 @@
 # ═══════════════════════════════════════════════════════════════════
 #   Kinetic TMS — CI/CD Pipeline (GitHub Actions)
-#   Triggers on every push to `main`.
-#   Builds & deploys frontend + backend to Google Cloud Run.
+#
+#   On every push to `main`:
+#     1. Frontend build check (Next.js compile + TypeScript)
+#     2. Backend test (pytest, skips gracefully if no tests)
+#     3. Build Docker images locally in the runner (no Cloud Build needed)
+#     4. Push images to Google Container Registry
+#     5. Deploy frontend + backend to Cloud Run
+#
+#   Required GitHub Secrets:
+#     GCP_SA_KEY        — Service account JSON key (full content)
+#     GCP_PROJECT_ID    — tms-service-491512
+#     API_URL           — https://kinetic-api-1065403267999.us-central1.run.app
+#     CORS_ORIGINS      — https://kinetic-frontend-1065403267999.us-central1.run.app
 # ═══════════════════════════════════════════════════════════════════
 
 name: Kinetic TMS — Deploy
@@ -12,8 +23,15 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  REGION: us-central1
+  FRONTEND_SERVICE: kinetic-frontend
+  BACKEND_SERVICE:  kinetic-api
+
 jobs:
-  # ── 1. Frontend Build Check ─────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
+  # 1. Frontend Build Check
+  # ────────────────────────────────────────────────────────────────
   frontend-build:
     name: Frontend — Build Check
     runs-on: ubuntu-latest
@@ -31,13 +49,15 @@ jobs:
         working-directory: ./frontend
         run: npm ci --legacy-peer-deps
 
-      - name: Build (type-check + compile)
+      - name: Type-check & build
         working-directory: ./frontend
         env:
-          NEXT_PUBLIC_API_URL: https://kinetic-api-1065403267999.us-central1.run.app
+          NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
         run: npm run build
 
-  # ── 2. Backend Test ─────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
+  # 2. Backend Tests
+  # ────────────────────────────────────────────────────────────────
   backend-test:
     name: Backend — Tests
     runs-on: ubuntu-latest
@@ -68,16 +88,22 @@ jobs:
         working-directory: ./backend
         run: pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Run tests (skip gracefully if none exist)
         working-directory: ./backend
         env:
           DATABASE_URL: postgresql+asyncpg://kinetic:test_password@localhost:5432/kinetic_tms_test
           JWT_SECRET_KEY: test-secret-key-for-ci
           ENVIRONMENT: testing
         run: |
-          pytest tests/ -v --tb=short || echo "No tests found — skipping"
+          if [ -d "tests" ] && [ "$(find tests -name '*.py' | head -1)" ]; then
+            pytest tests/ -v --tb=short
+          else
+            echo "No tests directory found — skipping."
+          fi
 
-  # ── 3. Deploy (main branch only) ────────────────────────────────
+  # ────────────────────────────────────────────────────────────────
+  # 3. Deploy (main branch only)
+  # ────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to Cloud Run
     needs: [frontend-build, backend-test]
@@ -87,6 +113,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── Auth ────────────────────────────────────────────────────
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -95,43 +122,69 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      # Configure Docker to push to GCR without Cloud Build
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
       # ── Backend ─────────────────────────────────────────────────
-      - name: Build & push backend image
+      - name: Build backend Docker image
         run: |
-          gcloud builds submit ./backend \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-api:${{ github.sha }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+          docker build \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest \
+            ./backend
+
+      - name: Push backend image to GCR
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
 
       - name: Deploy backend to Cloud Run
         run: |
-          gcloud run deploy kinetic-api \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-api:${{ github.sha }} \
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
             --platform managed \
-            --region us-central1 \
-            --allow-unauthenticated \
+            --region ${{ env.REGION }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
+            --allow-unauthenticated \
             --set-env-vars "ENVIRONMENT=production" \
-            --set-env-vars "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
-            --set-secrets "JWT_SECRET_KEY=jwt-secret-key:latest,DATABASE_URL=database-url:latest"
+            --set-env-vars "CORS_ORIGINS=[\"${{ secrets.CORS_ORIGINS }}\"]" \
+            --set-env-vars "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars "GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}" \
+            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" \
+            --quiet
 
       # ── Frontend ─────────────────────────────────────────────────
-      - name: Build & push frontend image
+      - name: Build frontend Docker image
         run: |
-          gcloud builds submit ./frontend \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-frontend:${{ github.sha }} \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.API_URL }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
+            -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest \
+            ./frontend
+
+      - name: Push frontend image to GCR
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:latest
 
       - name: Deploy frontend to Cloud Run
         run: |
-          gcloud run deploy kinetic-frontend \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/kinetic-frontend:${{ github.sha }} \
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.FRONTEND_SERVICE }}:${{ github.sha }} \
             --platform managed \
-            --region us-central1 \
-            --allow-unauthenticated \
+            --region ${{ env.REGION }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
-            --set-env-vars "NEXT_PUBLIC_API_URL=${{ secrets.API_URL }}"
+            --allow-unauthenticated \
+            --set-env-vars "NEXT_PUBLIC_API_URL=${{ secrets.API_URL }}" \
+            --quiet
 
+      # ── Done ─────────────────────────────────────────────────────
       - name: Print live URLs
         run: |
-          echo "✅ Frontend: https://kinetic-frontend-1065403267999.us-central1.run.app"
-          echo "✅ Backend:  https://kinetic-api-1065403267999.us-central1.run.app"
+          echo ""
+          echo "✅ Deployed successfully!"
+          echo "   Frontend: https://kinetic-frontend-1065403267999.us-central1.run.app"
+          echo "   Backend:  https://kinetic-api-1065403267999.us-central1.run.app"
+          echo "   Commit:   ${{ github.sha }}"
