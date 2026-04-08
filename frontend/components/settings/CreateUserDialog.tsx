@@ -81,7 +81,7 @@ export default function CreateUserDialog() {
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>Invite User</DialogTitle>
-          <DialogDescription>Create an internal user account. They'll be able to log in immediately.</DialogDescription>
+          <DialogDescription>Create an internal user account. They&apos;ll be able to log in immediately.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

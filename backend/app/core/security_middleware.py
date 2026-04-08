@@ -66,6 +66,10 @@ class RateLimitStore:
         self._requests[key].append(now)
         return False
 
+    def reset_for_testing(self) -> None:
+        """Clear all rate limit state. Call from test fixtures between tests."""
+        self._requests.clear()
+
 
 rate_limit_store = RateLimitStore()
 

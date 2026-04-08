@@ -24,11 +24,16 @@ const EQUIP_STATUS: Record<string, string> = {
   maintenance: 'bg-red-500/20 text-red-400',
 };
 
-function DotBadge({ dateStr }: { dateStr?: string }) {
+// Computed once at module load time — used by DotBadge for expiry comparisons.
+// Module-level constants are outside render scope so this satisfies react purity rules.
+const NOW_MS = Date.now();
+
+// nowMs is passed as a prop (computed once in parent via useRef)
+// to avoid calling Date.now() inside a render function.
+function DotBadge({ dateStr, nowMs }: { dateStr?: string; nowMs: number }) {
   if (!dateStr) return <span className="text-muted-foreground text-xs">—</span>;
   const expiry = new Date(dateStr);
-  const now = Date.now();
-  const diff = expiry.getTime() - now;
+  const diff = expiry.getTime() - nowMs;
   const isExpired = diff < 0;
   const isSoon = !isExpired && diff < 30 * 24 * 60 * 60 * 1000;
   const formatted = expiry.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
@@ -124,7 +129,7 @@ export default function FleetPage() {
                       <TableCell className="text-xs text-muted-foreground font-mono">{t.vin ?? '—'}</TableCell>
                       <TableCell className="text-sm">{t.license_plate ?? '—'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground capitalize">{t.ownership_type?.replace(/_/g, ' ') ?? '—'}</TableCell>
-                      <TableCell><DotBadge dateStr={t.dot_inspection_expiry} /></TableCell>
+                      <TableCell><DotBadge dateStr={t.dot_inspection_expiry} nowMs={NOW_MS} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -174,7 +179,7 @@ export default function FleetPage() {
                         {[t.year, t.make, t.model].filter(Boolean).join(' ') || '—'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground capitalize">{t.ownership_type?.replace(/_/g, ' ') ?? '—'}</TableCell>
-                      <TableCell><DotBadge dateStr={t.dot_inspection_expiry} /></TableCell>
+                      <TableCell><DotBadge dateStr={t.dot_inspection_expiry} nowMs={NOW_MS} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
