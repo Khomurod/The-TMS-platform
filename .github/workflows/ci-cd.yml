@@ -210,42 +210,8 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
 
-      # Run Alembic migrations as a one-off Cloud Run Job BEFORE routing traffic.
-      # This ensures the DB schema is up-to-date before any new code goes live.
-      - name: Run DB migrations
-        run: |
-          JOB_NAME="migrate-${{ github.sha }}"
-          # Delete any previous run with same name (idempotent cleanup)
-          gcloud run jobs delete "$JOB_NAME" \
-            --region ${{ env.REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --quiet 2>/dev/null || true
-
-          gcloud run jobs create "$JOB_NAME" \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "ENVIRONMENT=production" \
-            --set-env-vars "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
-            --command python \
-            --args "-m,alembic,upgrade,head" \
-            --max-retries 1 \
-            --task-timeout 120s
-
-          gcloud run jobs execute "$JOB_NAME" \
-            --region ${{ env.REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --wait
-
-          gcloud run jobs delete "$JOB_NAME" \
-            --region ${{ env.REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --quiet
-
       # Deploy with NO traffic — smoke test passes first, then switches 100%.
-      # Uses deploy_env.yaml for all env vars (DATABASE_URL uses Unix socket).
+      # Migrations run automatically inside the container on startup (Dockerfile CMD).
       # CRITICAL: --set-cloudsql-instances mounts the Cloud SQL Unix socket.
       - name: Deploy backend (no traffic)
         run: |
