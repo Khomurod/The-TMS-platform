@@ -28,9 +28,11 @@ ENV PORT=8000
 
 EXPOSE 8000
 
-# Run Alembic migrations (idempotent), seed DB, then start gunicorn
+# Run Alembic migrations then seed DB, then start gunicorn.
+# CRITICAL: migrations must succeed. If they fail, crash immediately
+# so Cloud Run rejects this revision instead of serving broken code.
 CMD sh -c "\
-    python -m alembic upgrade head 2>/dev/null || echo 'Alembic migration skipped (no config or already up to date)'; \
+    python -m alembic upgrade head && \
     python -m app.seed && \
     gunicorn app.main:app \
       --worker-class uvicorn.workers.UvicornWorker \
