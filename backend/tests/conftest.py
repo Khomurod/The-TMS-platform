@@ -1,12 +1,17 @@
 """Pytest conftest — async test fixtures for Safehaul TMS backend.
 
 Provides:
-  - Per-test isolated in-memory SQLite async engine
+  - Per-test isolated database (Postgres in CI, SQLite locally)
   - Test DB session factory
   - Test client with JWT injection
   - Auth helper: register_and_login()
+
+Database selection:
+  - If DATABASE_URL env var is set → use that Postgres instance (CI/staging)
+  - Otherwise → per-test in-memory SQLite (local dev, fast)
 """
 
+import os
 import uuid
 from typing import AsyncGenerator
 
@@ -21,31 +26,42 @@ from app.core.security_middleware import rate_limit_store
 from app.main import app
 
 
+def _test_db_url() -> str:
+    """
+    Return the database URL to use for tests.
+
+    Priority:
+    1. DATABASE_URL env var (set in CI to real Postgres) — enables full PG tests
+    2. SQLite in-memory — fast, local-only, skips PG-dialect tests
+    """
+    env_url = os.environ.get("DATABASE_URL", "")
+    if env_url and "postgres" in env_url:
+        return env_url
+    return "sqlite+aiosqlite:///:memory:"
+
+
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
-    """Reset the in-process rate limit store before every test.
-
-    The RateLimitStore is a module-level singleton shared across tests
-    in the same process. Without resetting it, registration calls from
-    earlier tests exhaust the limit for later tests.
-    """
+    """Reset in-process rate limit store before every test."""
     rate_limit_store.reset_for_testing()
     yield
 
 
 # ── Per-test isolated DB ─────────────────────────────────────────
-# Each test function gets its own in-memory SQLite engine so there
-# is zero state shared between tests.
+# SQLite (local): fresh in-memory engine per test — zero state leakage.
+# Postgres (CI):  real postgres from env — schema created/dropped per test.
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Fresh in-memory SQLite session per test — completely isolated."""
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        future=True,
-        echo=False,
-        connect_args={"check_same_thread": False},
-    )
+    """Fresh DB session per test. Uses SQLite locally, Postgres in CI."""
+    db_url = _test_db_url()
+    is_sqlite = "sqlite" in db_url
+
+    engine_kwargs: dict = {"future": True, "echo": False}
+    if is_sqlite:
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+    engine = create_async_engine(db_url, **engine_kwargs)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
