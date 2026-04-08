@@ -18,10 +18,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Non-root user for security
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser
+USER appuser
+
 # Cloud Run expects PORT env var
 ENV PORT=8000
 
 EXPOSE 8000
 
-# Seed DB on startup (idempotent), then start gunicorn
-CMD sh -c "python -m app.seed && gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --workers ${WORKERS:-2} --bind 0.0.0.0:${PORT:-8000} --timeout 120 --access-logfile -"
+# Run Alembic migrations (idempotent), seed DB, then start gunicorn
+CMD sh -c "\
+    python -m alembic upgrade head 2>/dev/null || echo 'Alembic migration skipped (no config or already up to date)'; \
+    python -m app.seed && \
+    gunicorn app.main:app \
+      --worker-class uvicorn.workers.UvicornWorker \
+      --workers ${WORKERS:-2} \
+      --bind 0.0.0.0:${PORT:-8000} \
+      --timeout 120 \
+      --access-logfile -"

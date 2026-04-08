@@ -179,6 +179,35 @@ class DocumentService:
 
     # ── Upload ────────────────────────────────────────────────────
 
+    async def _validate_entity_exists(
+        self, entity_type: EntityType, entity_id: uuid.UUID
+    ) -> None:
+        """Validate that the entity_id exists for the given entity_type within the company."""
+        from sqlalchemy import select as sa_select
+        from app.models.load import Load
+        from app.models.driver import Driver
+        from app.models.fleet import Truck, Trailer
+
+        entity_model_map = {
+            EntityType.load: Load,
+            EntityType.driver: Driver,
+            EntityType.truck: Truck,
+            EntityType.trailer: Trailer,
+        }
+
+        model = entity_model_map.get(entity_type)
+        if model:
+            result = await self.db.execute(
+                sa_select(model.id)
+                .where(model.id == entity_id)
+                .where(model.company_id == self.company_id)
+            )
+            if not result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"{entity_type.value} with id '{entity_id}' not found in your company.",
+                )
+
     async def upload_document(
         self,
         file: UploadFile,
@@ -186,12 +215,15 @@ class DocumentService:
         entity_type: EntityType,
         entity_id: uuid.UUID,
     ) -> DocumentResponse:
-        """Validate, upload to GCS, and persist metadata."""
+        """Validate entity, file, upload to GCS, and persist metadata."""
         if not settings.gcs_bucket_name:
             raise HTTPException(
                 status_code=503,
                 detail="GCS is not configured. Set GCS_BUCKET_NAME.",
             )
+
+        # MED-12: Validate entity exists before uploading
+        await self._validate_entity_exists(entity_type, entity_id)
 
         content = await file.read()
         self._validate_file(file, content)
@@ -216,6 +248,11 @@ class DocumentService:
             file_size=len(content),
             mime_type=file.content_type,
             uploaded_by=self.user_id,
+        )
+
+        logger.info(
+            "Document uploaded: type=%s, entity=%s/%s, size=%d bytes",
+            document_type.value, entity_type.value, entity_id, len(content),
         )
 
         signed_url = self._generate_signed_url(blob)

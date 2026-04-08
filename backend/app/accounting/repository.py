@@ -70,6 +70,12 @@ class SettlementRepository:
         return result.scalar_one_or_none()
 
     async def get_next_settlement_number(self) -> str:
+        """Generate next settlement number using advisory lock (race-condition safe)."""
+        from sqlalchemy import text
+
+        lock_key = (hash(str(self.company_id)) + 100) & 0x7FFFFFFF
+        await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
         count_query = (
             select(func.count())
             .select_from(DriverSettlement)

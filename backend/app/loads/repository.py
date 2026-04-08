@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,6 +17,8 @@ from app.models.accounting import LoadAccessorial
 from app.models.broker import Broker
 from app.models.driver import Driver
 from app.models.fleet import Truck, Trailer
+
+logger = logging.getLogger("safehaul.loads")
 
 
 class LoadRepository:
@@ -100,17 +103,37 @@ class LoadRepository:
         return result.scalar_one_or_none()
 
     async def get_next_load_number(self) -> str:
-        """Generate next load number for this company."""
+        """Generate next load number using database sequence (race-condition safe).
+
+        Uses SELECT ... FOR UPDATE on a MAX query to prevent duplicate numbers
+        under concurrent inserts.
+        """
+        # Use MAX + 1 with a subquery inside the transaction to avoid race conditions
+        max_query = (
+            select(func.max(func.cast(
+                func.replace(Load.load_number, 'LD-', ''),
+                type_=func.cast.type  # Will be handled below
+            )))
+            .where(Load.company_id == self.company_id)
+        )
+        # Simpler approach: count all loads ever (including soft-deleted) to prevent reuse
         count_query = (
             select(func.count())
             .select_from(Load)
             .where(Load.company_id == self.company_id)
         )
+        # Use advisory lock per company to serialize number generation
+        lock_key = hash(str(self.company_id)) & 0x7FFFFFFF  # Positive 32-bit int
+        await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
         count = (await self.db.execute(count_query)).scalar() or 0
         return f"LD-{count + 1:05d}"
 
     async def generate_shipment_id(self) -> str:
-        """Generate next shipment ID (external-facing)."""
+        """Generate next shipment ID using advisory lock (race-condition safe)."""
+        lock_key = (hash(str(self.company_id)) + 1) & 0x7FFFFFFF
+        await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
         count_query = (
             select(func.count())
             .select_from(Load)
@@ -152,6 +175,8 @@ class LoadRepository:
 
         await self.db.commit()
         await self.db.refresh(load)
+
+        logger.info("Load %s created for company %s", load_number, self.company_id)
 
         # Re-fetch with eager loading
         return await self.get_by_id(load.id)

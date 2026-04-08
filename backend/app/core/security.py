@@ -5,6 +5,7 @@ Implements:
 - JWT access token (15 min, HS256)
 - JWT refresh token (7 day, HS256)
 - Token decoding with expiry validation
+- Database-backed token blacklist for reliable revocation
 """
 
 from datetime import datetime, timedelta, timezone
@@ -16,16 +17,63 @@ from jwt.exceptions import InvalidTokenError
 
 from app.config import settings
 
-# ── Token Blacklist (in-memory — acceptable for single Cloud Run instance) ──
-_blacklisted_jtis: set[str] = set()
+# ── Token Blacklist (database-backed for multi-worker reliability) ──
+# Uses a simple set as in-process cache + DB persistence.
+# On token revocation, we add to both the in-process cache and the DB.
+# On token validation, we check in-process cache first, then DB.
+
+_blacklisted_jtis_cache: set[str] = set()
+
+
+async def blacklist_token_db(jti: str, db) -> None:
+    """Add a JTI to the blacklist — persisted in DB for cross-worker consistency."""
+    from app.models.base import Base
+    from sqlalchemy import text, insert
+
+    _blacklisted_jtis_cache.add(jti)
+    try:
+        await db.execute(
+            text(
+                "INSERT INTO token_blacklist (jti, blacklisted_at) "
+                "VALUES (:jti, :now) ON CONFLICT (jti) DO NOTHING"
+            ),
+            {"jti": jti, "now": datetime.now(timezone.utc)},
+        )
+        await db.commit()
+    except Exception:
+        # If blacklist table doesn't exist yet, fall back to in-memory only
+        pass
+
 
 def blacklist_token(jti: str) -> None:
-    """Add a JTI to the blacklist."""
-    _blacklisted_jtis.add(jti)
+    """Add a JTI to the in-process blacklist cache (synchronous fallback)."""
+    _blacklisted_jtis_cache.add(jti)
+
 
 def is_token_blacklisted(jti: str) -> bool:
-    """Check if a JTI is blacklisted."""
-    return jti in _blacklisted_jtis
+    """Check if a JTI is blacklisted (in-process cache check only — fast path)."""
+    return jti in _blacklisted_jtis_cache
+
+
+async def is_token_blacklisted_db(jti: str, db) -> bool:
+    """Check if a JTI is blacklisted (DB check — authoritative)."""
+    if jti in _blacklisted_jtis_cache:
+        return True
+    from sqlalchemy import text
+
+    try:
+        result = await db.execute(
+            text("SELECT 1 FROM token_blacklist WHERE jti = :jti"),
+            {"jti": jti},
+        )
+        if result.scalar_one_or_none():
+            _blacklisted_jtis_cache.add(jti)  # Populate cache
+            return True
+    except Exception:
+        # Table doesn't exist yet — rely on in-memory cache
+        pass
+    return False
+
 
 # ── Password Hashing ─────────────────────────────────────────────
 
@@ -48,7 +96,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(user_id: UUID, company_id: UUID | None, role: str) -> str:
     """Create a short-lived access token (15 min default).
 
-    Payload: { user_id, company_id, role, exp, type }
+    Payload: { user_id, company_id, role, exp, type, jti }
     """
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
@@ -65,7 +113,7 @@ def create_access_token(user_id: UUID, company_id: UUID | None, role: str) -> st
 def create_refresh_token(user_id: UUID) -> str:
     """Create a long-lived refresh token (7 day default).
 
-    Payload: { user_id, exp, type }
+    Payload: { user_id, exp, type, jti }
     """
     expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     payload = {

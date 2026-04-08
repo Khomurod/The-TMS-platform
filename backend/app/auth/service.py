@@ -62,12 +62,13 @@ class AuthService:
             role=UserRole.company_admin,
         )
         self.db.add(user)
-        await self.db.flush()  # Get user.id for token
+        await self.db.flush()  # Get user.id
 
-        # Generate tokens
-        tokens = self._generate_tokens(user)
-
+        # Commit first — then generate tokens (HIGH-7 fix)
         await self.db.commit()
+
+        # Generate tokens only after successful commit
+        tokens = self._generate_tokens(user)
         return user, company, tokens
 
     async def login(self, email: str, password: str) -> tuple[User, dict]:

@@ -155,6 +155,18 @@ class AccountingService:
         # Core calculation
         calc = await calculate_settlement_for_trips(driver, trips, self.db)
 
+        # Calculate total accessorials from trip details
+        total_accessorials = Decimal("0")
+        for detail in calc["trip_details"]:
+            load = detail["load"]
+            if load.accessorials:
+                total_accessorials += sum(
+                    Decimal(str(a.amount)) for a in load.accessorials
+                )
+
+        # Net pay = earnings + accessorials - deductions + bonus
+        net_pay = calc["earning"] + total_accessorials - calc["deductions"] + calc["bonus"]
+
         # Create settlement record
         settlement_number = await self.repo.get_next_settlement_number()
         settlement = await self.repo.create(
@@ -163,12 +175,15 @@ class AccountingService:
             period_start=data.period_start,
             period_end=data.period_end,
             gross_pay=calc["earning"],
-            total_accessorials=Decimal("0"),
+            total_accessorials=total_accessorials,
             total_deductions=calc["deductions"],
             total_bonus=calc["bonus"],
-            net_pay=calc["net_pay"],
+            net_pay=net_pay,
             status=SettlementBatchStatus.unposted,
         )
+
+        import logging
+        logger = logging.getLogger("safehaul.accounting")
 
         # Create line items for each trip
         for detail in calc["trip_details"]:
@@ -213,6 +228,13 @@ class AccountingService:
             )
 
         settlement = await self.repo.commit_and_refresh(settlement)
+
+        logger.info(
+            "Settlement %s generated: driver=%s, gross=%s, accessorials=%s, deductions=%s, net=%s",
+            settlement_number, driver_id, calc["earning"], total_accessorials,
+            calc["deductions"], net_pay,
+        )
+
         return self._to_response(settlement)
 
     # ═══════════════════════════════════════════════════════════════

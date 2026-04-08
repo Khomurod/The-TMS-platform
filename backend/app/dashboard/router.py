@@ -32,77 +32,52 @@ async def get_kpis(
     db: AsyncSession = Depends(get_db),
     company_id: UUID = Depends(get_current_company_id),
 ):
-    """Executive KPI metrics."""
+    """Executive KPI metrics — optimized to 2 queries using conditional aggregation."""
+    from sqlalchemy import case, literal
 
-    # Gross Revenue — SUM(total_rate) for delivered/invoiced/paid loads
-    revenue_query = (
-        select(func.coalesce(func.sum(Load.total_rate), 0))
-        .where(Load.company_id == company_id)
-        .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.delivered, LoadStatus.invoiced, LoadStatus.paid]))
-    )
-    gross_revenue = (await db.execute(revenue_query)).scalar() or 0
+    completed_statuses = [LoadStatus.delivered, LoadStatus.invoiced, LoadStatus.paid]
+    active_statuses = [LoadStatus.assigned, LoadStatus.dispatched, LoadStatus.in_transit]
+    upcoming_statuses = [LoadStatus.offer, LoadStatus.booked]
 
-    # Average RPM — SUM(total_rate) / SUM(total_miles)
-    rpm_query = (
+    # Single query for all load KPIs
+    load_kpi_query = (
         select(
-            func.coalesce(func.sum(Load.total_rate), 0),
-            func.coalesce(func.sum(Load.total_miles), 0),
+            func.coalesce(func.sum(
+                case((Load.status.in_(completed_statuses), Load.total_rate), else_=literal(0))
+            ), 0).label("gross_revenue"),
+            func.coalesce(func.sum(
+                case((Load.status.in_(completed_statuses), Load.total_miles), else_=literal(0))
+            ), 0).label("total_miles"),
+            func.count().filter(Load.status.in_(active_statuses)).label("active_loads"),
+            func.count().filter(Load.status.in_(upcoming_statuses)).label("upcoming_loads"),
         )
         .where(Load.company_id == company_id)
         .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.delivered, LoadStatus.invoiced, LoadStatus.paid]))
     )
-    rpm_result = (await db.execute(rpm_query)).one()
-    total_rate = float(rpm_result[0] or 0)
-    total_miles = float(rpm_result[1] or 0)
-    avg_rpm = round(total_rate / total_miles, 2) if total_miles > 0 else 0
+    load_result = (await db.execute(load_kpi_query)).one()
+    gross_revenue = float(load_result.gross_revenue or 0)
+    total_miles = float(load_result.total_miles or 0)
+    avg_rpm = round(gross_revenue / total_miles, 2) if total_miles > 0 else 0
 
-    # Active Loads — assigned, dispatched, in_transit
-    active_query = (
-        select(func.count())
-        .select_from(Load)
-        .where(Load.company_id == company_id)
-        .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.assigned, LoadStatus.dispatched, LoadStatus.in_transit]))
-    )
-    active_loads = (await db.execute(active_query)).scalar() or 0
-
-    # Upcoming loads (offer + booked)
-    upcoming_query = (
-        select(func.count())
-        .select_from(Load)
-        .where(Load.company_id == company_id)
-        .where(Load.is_active == True)
-        .where(Load.status.in_([LoadStatus.offer, LoadStatus.booked]))
-    )
-    upcoming_loads = (await db.execute(upcoming_query)).scalar() or 0
-
-    # Fleet Effectiveness — on_trip drivers / active drivers × 100
-    active_drivers_query = (
-        select(func.count())
-        .select_from(Driver)
+    # Single query for driver KPIs
+    driver_kpi_query = (
+        select(
+            func.count().label("active_drivers"),
+            func.count().filter(Driver.status == DriverStatus.on_trip).label("on_trip_drivers"),
+        )
         .where(Driver.company_id == company_id)
         .where(Driver.is_active == True)
     )
-    active_drivers = (await db.execute(active_drivers_query)).scalar() or 0
-
-    on_trip_query = (
-        select(func.count())
-        .select_from(Driver)
-        .where(Driver.company_id == company_id)
-        .where(Driver.is_active == True)
-        .where(Driver.status == DriverStatus.on_trip)
-    )
-    on_trip_drivers = (await db.execute(on_trip_query)).scalar() or 0
-
+    driver_result = (await db.execute(driver_kpi_query)).one()
+    active_drivers = driver_result.active_drivers or 0
+    on_trip_drivers = driver_result.on_trip_drivers or 0
     fleet_effectiveness = round((on_trip_drivers / active_drivers) * 100, 1) if active_drivers > 0 else 0
 
     return {
-        "gross_revenue": float(gross_revenue),
+        "gross_revenue": gross_revenue,
         "avg_rpm": avg_rpm,
-        "active_loads": active_loads,
-        "upcoming_loads": upcoming_loads,
+        "active_loads": load_result.active_loads or 0,
+        "upcoming_loads": load_result.upcoming_loads or 0,
         "fleet_effectiveness": fleet_effectiveness,
         "active_drivers": active_drivers,
         "on_trip_drivers": on_trip_drivers,

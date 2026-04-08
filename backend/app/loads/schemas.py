@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, time
 from decimal import Decimal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 
@@ -12,14 +12,14 @@ from uuid import UUID
 class StopCreate(BaseModel):
     stop_type: str  # pickup | delivery
     stop_sequence: int
-    facility_name: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
+    facility_name: Optional[str] = Field(None, max_length=255)
+    address: Optional[str] = Field(None, max_length=1000)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=50)
+    zip_code: Optional[str] = Field(None, max_length=20)
     scheduled_date: Optional[date] = None
     scheduled_time: Optional[time] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=2000)
 
 
 class StopResponse(BaseModel):
@@ -46,7 +46,7 @@ class StopResponse(BaseModel):
 class AccessorialCreate(BaseModel):
     type: str  # fuel_surcharge | detention | layover | lumper | stop_off | tarp | other
     amount: Decimal
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=255)
 
 
 class AccessorialResponse(BaseModel):
@@ -85,23 +85,41 @@ class TripResponse(BaseModel):
 class LoadCreate(BaseModel):
     """POST /loads — create load with broker, stops, financials."""
     broker_id: Optional[str] = None
-    broker_load_id: Optional[str] = None
-    contact_agent: Optional[str] = None
+    broker_load_id: Optional[str] = Field(None, max_length=100)
+    contact_agent: Optional[str] = Field(None, max_length=255)
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
     stops: list[StopCreate]
     accessorials: list[AccessorialCreate] = []
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=5000)
 
+
+# ── Update schema: explicit allowlist of editable fields ─────────
 
 class LoadUpdate(BaseModel):
-    """PUT /loads/{id} -- update load info."""
+    """PUT /loads/{id} -- update load info.
+
+    Only explicitly allowed fields are included. Fields like status,
+    load_number, company_id, is_locked are NOT editable via this endpoint.
+    """
     broker_id: Optional[str] = None
-    broker_load_id: Optional[str] = None
-    contact_agent: Optional[str] = None
+    broker_load_id: Optional[str] = Field(None, max_length=100)
+    contact_agent: Optional[str] = Field(None, max_length=255)
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=5000)
+
+    # Explicit allowlist of fields that can be set via update
+    _ALLOWED_UPDATE_FIELDS = frozenset({
+        "broker_load_id", "contact_agent", "base_rate", "total_miles", "notes",
+    })
+
+    def safe_update_dict(self) -> dict:
+        """Return only the explicitly allowed fields, excluding unset ones."""
+        data = self.model_dump(exclude_unset=True)
+        # broker_id needs special handling (string → UUID conversion)
+        safe = {k: v for k, v in data.items() if k in self._ALLOWED_UPDATE_FIELDS}
+        return safe
 
 
 class StatusUpdateRequest(BaseModel):
@@ -151,7 +169,7 @@ class LoadResponse(BaseModel):
 
 class LoadListItem(BaseModel):
     """Lightweight load for board listings."""
-    id: UUID
+    id: str  # Consistent string serialization
     load_number: str
     shipment_id: Optional[str] = None
     broker_load_id: Optional[str] = None

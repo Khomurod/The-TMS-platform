@@ -96,10 +96,14 @@ class Driver(Base, TenantMixin):
         nullable=True,
     )
 
-    # ── Bank Info (encrypted at rest in production) ──────────────
+    # ── Bank Info ──────────────────────────────────────────────────
+    # SECURITY: These fields store sensitive financial data (PII).
+    # In production, database-level encryption (pgcrypto / TDE) or application-level
+    # encryption (sqlalchemy-utils EncryptedType) MUST be enabled.
+    # Only the last 4 digits should be returned in API responses.
     bank_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    bank_routing_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    bank_account_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    bank_routing_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bank_account_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # ── Status ───────────────────────────────────────────────────
     status: Mapped[DriverStatus] = mapped_column(
@@ -113,5 +117,5 @@ class Driver(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="drivers")
-    trips = relationship("Trip", back_populates="driver", lazy="selectin")
-    settlements = relationship("DriverSettlement", back_populates="driver", lazy="selectin")
+    trips = relationship("Trip", back_populates="driver", lazy="select")
+    settlements = relationship("DriverSettlement", back_populates="driver", lazy="select")

@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      sessionStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       await get().fetchProfile();
     } catch (err: unknown) {
@@ -81,8 +81,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.post("/auth/register", payload);
-      sessionStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
+      // Backend returns { user, tokens: { access_token, refresh_token } }
+      const tokens = data.tokens || data;
+      localStorage.setItem("access_token", tokens.access_token);
+      localStorage.setItem("refresh_token", tokens.refresh_token);
       await get().fetchProfile();
     } catch (err: unknown) {
       const message =
@@ -102,7 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Ignore logout API errors — clear local state regardless
     } finally {
-      sessionStorage.removeItem("access_token");
+      localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       set({ user: null, isAuthenticated: false, isLoading: false, error: null });
     }
@@ -131,7 +133,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrate: async () => {
     set({ isLoading: true });
-    const token = sessionStorage.getItem("access_token");
+    const token = localStorage.getItem("access_token");
     if (token) {
       await get().fetchProfile();
     } else {

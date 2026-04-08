@@ -12,7 +12,6 @@ venv/
 env/
 
 # Environment
-.env
 .env.local
 .env.production
 

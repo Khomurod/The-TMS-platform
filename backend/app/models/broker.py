@@ -27,4 +27,4 @@ class Broker(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="brokers")
-    loads = relationship("Load", back_populates="broker", lazy="selectin")
+    loads = relationship("Load", back_populates="broker", lazy="select")

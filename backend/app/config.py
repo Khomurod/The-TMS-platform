@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     ]
 
     @property
+    def is_production(self) -> bool:
+        """Check if running in production mode."""
+        return self.environment == "production"
+
+    @property
     def effective_cors_origins(self) -> List[str]:
         """Returns CORS origins for the current environment."""
         return self.cors_origins

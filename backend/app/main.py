@@ -31,29 +31,28 @@ from app.dashboard.router import router as dashboard_router
 from app.documents.router import router as documents_router
 
 # ── Disable Swagger/OpenAPI docs in production ───────────────────
-_is_prod = settings.environment == "production"
 
 app = FastAPI(
     title="Safehaul TMS API",
     description="Next-Gen Transportation Management System — API Server",
     version="0.1.0",
-    docs_url=None if _is_prod else "/docs",
-    redoc_url=None if _is_prod else "/redoc",
-    openapi_url=None if _is_prod else "/openapi.json",
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 # ── CORS Middleware ──────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.effective_cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 # ── Security Middleware (pure ASGI) ──────────────────────────────
 app.add_middleware(RateLimitMiddleware)
-if settings.environment == "production":
+if settings.is_production:
     app.add_middleware(HTTPSRedirectMiddleware)
 
 # ── Tenant Isolation Middleware ──────────────────────────────────
@@ -93,7 +92,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 logger = logging.getLogger("safehaul")
 logging.basicConfig(
-    level=logging.INFO if _is_prod else logging.DEBUG,
+    level=logging.INFO if settings.is_production else logging.DEBUG,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 

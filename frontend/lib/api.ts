@@ -20,7 +20,7 @@ const api = axios.create({
 // ── Request Interceptor — attach access token ────────────────
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (typeof window !== "undefined") {
-    const token = sessionStorage.getItem("access_token");
+    const token = localStorage.getItem("access_token");
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -85,7 +85,7 @@ api.interceptors.response.use(
         });
 
         const newAccessToken = data.access_token;
-        sessionStorage.setItem("access_token", newAccessToken);
+        localStorage.setItem("access_token", newAccessToken);
         if (data.refresh_token) {
           localStorage.setItem("refresh_token", data.refresh_token);
         }
@@ -100,7 +100,7 @@ api.interceptors.response.use(
         processQueue(refreshError as AxiosError, null);
 
         // Clear tokens and redirect to login
-        sessionStorage.removeItem("access_token");
+        localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         if (typeof window !== "undefined") {
           window.location.href = "/login";

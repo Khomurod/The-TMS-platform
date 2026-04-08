@@ -18,20 +18,50 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 # ── Rate Limiter ─────────────────────────────────────────────────
 
 class RateLimitStore:
-    """In-memory rate limit store. Replace with Redis in production."""
+    """In-memory rate limit store with automatic cleanup.
+
+    WARNING: This is per-worker. In a multi-instance production deployment
+    (e.g., Cloud Run with 2+ Gunicorn workers), use Redis instead:
+        import redis.asyncio; r = redis.Redis(...)
+    """
+
+    MAX_KEYS = 10_000  # Guard against OOM
 
     def __init__(self):
         self._requests: dict[str, list[float]] = defaultdict(list)
+        self._last_cleanup: float = time.time()
+
+    def _periodic_cleanup(self, window_seconds: int) -> None:
+        """Remove all expired entries across all keys (runs every 5 minutes)."""
+        now = time.time()
+        if now - self._last_cleanup < 300:
+            return  # Only run every 5 min
+
+        cutoff = now - window_seconds
+        stale_keys = []
+        for key, timestamps in self._requests.items():
+            self._requests[key] = [t for t in timestamps if t > cutoff]
+            if not self._requests[key]:
+                stale_keys.append(key)
+        for key in stale_keys:
+            del self._requests[key]
+        self._last_cleanup = now
 
     def is_rate_limited(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        self._periodic_cleanup(window_seconds)
+
         now = time.time()
         cutoff = now - window_seconds
 
-        # Clean expired entries
+        # Clean expired entries for this key
         self._requests[key] = [t for t in self._requests[key] if t > cutoff]
 
         if len(self._requests[key]) >= max_requests:
             return True
+
+        # Guard against memory growth
+        if len(self._requests) > self.MAX_KEYS:
+            return False  # Fail open rather than OOM
 
         self._requests[key].append(now)
         return False

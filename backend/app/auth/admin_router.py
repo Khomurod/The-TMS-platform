@@ -128,19 +128,31 @@ async def impersonate_company(
 
     # Create a short-lived token with target company_id
     from datetime import datetime, timedelta, timezone
+    from uuid import uuid4
+    import logging
     import jwt
     from app.config import settings
 
+    logger = logging.getLogger("safehaul.admin")
+
     expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+    jti = str(uuid4())
     payload = {
         "sub": user_id,
         "company_id": str(company_id),
         "role": "super_admin",
         "exp": expire,
         "type": "access",
+        "jti": jti,
         "impersonating": True,
     }
     token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+    # Audit log for impersonation
+    logger.warning(
+        "IMPERSONATION: user_id=%s impersonating company_id=%s company_name='%s' jti=%s",
+        user_id, company_id, company.name, jti,
+    )
 
     return ImpersonateResponse(
         access_token=token,

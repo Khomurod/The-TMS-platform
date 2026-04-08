@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id
 from app.core.exceptions import UnauthorizedError
-from app.core.security import blacklist_token, decode_token
+from app.core.security import blacklist_token_db, decode_token
 from app.auth.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -70,8 +70,9 @@ async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)
 async def logout(
     user_id: str = Depends(get_current_user_id),
     authorization: str = Header(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Logout — blacklists the current access token JTI.
+    """Logout — blacklists the current access token JTI in DB for cross-worker revocation.
 
     The client should also discard tokens locally.
     """
@@ -81,7 +82,7 @@ async def logout(
             payload = decode_token(token)
             jti = payload.get("jti")
             if jti:
-                blacklist_token(jti)
+                await blacklist_token_db(jti, db)
         except Exception:
             pass  # Token may already be invalid — still return success
     return {"message": "Logged out successfully"}

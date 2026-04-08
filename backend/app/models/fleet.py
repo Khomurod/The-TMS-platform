@@ -1,6 +1,7 @@
 """Fleet models — Trucks and Trailers."""
 
 import enum
+from datetime import date as DateType
 
 from sqlalchemy import Date, Enum, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -58,8 +59,8 @@ class Truck(Base, TenantMixin):
         nullable=True,
     )
 
-    dot_inspection_date: Mapped[str | None] = mapped_column(Date, nullable=True)
-    dot_inspection_expiry: Mapped[str | None] = mapped_column(Date, nullable=True)  # → Compliance Alerts
+    dot_inspection_date: Mapped[DateType | None] = mapped_column(Date, nullable=True)
+    dot_inspection_expiry: Mapped[DateType | None] = mapped_column(Date, nullable=True)  # → Compliance Alerts
 
     status: Mapped[EquipmentStatus] = mapped_column(
         Enum(EquipmentStatus, name="equipment_status_enum", create_constraint=True),
@@ -69,7 +70,7 @@ class Truck(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="trucks")
-    trips = relationship("Trip", back_populates="truck", lazy="selectin")
+    trips = relationship("Trip", back_populates="truck", lazy="select")
 
 
 class Trailer(Base, TenantMixin):
@@ -99,8 +100,8 @@ class Trailer(Base, TenantMixin):
         nullable=True,
     )
 
-    dot_inspection_date: Mapped[str | None] = mapped_column(Date, nullable=True)
-    dot_inspection_expiry: Mapped[str | None] = mapped_column(Date, nullable=True)
+    dot_inspection_date: Mapped[DateType | None] = mapped_column(Date, nullable=True)
+    dot_inspection_expiry: Mapped[DateType | None] = mapped_column(Date, nullable=True)
 
     status: Mapped[EquipmentStatus] = mapped_column(
         Enum(EquipmentStatus, name="equipment_status_enum", create_constraint=True),
@@ -110,4 +111,4 @@ class Trailer(Base, TenantMixin):
 
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="trailers")
-    trips = relationship("Trip", back_populates="trailer", lazy="selectin")
+    trips = relationship("Trip", back_populates="trailer", lazy="select")
