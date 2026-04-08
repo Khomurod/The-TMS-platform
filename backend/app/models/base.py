@@ -32,12 +32,13 @@ class LoadStatus(str, enum.Enum):
 
 
 class TripStatus(str, enum.Enum):
-    """Trip lifecycle — subset of Load lifecycle."""
+    """Trip lifecycle — mirrors Load lifecycle stages."""
 
     assigned = "assigned"
     dispatched = "dispatched"
     in_transit = "in_transit"
     delivered = "delivered"
+    cancelled = "cancelled"  # Set when parent load is cancelled mid-trip
 
 
 class SettlementBatchStatus(str, enum.Enum):

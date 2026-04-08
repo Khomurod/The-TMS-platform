@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import binascii
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -70,10 +71,11 @@ class SettlementRepository:
         return result.scalar_one_or_none()
 
     async def get_next_settlement_number(self) -> str:
-        """Generate next settlement number using advisory lock (race-condition safe)."""
+        """Generate next settlement number using deterministic advisory lock (race-condition safe)."""
         from sqlalchemy import text
 
-        lock_key = (hash(str(self.company_id)) + 100) & 0x7FFFFFFF
+        # Offset +100 to separate from load_number (+0) and shipment_id (+1) locks
+        lock_key = (binascii.crc32(str(self.company_id).encode()) + 100) & 0x7FFFFFFF
         await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
 
         count_query = (
@@ -103,10 +105,18 @@ class SettlementRepository:
     async def get_driver_trips(
         self, driver_id: UUID, period_start: date, period_end: date
     ) -> list[Trip]:
-        """Get delivered trips for a driver within a period.
+        """Get delivered trips for a driver within a settlement period.
 
-        Settlement math operates at Trip level, not Load level.
+        Filters by COALESCE(Load.delivered_at, Load.created_at) to use the
+        actual delivery completion date. Historical loads without delivered_at
+        fall back to created_at. This ensures payroll periods reflect when
+        work was completed, not when the load was created.
         """
+        from sqlalchemy import func as sa_func
+
+        # Effective date: delivered_at if populated, else created_at (historical fallback)
+        effective_date = sa_func.coalesce(Load.delivered_at, Load.created_at)
+
         query = (
             select(Trip)
             .where(Trip.company_id == self.company_id)
@@ -118,8 +128,8 @@ class SettlementRepository:
                 LoadStatus.paid,
             ]))
             .where(Load.is_active == True)
-            .where(Load.created_at >= period_start)
-            .where(Load.created_at <= period_end)
+            .where(effective_date >= period_start)
+            .where(effective_date <= period_end)
             .options(
                 selectinload(Trip.load).selectinload(Load.accessorials),
                 selectinload(Trip.load).selectinload(Load.stops),

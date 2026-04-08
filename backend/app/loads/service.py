@@ -10,7 +10,7 @@ Fixes Applied:
 """
 
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -75,6 +75,7 @@ TRANSITION_SIDE_EFFECTS: dict[tuple[str, str], list[str]] = {
         "_effect_set_trip_in_transit",
     ],
     ("in_transit", "delivered"): [
+        "_effect_record_delivery_time",
         "_effect_release_driver",
         "_effect_release_equipment",
     ],
@@ -416,10 +417,31 @@ class LoadService:
             if trip.status == TripStatus.dispatched:
                 trip.status = TripStatus.in_transit
 
+    async def _effect_record_delivery_time(self, load: Load) -> None:
+        """Stamp load.delivered_at with the actual delivery completion time.
+
+        This timestamp is used by settlement period filtering to ensure
+        drivers are paid in the correct pay period (when they worked,
+        not when the load record was created).
+        """
+        load.delivered_at = datetime.now(timezone.utc)
+
     async def _effect_release_driver(self, load: Load) -> None:
-        """Release driver back to AVAILABLE when delivered or cancelled."""
+        """Release driver back to AVAILABLE when delivered or cancelled.
+
+        Sets trip status to match the load's final status:
+        - delivered → TripStatus.delivered
+        - cancelled → TripStatus.cancelled (prevents misreporting)
+        """
         if not load.trips:
             return
+
+        # Determine the correct terminal trip status based on load destination
+        terminal_trip_status = (
+            TripStatus.cancelled
+            if load.status == LoadStatus.cancelled
+            else TripStatus.delivered
+        )
 
         for trip in load.trips:
             if trip.driver_id:
@@ -428,7 +450,7 @@ class LoadService:
                 )).scalar_one_or_none()
                 if driver and driver.status == DriverStatus.on_trip:
                     driver.status = DriverStatus.available
-                trip.status = TripStatus.delivered
+            trip.status = terminal_trip_status
 
     async def _effect_release_equipment(self, load: Load) -> None:
         """Release truck/trailer back to AVAILABLE when delivered or cancelled."""
@@ -458,10 +480,12 @@ class LoadService:
     # ══════════════════════════════════════════════════════════════
 
     async def dispatch_load(self, load_id: UUID, data: DispatchRequest) -> LoadResponse:
-        """Full dispatch workflow: validate → create Trip → assign driver/truck → advance through state machine.
+        """Full dispatch workflow: validate → assign driver/truck to trip → advance through state machine.
 
-        This is the power-user endpoint that combines Trip creation + dispatch in one call.
-        Now properly transitions through each state machine step (offer→booked→assigned→dispatched).
+        Uses the single authoritative transition engine (_advance_status_no_commit)
+        for all status changes, eliminating duplicated state mutation logic.
+
+        Pipeline: offer → booked → assigned (Trip created here) → dispatched
         """
         load = await self.repo.get_by_id(load_id)
         if not load:
@@ -525,60 +549,31 @@ class LoadService:
                     "message": "Dispatch blocked due to compliance violations.",
                 })
 
-        # 5. Step through state machine transitions properly (HIGH-5 fix)
-        # Advance from current → booked (if needed)
+        # 5. Step through state machine via single authoritative engine
+        # offer → booked
         if current == LoadStatus.offer:
-            load.status = LoadStatus.booked
+            await self._advance_status_no_commit(load, LoadStatus.booked)
             logger.info("Load %s auto-advanced: offer → booked", load.load_number)
 
-        # Advance from booked → assigned (creates Trip)
-        if load.status == LoadStatus.booked or current == LoadStatus.booked:
-            load.status = LoadStatus.assigned
+        # booked → assigned (side effect: _effect_create_trip)
+        if load.status == LoadStatus.booked:
+            await self._advance_status_no_commit(load, LoadStatus.assigned)
+            # Flush so trip is visible, then inject driver/truck onto the new trip
+            await self.db.flush()
 
-            # Create Trip if none exists
-            if not load.trips or len(load.trips) == 0:
-                load_suffix = load.load_number.replace("LD-", "")
-                seq = 1
-                trip_number = f"TR-{load_suffix}-{seq:02d}"
-                trip = Trip(
-                    company_id=self.company_id,
-                    trip_number=trip_number,
-                    load_id=load.id,
-                    driver_id=driver_id,
-                    truck_id=truck_id,
-                    trailer_id=trailer_id,
-                    sequence_number=seq,
-                    status=TripStatus.assigned,
-                )
-                self.db.add(trip)
-                await self.db.flush()
-                logger.info("Trip %s created during dispatch for load %s", trip_number, load.load_number)
-            else:
-                # Assign to existing primary trip
-                primary_trip = load.trips[0]
-                primary_trip.driver_id = driver_id
-                primary_trip.truck_id = truck_id
-                primary_trip.trailer_id = trailer_id
+        # Assign driver/truck to the primary trip
+        if load.trips:
+            primary_trip = load.trips[0]
+            primary_trip.driver_id = driver_id
+            primary_trip.truck_id = truck_id
+            primary_trip.trailer_id = trailer_id
+            await self.db.flush()
+        else:
+            raise HTTPException(500, "Trip was not created during dispatch — internal error.")
 
-        # Now advance assigned → dispatched with proper side effects
-        load.status = LoadStatus.dispatched
-        driver.status = DriverStatus.on_trip
-        truck.status = EquipmentStatus.in_use
-
-        # Update trip status
-        await self.db.flush()
-        # Re-fetch trips after flush
-        load_refreshed = await self.repo.get_by_id(load_id)
-        if load_refreshed and load_refreshed.trips:
-            for trip in load_refreshed.trips:
-                trip.status = TripStatus.dispatched
-
-        if trailer_id:
-            trailer_obj = (await self.db.execute(
-                select(Trailer).where(Trailer.id == trailer_id)
-            )).scalar_one_or_none()
-            if trailer_obj:
-                trailer_obj.status = EquipmentStatus.in_use
+        # assigned → dispatched (side effects: compliance check, set driver on trip, set equipment in use)
+        # Note: compliance + equipment side effects inside advance_status use the trip data we just set.
+        await self._advance_status_no_commit(load, LoadStatus.dispatched)
 
         await self.db.commit()
         await self.db.refresh(load)
@@ -589,6 +584,33 @@ class LoadService:
         )
 
         return LoadResponse.model_validate(load)
+
+    async def _advance_status_no_commit(self, load: Load, target: LoadStatus) -> None:
+        """Internal helper: run side effects + status change WITHOUT committing.
+
+        Used by dispatch_load() to chain multiple transitions in a single
+        transaction. The caller is responsible for calling db.commit().
+        """
+        current = LoadStatus(load.status.value if hasattr(load.status, 'value') else load.status)
+
+        allowed = LOAD_TRANSITIONS.get(current, [])
+        if target not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot transition from '{current.value}' to '{target.value}'.",
+            )
+
+        side_effect_key = (current.value, target.value)
+        if side_effect_key in TRANSITION_SIDE_EFFECTS:
+            for effect_name in TRANSITION_SIDE_EFFECTS[side_effect_key]:
+                effect_fn = getattr(self, effect_name)
+                await effect_fn(load)
+
+        load.status = target
+        logger.info(
+            "Load %s status: %s → %s (company=%s)",
+            load.load_number, current.value, target.value, self.company_id,
+        )
 
     # ══════════════════════════════════════════════════════════════
     #   TRIP MANAGEMENT — Assign driver/truck to existing trip

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import ForbiddenError, UnauthorizedError
-from app.core.security import decode_token
+from app.core.security import decode_token, is_token_blacklisted_db
 
 # ── Type Alias ───────────────────────────────────────────────────
 DBSession = Annotated[AsyncSession, Depends(get_db)]
@@ -24,11 +24,17 @@ DBSession = Annotated[AsyncSession, Depends(get_db)]
 
 # ── JWT Bearer Extraction ────────────────────────────────────────
 
-async def get_current_user_id(authorization: str = Header(default=None)) -> str:
+async def get_current_user_id(
+    authorization: str = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> str:
     """Extract and validate user_id from the Authorization: Bearer <token> header.
 
+    Performs full revocation check against the DB blacklist — authoritative
+    across all Gunicorn workers (fixes in-memory-only bypass).
+
     Returns user_id as string.
-    Raises 401 if token is missing, invalid, or expired.
+    Raises 401 if token is missing, invalid, expired, or revoked.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise UnauthorizedError("Missing or invalid Authorization header")
@@ -41,6 +47,10 @@ async def get_current_user_id(authorization: str = Header(default=None)) -> str:
 
     if payload.get("type") != "access":
         raise UnauthorizedError("Invalid token type — expected access token")
+
+    jti = payload.get("jti")
+    if jti and await is_token_blacklisted_db(jti, db):
+        raise UnauthorizedError("Token has been revoked")
 
     user_id = payload.get("sub")
     if not user_id:

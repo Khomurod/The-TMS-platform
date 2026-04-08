@@ -90,6 +90,15 @@ class Load(Base, TenantMixin):
     contact_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Broker agent name
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ── Operational Timestamps ───────────────────────────────────
+    # delivered_at: set when load transitions in_transit → delivered.
+    # Used by settlement period filtering to ensure drivers are paid in
+    # the period they actually completed the delivery, not when the load
+    # was created. NULL for historical loads (fallback uses created_at).
+    delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     # ── Relationships ────────────────────────────────────────────
     company = relationship("Company", back_populates="loads")
     broker = relationship("Broker", back_populates="loads")

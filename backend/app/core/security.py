@@ -126,13 +126,14 @@ def create_refresh_token(user_id: UUID) -> str:
 
 
 def decode_token(token: str) -> dict:
-    """Decode and validate a JWT token.
+    """Decode and validate a JWT token signature and expiry.
+
+    NOTE: Does NOT check the revocation blacklist — that is done
+    in the async `get_current_user_id` dependency which has DB access.
+    This function is intentionally sync-only (no DB).
 
     Returns the payload dict.
-    Raises InvalidTokenError if token is invalid, expired, blacklisted, or malformed.
+    Raises InvalidTokenError if token is invalid, expired, or malformed.
     """
     payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-    jti = payload.get("jti")
-    if jti and is_token_blacklisted(jti):
-        raise InvalidTokenError("Token has been revoked")
     return payload

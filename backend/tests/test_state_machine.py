@@ -61,8 +61,14 @@ class TestStateMachine:
 
     # ── Invalid transitions ──────────────────────────────────────
 
-    def test_in_transit_cannot_cancel(self):
-        assert LoadStatus.cancelled not in LOAD_TRANSITIONS[LoadStatus.in_transit]
+    def test_in_transit_can_cancel(self):
+        """Policy decision: in_transit loads CAN be cancelled.
+
+        Real-world justification: loads get rejected at delivery dock,
+        trucks break down mid-transit, customers cancel at last mile.
+        Resources (driver, equipment) are released via side effects.
+        """
+        assert LoadStatus.cancelled in LOAD_TRANSITIONS[LoadStatus.in_transit]
 
     def test_delivered_cannot_cancel(self):
         assert LoadStatus.cancelled not in LOAD_TRANSITIONS[LoadStatus.delivered]
@@ -99,3 +105,21 @@ class TestStateMachine:
                 assert LoadStatus.offer not in targets, (
                     f"{status.value} should not transition to offer"
                 )
+
+    def test_cancellation_allowed_from_early_stages_only(self):
+        """Verify cancellation is allowed from pre-delivery stages only."""
+        cancellable = {
+            LoadStatus.offer, LoadStatus.booked, LoadStatus.assigned,
+            LoadStatus.dispatched, LoadStatus.in_transit,
+        }
+        non_cancellable = {
+            LoadStatus.delivered, LoadStatus.invoiced, LoadStatus.paid, LoadStatus.cancelled,
+        }
+        for status in cancellable:
+            assert LoadStatus.cancelled in LOAD_TRANSITIONS[status], (
+                f"{status.value} should allow cancellation"
+            )
+        for status in non_cancellable:
+            assert LoadStatus.cancelled not in LOAD_TRANSITIONS[status], (
+                f"{status.value} should NOT allow cancellation"
+            )

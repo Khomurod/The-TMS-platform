@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import binascii
 import logging
 from datetime import date
 from typing import Optional
@@ -122,16 +123,19 @@ class LoadRepository:
             .select_from(Load)
             .where(Load.company_id == self.company_id)
         )
-        # Use advisory lock per company to serialize number generation
-        lock_key = hash(str(self.company_id)) & 0x7FFFFFFF  # Positive 32-bit int
+        # Use deterministic advisory lock per company to serialize number generation.
+        # CRC32 is used instead of Python hash() because hash() is randomized
+        # per-process (PYTHONHASHSEED), making it non-deterministic across workers.
+        lock_key = binascii.crc32(str(self.company_id).encode()) & 0x7FFFFFFF
         await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
 
         count = (await self.db.execute(count_query)).scalar() or 0
         return f"LD-{count + 1:05d}"
 
     async def generate_shipment_id(self) -> str:
-        """Generate next shipment ID using advisory lock (race-condition safe)."""
-        lock_key = (hash(str(self.company_id)) + 1) & 0x7FFFFFFF
+        """Generate next shipment ID using deterministic advisory lock (race-condition safe)."""
+        # Offset by 1 from load_number lock so the two operations don't serialize on each other
+        lock_key = (binascii.crc32(str(self.company_id).encode()) + 1) & 0x7FFFFFFF
         await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
 
         count_query = (
