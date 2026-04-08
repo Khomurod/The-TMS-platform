@@ -58,7 +58,7 @@ interface RegisterPayload {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: false,
   error: null,
 
   login: async (email: string, password: string) => {
@@ -130,6 +130,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   hydrate: async () => {
+    set({ isLoading: true });
     const token = sessionStorage.getItem("access_token");
     if (token) {
       await get().fetchProfile();

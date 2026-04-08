@@ -11,7 +11,7 @@ from app.models.user import User, UserRole
 import app.models  # noqa: F401
 
 USERS = [
-    {"email": "superadmin@Safehaul.test", "password": "SuperAdmin1!", "first_name": "Super", "last_name": "Admin", "role": UserRole.super_admin},
+    {"email": "superadmin@safehaul.test", "password": "SuperAdmin1!", "first_name": "Super", "last_name": "Admin", "role": UserRole.super_admin},
     {"email": "admin@wenzetrucking.com", "password": "WenzeAdmin1!", "first_name": "Wenze", "last_name": "Admin", "role": UserRole.company_admin},
     {"email": "dispatcher@wenzetrucking.com", "password": "Dispatch1!", "first_name": "Tom", "last_name": "Dispatcher", "role": UserRole.dispatcher},
     {"email": "accounting@wenzetrucking.com", "password": "Account1!", "first_name": "Sarah", "last_name": "Accountant", "role": UserRole.accountant},

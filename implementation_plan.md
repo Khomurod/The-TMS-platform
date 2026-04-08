@@ -626,95 +626,97 @@ These are derived client-side from `cdl_expiry_date` and `medical_card_expiry_da
 
 ## 3. Execution Roadmap — Phased Build Plan
 
-### Phase 0: Scaffolding (Day 1)
-- [ ] Initialize Next.js 14 project with App Router, TypeScript strict mode
-- [ ] Install and configure: Tailwind CSS, shadcn/ui, next-themes, Lucide icons
-- [ ] Set up project structure (folders as defined in §1.3)
-- [ ] Configure `lib/api.ts` — Axios client with base URL, JWT interceptor, refresh logic
-- [ ] Create Zustand stores: `authStore`, `uiStore`
-- [ ] Build root layout with dark/light theme support
+### Phase 0: Scaffolding ✅ (Complete)
+- [x] Initialize Next.js 14 project with App Router, TypeScript strict mode
+- [x] Install and configure: Tailwind CSS, shadcn/ui, next-themes, Lucide icons
+- [x] Set up project structure (folders as defined in §1.3)
+- [x] Configure `lib/api.ts` — Axios client with base URL, JWT interceptor, refresh logic
+- [x] Create Zustand stores: `authStore`, `uiStore`
+- [x] Build root layout with dark/light theme support
 
 ---
 
-### Phase 1: Auth + Shell (Days 2-3)
-- [ ] **Login page** — email/password form → `POST /auth/login` → store tokens
-- [ ] **Register page** — company onboarding → `POST /auth/register`
-- [ ] **Next.js middleware** — JWT validation, role-based route protection
-- [ ] **Dashboard layout** — Sidebar + TopBar shell (role-adaptive menu items)
-- [ ] **Auth hooks**: `useAuth()`, auto-refresh interceptor
-- [ ] Verify: Login → see sidebar → logout → redirect to login
+### Phase 1: Auth + Shell ✅ (Complete)
+- [x] **Login page** — email/password form → `POST /auth/login` → store tokens
+- [x] **Register page** — company onboarding → `POST /auth/register`
+- [x] **Next.js middleware** — JWT validation, role-based route protection
+- [x] **Dashboard layout** — Sidebar + TopBar shell (role-adaptive menu items)
+- [x] **Auth hooks**: `useAuth()`, auto-refresh interceptor
+- [x] Verify: Login → see sidebar → logout → redirect to login
 
-> **Backend dependency**: `auth/router.py` (login, register, refresh, me, logout)
-
----
-
-### Phase 2: Dashboard + KPIs (Days 4-5)
-- [ ] **KPI Cards** — 4 metric cards from `GET /dashboard/kpis`
-- [ ] **Fleet Status donut** — Recharts donut from `GET /dashboard/fleet-status`
-- [ ] **Compliance Alerts list** — from `GET /dashboard/compliance-alerts`
-- [ ] **Recent Events feed** — from `GET /dashboard/recent-events`
-- [ ] Dark mode polish for all dashboard components
-
-> **Backend dependency**: `dashboard/router.py` (kpis, compliance-alerts, fleet-status, recent-events)
+> **Backend dependency**: `auth/router.py` ✅ Available
 
 ---
 
-### Phase 3: Load Board — Core CRUD (Days 6-9)
-- [ ] **LoadBoard component** — Tabbed table (Live/Upcoming/Completed)
-- [ ] **TanStack Table** with server-side pagination (`page`, `page_size`)
-- [ ] **StatusBadge** component — 8 status colors 
-- [ ] **LoadDrawer** — side panel with full `LoadResponse` detail
+### Phase 2: Dashboard + KPIs ✅ (Complete)
+- [x] **KPI Cards** — 4 metric cards from `GET /dashboard/kpis`
+- [x] **Fleet Status donut** — Recharts donut from `GET /dashboard/fleet-status`
+- [x] **Compliance Alerts list** — from `GET /dashboard/compliance-alerts`
+- [x] **Recent Events feed** — from `GET /dashboard/recent-events`
+- [x] Dark mode polish for all dashboard components
+
+> **Backend dependency**: `dashboard/router.py` ✅ Available
+
+---
+
+### Phase 3: Load Board — Core CRUD (In Progress)
+- [x] **LoadBoard component** — Tabbed table (Live/Upcoming/Completed)
+- [x] **Data table** with server-side pagination (`page`, `page_size`)
+- [x] **StatusBadge** component — 9 status colors
+- [x] **LoadDrawer** — side panel with full `LoadResponse` detail, financial summary, stop timeline, trip cards
 - [ ] **StatusStepper** — horizontal pipeline visualization
-- [ ] **Quick-action buttons** in drawer (advance status → `PATCH /loads/{id}/status`)
+- [x] **Quick-action buttons** in drawer (advance status → `PATCH /loads/{id}/status`)
 - [ ] **Load detail page** (`/loads/[id]`) — full page with all trips, stops, accessorials
 - [ ] **Load creation wizard** — multi-step form for `POST /loads` with broker auto-complete
 
-> **Backend dependency**: `loads/router.py` (list, get, create, update, delete, status, board tabs), `brokers/router.py` (search)
+> **Backend dependency**: `loads/router.py` ✅ Available, `brokers/router.py` ✅ Available
 
 ---
 
-### Phase 4: Dispatch Workflow (Days 10-12)
-- [ ] **Dispatch Center page** — split panel layout
-- [ ] **Available resources panels** — drivers, trucks, trailers from `/available` endpoints  
+### Phase 4: Dispatch Workflow (In Progress)
+- [x] **Dispatch Center page** — table of loads awaiting dispatch with action buttons
+- [ ] **Available resources panels** — drivers, trucks, trailers from `/available` endpoints
 - [ ] **Inline compliance check** card from `GET /drivers/{id}/compliance`
-- [ ] **Dispatch action** → `POST /loads/{id}/dispatch` with validation
+- [ ] **Dispatch modal** → `POST /loads/{id}/dispatch` with driver/truck/trailer selection
 - [ ] **Trip assignment** panel → `PATCH /loads/{id}/trips/{trip_id}/assign`
 - [ ] Toast notifications for success/failure
 
-> **Backend dependency**: `loads/router.py` (dispatch, assign trip), `drivers/router.py` (available, compliance), `fleet/router.py` (available trucks/trailers)
+> **Backend dependency**: `loads/router.py` ✅, `drivers/router.py` ✅, `fleet/router.py` ✅
 
 ---
 
-### Phase 5: Driver & Fleet Management (Days 13-16)
-- [ ] **Driver roster table** — paginated, filterable by status/type
+### Phase 5: Driver & Fleet Management (In Progress)
+- [x] **Driver roster table** — paginated, filterable by status/type, compliance dots
 - [ ] **Driver CRUD** — create/edit modal (React Hook Form + Zod)
 - [ ] **Driver detail page** — profile, compliance card, trip history, pay config
-- [ ] **Truck roster table** — CRUD for trucks
-- [ ] **Trailer roster table** — CRUD for trailers
+- [x] **Truck roster table** — CRUD for trucks (listing complete)
+- [x] **Trailer roster table** — CRUD for trailers (listing complete)
 - [ ] **Fleet detail pages** — DOT inspection tracking, ownership info
 
-> **Backend dependency**: `drivers/router.py`, `fleet/router.py`
+> **Backend dependency**: `drivers/router.py` ✅, `fleet/router.py` ✅
 
 ---
 
-### Phase 6: Accounting & Settlements (Days 17-20)
-- [ ] **Settlement list table** — filterable by status, driver
+### Phase 6: Accounting & Settlements (In Progress)
+- [x] **Settlement list table** — filterable by status, driver
 - [ ] **Generate Settlement modal** — driver picker + date range → `POST /settlements/generate`
 - [ ] **Settlement detail page** — line items table, financial summary
 - [ ] **Post/Undo/Pay actions** — status lifecycle buttons
 - [ ] **PDF download** — `GET /settlements/{id}/pdf` → browser download
 - [ ] **Invoice generation** — `POST /loads/{load_id}/invoice`
 
-> **Backend dependency**: `accounting/router.py`
+> **Backend dependency**: `accounting/router.py` ✅
 
 ---
 
-### Phase 7: Settings & Broker Management (Days 21-23)
+### Phase 7: Settings & Broker Management (In Progress)
 - [ ] **Broker directory table** — CRUD with auto-complete search
-- [ ] **Settings page** — company profile (placeholder for full implementation)
-- [ ] **User management** — (stub, pending backend `users/router.py` completion)
+- [x] **Settings page** — company profile card + user management table
+- [x] **User management** — listing with role badges, active status, last login
+- [ ] **Company profile edit form** — inline editing
+- [ ] **User invite/create modal**
 
-> **Backend dependency**: `brokers/router.py`, `settings_mod/router.py` (stub)
+> **Backend dependency**: `brokers/router.py` ✅, `settings_mod/router.py` ✅
 
 ---
 

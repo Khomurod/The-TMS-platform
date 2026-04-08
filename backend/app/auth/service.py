@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from jwt.exceptions import InvalidTokenError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestError, ConflictError, UnauthorizedError
@@ -75,7 +75,7 @@ class AuthService:
 
         Returns (user, tokens).
         """
-        result = await self.db.execute(select(User).where(User.email == email))
+        result = await self.db.execute(select(User).where(func.lower(User.email) == email.lower()))
         user = result.scalar_one_or_none()
 
         if not user or not verify_password(password, user.hashed_password):

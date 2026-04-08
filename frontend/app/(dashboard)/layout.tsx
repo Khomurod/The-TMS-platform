@@ -34,12 +34,12 @@ export default function DashboardLayout({
   if (isLoading) {
     return (
       <div className="flex h-screen">
-        <div className="w-[240px] bg-sidebar border-r border-sidebar-border">
+        <div className="w-[240px] bg-card border-r border-border">
           <div className="p-4 space-y-4">
-            <Skeleton className="h-8 w-full bg-sidebar-accent" />
-            <Skeleton className="h-6 w-3/4 bg-sidebar-accent" />
-            <Skeleton className="h-6 w-2/3 bg-sidebar-accent" />
-            <Skeleton className="h-6 w-3/4 bg-sidebar-accent" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-6 w-2/3" />
+            <Skeleton className="h-6 w-3/4" />
           </div>
         </div>
         <div className="flex-1 flex flex-col">
