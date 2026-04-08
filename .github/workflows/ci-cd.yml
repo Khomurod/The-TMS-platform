@@ -89,20 +89,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.backend == 'true' || github.event_name == 'pull_request'
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: kinetic
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: kinetic_tms_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No postgres service — tests use in-memory SQLite (aiosqlite).
+    # asyncpg + per-test event loops causes "Future attached to a different loop"
+    # errors when a real Postgres service is used with pytest-asyncio function scope.
 
     steps:
       - uses: actions/checkout@v4
@@ -116,10 +105,9 @@ jobs:
         working-directory: ./backend
         run: pip install -r requirements.txt
 
-      - name: Run tests (skip gracefully if none exist)
+      - name: Run tests
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://kinetic:test_password@localhost:5432/kinetic_tms_test
           JWT_SECRET_KEY: test-secret-key-for-ci
           ENVIRONMENT: testing
         run: |
@@ -256,9 +244,9 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --quiet
 
-      # Deploy with NO traffic — new revision starts but gets 0% of requests
-      # until the smoke test passes, then switches 100%.
-      # CRITICAL: --set-cloudsql-instances is required for Unix socket DB access.
+      # Deploy with NO traffic — smoke test passes first, then switches 100%.
+      # Uses deploy_env.yaml for all env vars (DATABASE_URL uses Unix socket).
+      # CRITICAL: --set-cloudsql-instances mounts the Cloud SQL Unix socket.
       - name: Deploy backend (no traffic)
         run: |
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
@@ -269,12 +257,7 @@ jobs:
             --allow-unauthenticated \
             --no-traffic \
             --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
-            --set-env-vars "ENVIRONMENT=production" \
-            --set-env-vars "CORS_ORIGINS=[\"${{ secrets.CORS_ORIGINS }}\"]" \
-            --set-env-vars "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
-            --set-env-vars "GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}" \
-            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" \
+            --env-vars-file deploy_env.yaml \
             --quiet
 
       # Smoke test against the new revision's URL (gets a unique URL even with no traffic)
