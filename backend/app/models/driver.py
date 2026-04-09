@@ -8,8 +8,16 @@ from decimal import Decimal
 from sqlalchemy import Boolean, Date, DateTime, Enum, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy_utils import StringEncryptedType as EncryptedType
+from sqlalchemy_utils.types.encrypted.encrypted_type import AesEngine
 
 from app.models.base import Base, TenantMixin, DriverStatus
+
+
+def _get_encryption_key() -> str:
+    """Deferred key loader — avoids circular import at module load time."""
+    from app.config import settings
+    return settings.effective_encryption_key
 
 
 class EmploymentType(str, enum.Enum):
@@ -97,13 +105,18 @@ class Driver(Base, TenantMixin):
     )
 
     # ── Bank Info ──────────────────────────────────────────────────
-    # SECURITY: These fields store sensitive financial data (PII).
-    # In production, database-level encryption (pgcrypto / TDE) or application-level
-    # encryption (sqlalchemy-utils EncryptedType) MUST be enabled.
+    # Audit fix #11: Bank data is AES-encrypted at rest using sqlalchemy-utils.
+    # The encryption key is sourced from settings.effective_encryption_key.
     # Only the last 4 digits should be returned in API responses.
     bank_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    bank_routing_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    bank_account_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bank_routing_number: Mapped[str | None] = mapped_column(
+        EncryptedType(String(255), _get_encryption_key, AesEngine, "pkcs5"),
+        nullable=True,
+    )
+    bank_account_number: Mapped[str | None] = mapped_column(
+        EncryptedType(String(255), _get_encryption_key, AesEngine, "pkcs5"),
+        nullable=True,
+    )
 
     # ── Status ───────────────────────────────────────────────────
     status: Mapped[DriverStatus] = mapped_column(

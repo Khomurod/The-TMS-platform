@@ -176,28 +176,37 @@ async def get_fleet_status(
     db: AsyncSession = Depends(get_db),
     company_id: UUID = Depends(get_current_company_id),
 ):
-    """Truck distribution by status."""
-    statuses = [EquipmentStatus.available, EquipmentStatus.in_use, EquipmentStatus.maintenance]
-    result = {}
+    """Truck distribution by status — single optimized query."""
+    from sqlalchemy import case, literal
 
-    for status in statuses:
-        count_query = (
-            select(func.count())
-            .select_from(Truck)
-            .where(Truck.company_id == company_id)
-            .where(Truck.is_active == True)
-            .where(Truck.status == status)
+    # Single query: count trucks grouped by status
+    status_query = (
+        select(
+            func.coalesce(func.count().filter(
+                Truck.status == EquipmentStatus.available
+            ), 0).label("available"),
+            func.coalesce(func.count().filter(
+                Truck.status == EquipmentStatus.in_use
+            ), 0).label("in_use"),
+            func.coalesce(func.count().filter(
+                Truck.status == EquipmentStatus.maintenance
+            ), 0).label("maintenance"),
         )
-        count = (await db.execute(count_query)).scalar() or 0
-        result[status.value] = count
+        .where(Truck.company_id == company_id)
+        .where(Truck.is_active == True)
+    )
+    result = (await db.execute(status_query)).one()
 
-    total = sum(result.values())
-    utilization = round((result.get("in_use", 0) / total) * 100, 1) if total > 0 else 0
+    available = result.available or 0
+    in_use = result.in_use or 0
+    maintenance = result.maintenance or 0
+    total = available + in_use + maintenance
+    utilization = round((in_use / total) * 100, 1) if total > 0 else 0
 
     return {
-        "loaded": result.get("in_use", 0),
-        "available": result.get("available", 0),
-        "in_shop": result.get("maintenance", 0),
+        "loaded": in_use,
+        "available": available,
+        "in_shop": maintenance,
         "total": total,
         "utilization_rate": utilization,
     }

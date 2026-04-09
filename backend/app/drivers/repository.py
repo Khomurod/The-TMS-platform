@@ -146,10 +146,14 @@ class DriverRepository:
         return driver
 
     async def update(self, driver: Driver, **kwargs) -> Driver:
-        """Update driver fields."""
+        """Update driver fields.
+
+        Note: kwargs are pre-filtered by the service layer using
+        model_dump(exclude_unset=True), so every key here was explicitly
+        provided by the user — including None values for field clearing.
+        """
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(driver, key, value)
+            setattr(driver, key, value)
         await self.db.commit()
         await self.db.refresh(driver)
         return driver

@@ -3,6 +3,7 @@
 from typing import Optional
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.fleet.repository import TruckRepository, TrailerRepository
@@ -39,10 +40,31 @@ class TruckService:
         return TruckResponse.model_validate(truck)
 
     async def update_truck(self, truck_id: UUID, data: TruckUpdate) -> TruckResponse:
+        """Update truck. Status changes are guarded:
+        - Cannot manually set 'in_use' (only dispatch should set this).
+        - Cannot set 'available' if currently 'in_use' (only load completion releases).
+        """
         truck = await self.repo.get_by_id(truck_id)
         if not truck:
             raise NotFoundError("Truck not found")
-        updated = await self.repo.update(truck, **data.model_dump(exclude_unset=True))
+
+        update_data = data.model_dump(exclude_unset=True)
+        if "status" in update_data:
+            from app.models.fleet import EquipmentStatus
+            new_status = update_data["status"]
+            current_status = truck.status.value if hasattr(truck.status, 'value') else truck.status
+            if new_status == "in_use":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot manually set status to 'in_use'. Use dispatch workflow.",
+                )
+            if current_status == "in_use" and new_status == "available":
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot set truck to 'available' while in use by an active load.",
+                )
+
+        updated = await self.repo.update(truck, **update_data)
         return TruckResponse.model_validate(updated)
 
     async def delete_truck(self, truck_id: UUID) -> None:
@@ -82,10 +104,28 @@ class TrailerService:
         return TrailerResponse.model_validate(trailer)
 
     async def update_trailer(self, trailer_id: UUID, data: TrailerUpdate) -> TrailerResponse:
+        """Update trailer. Status changes are guarded (same rules as trucks)."""
         trailer = await self.repo.get_by_id(trailer_id)
         if not trailer:
             raise NotFoundError("Trailer not found")
-        updated = await self.repo.update(trailer, **data.model_dump(exclude_unset=True))
+
+        update_data = data.model_dump(exclude_unset=True)
+        if "status" in update_data:
+            from app.models.fleet import EquipmentStatus
+            new_status = update_data["status"]
+            current_status = trailer.status.value if hasattr(trailer.status, 'value') else trailer.status
+            if new_status == "in_use":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot manually set status to 'in_use'. Use dispatch workflow.",
+                )
+            if current_status == "in_use" and new_status == "available":
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot set trailer to 'available' while in use by an active load.",
+                )
+
+        updated = await self.repo.update(trailer, **update_data)
         return TrailerResponse.model_validate(updated)
 
     async def delete_trailer(self, trailer_id: UUID) -> None:

@@ -210,8 +210,35 @@ jobs:
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
 
+      # ── Run DB migrations via ephemeral Cloud Run Job ──
+      # This runs BEFORE the deploy so the schema is ready when the new revision starts.
+      # Uses psycopg2 (sync driver) which supports Cloud SQL Unix sockets.
+      - name: Run DB migrations (Cloud Run Job)
+        run: |
+          JOB="migrate-$(echo ${{ github.sha }} | cut -c1-8)"
+          echo "Creating migration job: $JOB"
+          gcloud run jobs create "$JOB" \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
+            --set-env-vars "ENVIRONMENT=production,CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
+            --command python \
+            --args="-m" --args="alembic" --args="upgrade" --args="head" \
+            --max-retries 0 \
+            --task-timeout 120s \
+            --execute-now \
+            --wait
+          echo "Migration complete. Cleaning up job."
+          gcloud run jobs delete "$JOB" \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --quiet
+
       # Deploy with NO traffic — smoke test passes first, then switches 100%.
-      # Migrations run automatically inside the container on startup (Dockerfile CMD).
+      # Migrations have already run via the Cloud Run Job above.
+      # The container CMD still includes alembic upgrade as a safety net for manual deploys.
       # CRITICAL: --set-cloudsql-instances mounts the Cloud SQL Unix socket.
       - name: Deploy backend (no traffic)
         run: |
@@ -223,7 +250,8 @@ jobs:
             --allow-unauthenticated \
             --no-traffic \
             --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
-            --env-vars-file deploy_env.yaml \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
+            --set-env-vars "ENVIRONMENT=production,CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
             --quiet
 
       # Smoke test against the new revision's URL (gets a unique URL even with no traffic)
@@ -243,7 +271,7 @@ jobs:
           for i in 1 2 3; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$TEST_URL/api/v1/health" --max-time 15 || echo "000")
             echo "  Attempt $i: HTTP $STATUS"
-            if [ "$STATUS" = "200" ] || [ "$STATUS" = "503" ]; then
+            if [ "$STATUS" = "200" ]; then
               echo "Backend is responding. Switching traffic."
               break
             fi

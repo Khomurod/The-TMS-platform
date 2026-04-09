@@ -96,6 +96,10 @@ class AuthService:
     async def refresh(self, refresh_token: str) -> dict:
         """Issue a new access token using a valid refresh token.
 
+        Security hardening (audit fix #3):
+          - Checks if the refresh token's JTI is blacklisted (e.g., after logout)
+          - Implements refresh token rotation: old token is revoked when new one is issued
+
         Returns new token pair.
         """
         try:
@@ -106,6 +110,13 @@ class AuthService:
         if payload.get("type") != "refresh":
             raise UnauthorizedError("Invalid token type")
 
+        # Audit fix #3: Check if this refresh token has been revoked (e.g., after logout)
+        jti = payload.get("jti")
+        if jti:
+            from app.core.security import is_token_blacklisted_db
+            if await is_token_blacklisted_db(jti, self.db):
+                raise UnauthorizedError("Refresh token has been revoked")
+
         user_id = payload.get("sub")
         if not user_id:
             raise UnauthorizedError("Invalid token payload")
@@ -115,6 +126,11 @@ class AuthService:
 
         if not user or not user.is_active:
             raise UnauthorizedError("User not found or deactivated")
+
+        # Audit fix #3: Refresh token rotation — blacklist old token before issuing new
+        if jti:
+            from app.core.security import blacklist_token_db
+            await blacklist_token_db(jti, self.db)
 
         return self._generate_tokens(user)
 

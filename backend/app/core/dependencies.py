@@ -19,7 +19,7 @@ skips the revocation check.
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +34,7 @@ DBSession = Annotated[AsyncSession, Depends(get_db)]
 # ── Auth Gateway — Single source of truth ────────────────────────
 
 async def get_verified_token(
+    request: Request,
     authorization: str = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -44,23 +45,32 @@ async def get_verified_token(
     themselves. FastAPI deduplicates the call: this runs exactly once
     per request even if multiple downstream deps depend on it.
 
+    Audit fix #14: Reuses the decoded JWT payload from TenantMiddleware
+    (stored on request.state.jwt_payload) to avoid decoding the token
+    twice per request. Falls back to full decode if not available.
+
     Raises 401 for:
     - Missing / malformed Authorization header
     - Invalid or expired JWT signature
     - Non-access token type (e.g. refresh token used on API route)
     - Blacklisted JTI (logged-out token)
     """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise UnauthorizedError("Missing or invalid Authorization header")
+    # Audit fix #14: Try to reuse payload decoded by TenantMiddleware
+    payload = getattr(request.state, "jwt_payload", None)
 
-    token = authorization.replace("Bearer ", "")
-    try:
-        payload = decode_token(token)          # signature + expiry only
-    except InvalidTokenError:
-        raise UnauthorizedError("Invalid or expired token")
+    if not payload:
+        # Fallback: decode ourselves (for routes that bypass middleware)
+        if not authorization or not authorization.startswith("Bearer "):
+            raise UnauthorizedError("Missing or invalid Authorization header")
 
-    if payload.get("type") != "access":
-        raise UnauthorizedError("Invalid token type — expected access token")
+        token = authorization.replace("Bearer ", "")
+        try:
+            payload = decode_token(token)          # signature + expiry only
+        except InvalidTokenError:
+            raise UnauthorizedError("Invalid or expired token")
+
+        if payload.get("type") != "access":
+            raise UnauthorizedError("Invalid token type — expected access token")
 
     # DB-backed revocation check — authoritative across all Gunicorn workers
     jti = payload.get("jti")

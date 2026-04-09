@@ -14,6 +14,7 @@ env/
 # Environment
 .env.local
 .env.production
+deploy_env.yaml
 
 # IDE
 .vscode/

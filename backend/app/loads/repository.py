@@ -109,15 +109,7 @@ class LoadRepository:
         Uses SELECT ... FOR UPDATE on a MAX query to prevent duplicate numbers
         under concurrent inserts.
         """
-        # Use MAX + 1 with a subquery inside the transaction to avoid race conditions
-        max_query = (
-            select(func.max(func.cast(
-                func.replace(Load.load_number, 'LD-', ''),
-                type_=func.cast.type  # Will be handled below
-            )))
-            .where(Load.company_id == self.company_id)
-        )
-        # Simpler approach: count all loads ever (including soft-deleted) to prevent reuse
+        # Count all loads ever (including soft-deleted) to prevent reuse of numbers
         count_query = (
             select(func.count())
             .select_from(Load)

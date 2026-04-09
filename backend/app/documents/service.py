@@ -119,11 +119,15 @@ class DocumentService:
             )
         content_type = file.content_type or ""
         ext = (file.filename or "").rsplit(".", 1)[-1].lower()
-        if content_type not in ALLOWED_MIME_TYPES and ext not in ALLOWED_EXTENSIONS:
+
+        # Validate MIME type AND extension — both must be from allowed sets.
+        # Using OR here ensures we reject if either one is unrecognized,
+        # preventing bypass via spoofed Content-Type headers.
+        if content_type not in ALLOWED_MIME_TYPES or ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    f"File type '{content_type}' is not allowed. "
+                    f"File type '{content_type}' / extension '.{ext}' is not allowed. "
                     f"Allowed types: pdf, png, jpg, jpeg, tiff."
                 ),
             )

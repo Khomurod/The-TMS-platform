@@ -95,6 +95,15 @@ TRANSITION_SIDE_EFFECTS: dict[tuple[str, str], list[str]] = {
         "_effect_release_driver",
         "_effect_release_equipment",
     ],
+    # Audit fix #10: Rollback transitions — reverse side-effects
+    ("assigned", "booked"): [
+        "_effect_deactivate_trip",
+    ],
+    ("dispatched", "assigned"): [
+        "_effect_release_driver",
+        "_effect_release_equipment",
+        "_effect_revert_trip_to_assigned",
+    ],
 }
 
 
@@ -277,7 +286,13 @@ class LoadService:
         if side_effect_key in TRANSITION_SIDE_EFFECTS:
             for effect_name in TRANSITION_SIDE_EFFECTS[side_effect_key]:
                 effect_fn = getattr(self, effect_name)
-                await effect_fn(load)
+                # Pass target_status for effects that need to know the destination
+                import inspect
+                sig = inspect.signature(effect_fn)
+                if 'target_status' in sig.parameters:
+                    await effect_fn(load, target_status=target)
+                else:
+                    await effect_fn(load)
 
         # 3. Update status
         load.status = target
@@ -326,7 +341,7 @@ class LoadService:
             raise HTTPException(400, "Driver must be assigned to the trip before dispatching.")
 
         driver = (await self.db.execute(
-            select(Driver).where(Driver.id == primary_trip.driver_id)
+            select(Driver).where(Driver.id == primary_trip.driver_id).where(Driver.company_id == self.company_id)
         )).scalar_one_or_none()
 
         if not driver:
@@ -366,7 +381,7 @@ class LoadService:
             raise HTTPException(400, "Truck must be assigned to the trip before dispatching.")
 
         truck = (await self.db.execute(
-            select(Truck).where(Truck.id == primary_trip.truck_id)
+            select(Truck).where(Truck.id == primary_trip.truck_id).where(Truck.company_id == self.company_id)
         )).scalar_one_or_none()
 
         if not truck:
@@ -383,7 +398,7 @@ class LoadService:
         for trip in load.trips:
             if trip.driver_id:
                 driver = (await self.db.execute(
-                    select(Driver).where(Driver.id == trip.driver_id)
+                    select(Driver).where(Driver.id == trip.driver_id).where(Driver.company_id == self.company_id)
                 )).scalar_one_or_none()
                 if driver:
                     driver.status = DriverStatus.on_trip
@@ -397,14 +412,14 @@ class LoadService:
         for trip in load.trips:
             if trip.truck_id:
                 truck = (await self.db.execute(
-                    select(Truck).where(Truck.id == trip.truck_id)
+                    select(Truck).where(Truck.id == trip.truck_id).where(Truck.company_id == self.company_id)
                 )).scalar_one_or_none()
                 if truck:
                     truck.status = EquipmentStatus.in_use
 
             if trip.trailer_id:
                 trailer = (await self.db.execute(
-                    select(Trailer).where(Trailer.id == trip.trailer_id)
+                    select(Trailer).where(Trailer.id == trip.trailer_id).where(Trailer.company_id == self.company_id)
                 )).scalar_one_or_none()
                 if trailer:
                     trailer.status = EquipmentStatus.in_use
@@ -426,27 +441,36 @@ class LoadService:
         """
         load.delivered_at = datetime.now(timezone.utc)
 
-    async def _effect_release_driver(self, load: Load) -> None:
+    async def _effect_release_driver(self, load: Load, target_status: LoadStatus = None) -> None:
         """Release driver back to AVAILABLE when delivered or cancelled.
 
         Sets trip status to match the load's final status:
         - delivered → TripStatus.delivered
         - cancelled → TripStatus.cancelled (prevents misreporting)
+
+        NOTE: target_status is passed explicitly because this side effect
+        fires BEFORE load.status is updated. Without it, a cancellation
+        from 'dispatched' would incorrectly set trip status to 'delivered'.
         """
         if not load.trips:
             return
 
-        # Determine the correct terminal trip status based on load destination
+        # Use target_status if provided, otherwise fall back to load.status
+        effective_status = target_status or LoadStatus(
+            load.status.value if hasattr(load.status, 'value') else load.status
+        )
+
+        # Determine the correct terminal trip status based on destination
         terminal_trip_status = (
             TripStatus.cancelled
-            if load.status == LoadStatus.cancelled
+            if effective_status == LoadStatus.cancelled
             else TripStatus.delivered
         )
 
         for trip in load.trips:
             if trip.driver_id:
                 driver = (await self.db.execute(
-                    select(Driver).where(Driver.id == trip.driver_id)
+                    select(Driver).where(Driver.id == trip.driver_id).where(Driver.company_id == self.company_id)
                 )).scalar_one_or_none()
                 if driver and driver.status == DriverStatus.on_trip:
                     driver.status = DriverStatus.available
@@ -460,16 +484,39 @@ class LoadService:
         for trip in load.trips:
             if trip.truck_id:
                 truck = (await self.db.execute(
-                    select(Truck).where(Truck.id == trip.truck_id)
+                    select(Truck).where(Truck.id == trip.truck_id).where(Truck.company_id == self.company_id)
                 )).scalar_one_or_none()
                 if truck and truck.status == EquipmentStatus.in_use:
                     truck.status = EquipmentStatus.available
             if trip.trailer_id:
                 trailer = (await self.db.execute(
-                    select(Trailer).where(Trailer.id == trip.trailer_id)
+                    select(Trailer).where(Trailer.id == trip.trailer_id).where(Trailer.company_id == self.company_id)
                 )).scalar_one_or_none()
                 if trailer and trailer.status == EquipmentStatus.in_use:
                     trailer.status = EquipmentStatus.available
+
+    async def _effect_deactivate_trip(self, load: Load) -> None:
+        """Deactivate trips when rolling back assigned → booked.
+
+        Audit fix #10: Ensures Trip entities don't persist as orphans
+        when a load is rolled back from assigned to booked.
+        """
+        if not load.trips:
+            return
+        for trip in load.trips:
+            trip.status = TripStatus.cancelled
+
+    async def _effect_revert_trip_to_assigned(self, load: Load) -> None:
+        """Revert trip status back to assigned when rolling back dispatched → assigned.
+
+        Audit fix #10: Ensures trip status stays consistent with load status
+        when a dispatch is rolled back.
+        """
+        if not load.trips:
+            return
+        for trip in load.trips:
+            if trip.status == TripStatus.dispatched:
+                trip.status = TripStatus.assigned
 
     async def _effect_lock_load_financials(self, load: Load) -> None:
         """Lock load financial fields when invoiced."""
@@ -604,7 +651,13 @@ class LoadService:
         if side_effect_key in TRANSITION_SIDE_EFFECTS:
             for effect_name in TRANSITION_SIDE_EFFECTS[side_effect_key]:
                 effect_fn = getattr(self, effect_name)
-                await effect_fn(load)
+                # Pass target_status for effects that need to know the destination
+                import inspect
+                sig = inspect.signature(effect_fn)
+                if 'target_status' in sig.parameters:
+                    await effect_fn(load, target_status=target)
+                else:
+                    await effect_fn(load)
 
         load.status = target
         logger.info(

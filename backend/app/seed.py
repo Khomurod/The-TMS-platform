@@ -20,9 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import async_session_factory, engine
+from app.core.database import async_session_factory
 from app.core.security import hash_password
-from app.models.base import Base
 from app.models.broker import Broker
 from app.models.company import Company
 from app.models.base import LoadStatus, DriverStatus
@@ -43,14 +42,8 @@ def _skip(label: str) -> None:
     print(f"  {label:<45} ⏭  Already exists")
 
 
-# ── Table creation ───────────────────────────────────────────────
-
-
-async def create_tables() -> None:
-    label = "Creating database tables..."
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print(f"  {label:<45} ✅ Done")
+# NOTE: Table creation is handled by Alembic migrations (`alembic upgrade head`).
+# Do NOT use Base.metadata.create_all here — it bypasses Alembic's migration history.
 
 
 # ── Users ────────────────────────────────────────────────────────
@@ -774,8 +767,6 @@ async def seed() -> None:
     print(f"\n{sep}")
     print("  Safehaul TMS — Database Seed Script")
     print(f"{sep}\n")
-
-    await create_tables()
 
     async with async_session_factory() as db:
         async with db.begin():

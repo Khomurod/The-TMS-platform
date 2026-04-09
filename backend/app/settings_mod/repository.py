@@ -23,9 +23,9 @@ class CompanyRepository:
         return result.scalar_one_or_none()
 
     async def update(self, company: Company, **kwargs) -> Company:
+        """Update company fields (kwargs pre-filtered by service via exclude_unset)."""
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(company, key, value)
+            setattr(company, key, value)
         await self.db.commit()
         await self.db.refresh(company)
         return company
@@ -76,9 +76,9 @@ class UserRepository:
         return user
 
     async def update(self, user: User, **kwargs) -> User:
+        """Update user fields (kwargs pre-filtered by service via exclude_unset)."""
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(user, key, value)
+            setattr(user, key, value)
         await self.db.commit()
         await self.db.refresh(user)
         return user

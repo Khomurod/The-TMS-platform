@@ -84,9 +84,9 @@ class TruckRepository:
         return truck
 
     async def update(self, truck: Truck, **kwargs) -> Truck:
+        """Update truck fields (kwargs pre-filtered by service via exclude_unset)."""
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(truck, key, value)
+            setattr(truck, key, value)
         await self.db.commit()
         await self.db.refresh(truck)
         return truck
@@ -168,9 +168,9 @@ class TrailerRepository:
         return trailer
 
     async def update(self, trailer: Trailer, **kwargs) -> Trailer:
+        """Update trailer fields (kwargs pre-filtered by service via exclude_unset)."""
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(trailer, key, value)
+            setattr(trailer, key, value)
         await self.db.commit()
         await self.db.refresh(trailer)
         return trailer

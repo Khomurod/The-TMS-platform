@@ -15,6 +15,7 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
   timeout: 30000,
+  withCredentials: true, // Audit fix #7: Send httpOnly cookies with every request
 });
 
 // ── Request Interceptor — attach access token ────────────────
@@ -53,12 +54,20 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Only attempt refresh on 401, and not on auth endpoints themselves
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes("/auth/")
-    ) {
+    // Determine if this is a recoverable auth failure:
+    // 1. Explicit 401 from the backend, OR
+    // 2. Network error with no response (browser hid the 401 because CORS
+    //    headers were missing — common when TenantMiddleware short-circuits)
+    const is401 = error.response?.status === 401;
+    const isCorsBlocked =
+      !error.response && error.message?.includes("Network Error");
+    const isAuthEndpoint = originalRequest?.url?.includes("/auth/");
+    const shouldAttemptRefresh =
+      (is401 || isCorsBlocked) &&
+      !originalRequest?._retry &&
+      !isAuthEndpoint;
+
+    if (shouldAttemptRefresh) {
       if (isRefreshing) {
         // Queue the request until the refresh completes
         return new Promise((resolve, reject) => {

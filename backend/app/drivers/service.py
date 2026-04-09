@@ -156,13 +156,33 @@ class DriverService:
     async def update_driver(
         self, driver_id: UUID, data: DriverUpdate
     ) -> DriverResponse:
-        """Update existing driver."""
+        """Update existing driver.
+
+        Status changes are guarded:
+        - Cannot manually set 'available' if driver has active trips
+          (only the load state machine should release drivers).
+        - Cannot manually set 'on_trip' (only dispatch should set this).
+        """
         driver = await self.repo.get_by_id(driver_id)
         if not driver:
             raise NotFoundError("Driver not found")
-        updated = await self.repo.update(
-            driver, **data.model_dump(exclude_unset=True)
-        )
+
+        # Guard: prevent status changes that would break state machine invariants
+        update_data = data.model_dump(exclude_unset=True)
+        if "status" in update_data:
+            new_status = update_data["status"]
+            if new_status == "on_trip":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot manually set status to 'on_trip'. Use dispatch workflow.",
+                )
+            if new_status == "available" and await self.repo.has_active_trips(driver_id):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot set driver to 'available' while assigned to active trips.",
+                )
+
+        updated = await self.repo.update(driver, **update_data)
         return DriverResponse.model_validate(updated)
 
     async def delete_driver(self, driver_id: UUID) -> None:

@@ -9,27 +9,47 @@ when combined with yield-based FastAPI dependencies like get_db().
 """
 
 import json
+import logging
+import os
 import time
 from collections import defaultdict
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+logger = logging.getLogger(__name__)
+
 
 # ── Rate Limiter ─────────────────────────────────────────────────
 
 class RateLimitStore:
-    """In-memory rate limit store with automatic cleanup.
+    """Rate limit store with Redis support and in-memory fallback.
 
-    WARNING: This is per-worker. In a multi-instance production deployment
-    (e.g., Cloud Run with 2+ Gunicorn workers), use Redis instead:
-        import redis.asyncio; r = redis.Redis(...)
+    Uses Redis sorted sets (sliding window) when REDIS_URL is configured.
+    Falls back to per-worker in-memory storage for local development.
+
+    Audit fix #12: Centralised rate limiting across all workers/instances.
     """
 
-    MAX_KEYS = 10_000  # Guard against OOM
+    MAX_KEYS = 10_000  # Guard against OOM (in-memory only)
 
     def __init__(self):
+        self._redis = None
         self._requests: dict[str, list[float]] = defaultdict(list)
         self._last_cleanup: float = time.time()
+
+        # Attempt Redis connection if configured
+        redis_url = os.environ.get("REDIS_URL")
+        if redis_url:
+            try:
+                import redis
+                self._redis = redis.from_url(redis_url, decode_responses=True)
+                self._redis.ping()
+                logger.info("RateLimitStore: Using Redis at %s", redis_url.split("@")[-1])
+            except Exception as e:
+                logger.warning("RateLimitStore: Redis unavailable (%s), using in-memory fallback", e)
+                self._redis = None
+        else:
+            logger.info("RateLimitStore: No REDIS_URL configured, using in-memory fallback")
 
     def _periodic_cleanup(self, window_seconds: int) -> None:
         """Remove all expired entries across all keys (runs every 5 minutes)."""
@@ -48,6 +68,32 @@ class RateLimitStore:
         self._last_cleanup = now
 
     def is_rate_limited(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        """Check if a key has exceeded the rate limit.
+
+        Returns True if the request should be blocked.
+        """
+        if self._redis:
+            return self._is_rate_limited_redis(key, max_requests, window_seconds)
+        return self._is_rate_limited_memory(key, max_requests, window_seconds)
+
+    def _is_rate_limited_redis(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        """Redis sliding window using sorted sets."""
+        try:
+            now = time.time()
+            pipe = self._redis.pipeline()
+            pipe.zremrangebyscore(key, 0, now - window_seconds)
+            pipe.zcard(key)
+            pipe.zadd(key, {str(now): now})
+            pipe.expire(key, window_seconds)
+            results = pipe.execute()
+            current_count = results[1]
+            return current_count >= max_requests
+        except Exception as e:
+            logger.warning("RateLimitStore: Redis error (%s), falling back to in-memory", e)
+            return self._is_rate_limited_memory(key, max_requests, window_seconds)
+
+    def _is_rate_limited_memory(self, key: str, max_requests: int, window_seconds: int) -> bool:
+        """In-memory sliding window (per-worker only)."""
         self._periodic_cleanup(window_seconds)
 
         now = time.time()
@@ -69,6 +115,13 @@ class RateLimitStore:
     def reset_for_testing(self) -> None:
         """Clear all rate limit state. Call from test fixtures between tests."""
         self._requests.clear()
+        if self._redis:
+            try:
+                # Only flush rate: keys, not the entire Redis DB
+                for key in self._redis.scan_iter("rate:*"):
+                    self._redis.delete(key)
+            except Exception:
+                pass
 
 
 rate_limit_store = RateLimitStore()

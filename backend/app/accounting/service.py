@@ -76,9 +76,19 @@ async def calculate_settlement_for_trips(
         elif pay_type == PayRateType.fixed_per_load.value:
             trip_earning = rate.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         elif pay_type == PayRateType.hourly.value:
-            trip_earning = (rate * Decimal("8")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            # Audit fix #15: Hourly pay requires actual hours worked (not yet tracked)
+            raise HTTPException(
+                status_code=400,
+                detail="Hourly pay settlement requires actual hours worked data. "
+                       "This pay type is not yet supported for automated settlement generation.",
+            )
         elif pay_type == PayRateType.salary.value:
-            trip_earning = (rate / Decimal("52")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            # Audit fix #15: Salary requires payroll configuration (not yet implemented)
+            raise HTTPException(
+                status_code=400,
+                detail="Salary-based settlement requires payroll configuration. "
+                       "This pay type is not yet supported for automated settlement generation.",
+            )
         else:
             trip_earning = Decimal("0.00")
 
@@ -142,6 +152,24 @@ class AccountingService:
             raise HTTPException(
                 status_code=400,
                 detail="Driver has no pay rate configured. Set pay_rate_type and pay_rate_value first.",
+            )
+
+        # Audit fix #9: Guard against duplicate settlements for same driver + period
+        from app.models.accounting import DriverSettlement
+        from sqlalchemy import and_
+        existing_settlement = (await self.db.execute(
+            select(DriverSettlement).where(and_(
+                DriverSettlement.driver_id == driver_id,
+                DriverSettlement.company_id == self.company_id,
+                DriverSettlement.period_start == data.period_start,
+                DriverSettlement.period_end == data.period_end,
+            ))
+        )).scalar_one_or_none()
+        if existing_settlement:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Settlement already exists for this driver and period "
+                       f"({data.period_start} to {data.period_end}): {existing_settlement.settlement_number}",
             )
 
         # Get delivered trips for this driver in the period
@@ -406,7 +434,12 @@ class AccountingService:
     # ═══════════════════════════════════════════════════════════════
 
     async def generate_invoice(self, load_id: UUID) -> InvoiceResponse:
-        """Generate an invoice record for a delivered/invoiced load."""
+        """Generate and persist an invoice record for a delivered/invoiced load.
+
+        Audit fix #13: Previously this method calculated invoice data but never
+        persisted it. Now creates Invoice + InvoiceBatch records in the database.
+        Idempotent — returns existing invoice if one already exists for this load.
+        """
         load = (await self.db.execute(
             select(Load)
             .where(Load.id == load_id)
@@ -420,12 +453,81 @@ class AccountingService:
         if not load:
             raise NotFoundError("Load not found")
 
+        if not load.broker_id:
+            raise HTTPException(400, "Load has no broker assigned — cannot generate invoice.")
+
+        # Idempotency: check if an invoice already exists for this load
+        from app.models.accounting import Invoice, InvoiceBatch, InvoiceBatchStatus
+        existing_invoice = (await self.db.execute(
+            select(Invoice)
+            .where(Invoice.load_id == load_id)
+            .where(Invoice.company_id == self.company_id)
+        )).scalar_one_or_none()
+
+        if existing_invoice:
+            # Return the existing invoice data
+            acc_total = sum(Decimal(str(a.amount)) for a in load.accessorials) if load.accessorials else Decimal("0")
+            base = Decimal(str(load.base_rate)) if load.base_rate else Decimal("0")
+            return InvoiceResponse(
+                id=str(existing_invoice.id),
+                load_id=str(load.id),
+                load_number=load.load_number,
+                broker_name=load.broker.name if load.broker else None,
+                base_rate=base,
+                accessorials_total=acc_total,
+                total_amount=existing_invoice.amount,
+                status=load.status.value if hasattr(load.status, 'value') else load.status,
+                created_at=existing_invoice.created_at,
+            )
+
         acc_total = sum(Decimal(str(a.amount)) for a in load.accessorials) if load.accessorials else Decimal("0")
         base = Decimal(str(load.base_rate)) if load.base_rate else Decimal("0")
         total = base + acc_total
 
+        # Get or create today's invoice batch
+        today = date.today()
+        batch_id_str = f"IB-{today.strftime('%Y%m%d')}"
+
+        batch = (await self.db.execute(
+            select(InvoiceBatch)
+            .where(InvoiceBatch.company_id == self.company_id)
+            .where(InvoiceBatch.batch_id == batch_id_str)
+        )).scalar_one_or_none()
+
+        if not batch:
+            batch = InvoiceBatch(
+                company_id=self.company_id,
+                batch_id=batch_id_str,
+                status=InvoiceBatchStatus.unposted,
+                total_amount=Decimal("0"),
+                invoice_count=0,
+            )
+            self.db.add(batch)
+            await self.db.flush()
+
+        # Generate invoice number
+        inv_count = batch.invoice_count + 1
+        invoice_number = f"INV-{today.strftime('%y%m')}-{inv_count:04d}"
+
+        # Create and persist the invoice record
+        invoice = Invoice(
+            company_id=self.company_id,
+            invoice_number=invoice_number,
+            batch_id=batch.id,
+            load_id=load.id,
+            customer_id=load.broker_id,
+            amount=total,
+        )
+        self.db.add(invoice)
+
+        # Update batch totals
+        batch.invoice_count = inv_count
+        batch.total_amount = batch.total_amount + total
+
+        await self.db.commit()
+
         return InvoiceResponse(
-            id=str(load.id),
+            id=str(invoice.id),
             load_id=str(load.id),
             load_number=load.load_number,
             broker_name=load.broker.name if load.broker else None,
@@ -433,7 +535,7 @@ class AccountingService:
             accessorials_total=acc_total,
             total_amount=total,
             status=load.status.value if hasattr(load.status, 'value') else load.status,
-            created_at=load.created_at,
+            created_at=invoice.created_at or datetime.now(timezone.utc),
         )
 
     # ── Pay Calculation Helper (sync, no DB required) ─────────────

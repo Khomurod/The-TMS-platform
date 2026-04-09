@@ -19,7 +19,7 @@ from app.core.security_middleware import (
 
 # ── Domain Routers ───────────────────────────────────────────────
 from app.auth.router import router as auth_router
-from app.users.router import router as users_router
+# NOTE: User management endpoints are in settings_mod, not users/ (dead module removed)
 from app.fleet.router import router as fleet_router
 from app.drivers.router import router as drivers_router
 from app.loads.router import router as loads_router
@@ -41,7 +41,21 @@ app = FastAPI(
     openapi_url=None if settings.is_production else "/openapi.json",
 )
 
-# ── CORS Middleware ──────────────────────────────────────────────
+# ── Middleware Stack ─────────────────────────────────────────────
+# NOTE: Starlette processes middleware in LIFO (last-added-runs-first)
+# order. CORSMiddleware MUST be added LAST so it wraps everything,
+# ensuring CORS headers appear on ALL responses — including 401s
+# from TenantMiddleware and 429s from RateLimitMiddleware.
+
+# 3. Tenant runs innermost — extracts company_id from JWT
+app.add_middleware(TenantMiddleware)
+
+# 2. Security — rate limiting + HTTPS redirect
+app.add_middleware(RateLimitMiddleware)
+if settings.is_production:
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+# 1. CORS runs outermost — wraps ALL responses with CORS headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.effective_cors_origins,
@@ -50,19 +64,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-# ── Security Middleware (pure ASGI) ──────────────────────────────
-app.add_middleware(RateLimitMiddleware)
-if settings.is_production:
-    app.add_middleware(HTTPSRedirectMiddleware)
-
-# ── Tenant Isolation Middleware ──────────────────────────────────
-app.add_middleware(TenantMiddleware)
-
 # ── Register All Domain Routers under /api/v1/ ──────────────────
 API_V1_PREFIX = "/api/v1"
 
 app.include_router(auth_router, prefix=API_V1_PREFIX)
-app.include_router(users_router, prefix=API_V1_PREFIX)
+# users_router removed — was an empty stub, user management lives in settings_router
 app.include_router(fleet_router, prefix=API_V1_PREFIX)
 app.include_router(drivers_router, prefix=API_V1_PREFIX)
 app.include_router(loads_router, prefix=API_V1_PREFIX)

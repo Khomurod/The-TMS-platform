@@ -96,10 +96,9 @@ class BrokerRepository:
         return broker
 
     async def update(self, broker: Broker, **kwargs) -> Broker:
-        """Update broker fields."""
+        """Update broker fields (kwargs pre-filtered by service via exclude_unset)."""
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(broker, key, value)
+            setattr(broker, key, value)
         await self.db.commit()
         await self.db.refresh(broker)
         return broker

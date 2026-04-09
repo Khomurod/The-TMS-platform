@@ -28,12 +28,12 @@ ENV PORT=8000
 
 EXPOSE 8000
 
-# Run Alembic migrations then seed DB, then start gunicorn.
+# Run Alembic migrations then start gunicorn.
 # CRITICAL: migrations must succeed. If they fail, crash immediately
 # so Cloud Run rejects this revision instead of serving broken code.
+# NOTE: Seed script should be run as a one-time Cloud Run Job, not on every boot.
 CMD sh -c "\
     python -m alembic upgrade head && \
-    python -m app.seed && \
     gunicorn app.main:app \
       --worker-class uvicorn.workers.UvicornWorker \
       --workers ${WORKERS:-2} \

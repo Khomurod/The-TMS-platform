@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/stores/authStore";
 import Sidebar from "@/components/layout/Sidebar";
@@ -18,20 +18,23 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading, hydrate } = useAuthStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    hydrate();
+    hydrate().then(() => setIsHydrated(true));
   }, [hydrate]);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Only redirect AFTER hydration is complete — prevents race condition
+    // where isAuthenticated is false simply because hydrate() hasn't finished yet
+    if (isHydrated && !isLoading && !isAuthenticated) {
       router.replace("/login");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isHydrated, isLoading, isAuthenticated, router]);
 
   // Show loading skeleton while hydrating
-  if (isLoading) {
+  if (!isHydrated || isLoading) {
     return (
       <div className="flex h-screen">
         <div className="w-[240px] bg-card border-r border-border">

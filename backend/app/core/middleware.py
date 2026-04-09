@@ -65,16 +65,28 @@ class TenantMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Extract Bearer token from headers
+        # Extract Bearer token from headers, or fall back to httpOnly cookie
+        # Audit fix #7: Support both Bearer header and cookie-based auth
         headers = dict(scope.get("headers", []))
         auth_header = headers.get(b"authorization", b"").decode("utf-8", errors="ignore")
 
-        if not auth_header.startswith("Bearer "):
+        token = None
+        if auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+        else:
+            # Fall back to httpOnly cookie (audit fix #7)
+            cookie_header = headers.get(b"cookie", b"").decode("utf-8", errors="ignore")
+            for part in cookie_header.split(";"):
+                part = part.strip()
+                if part.startswith("access_token="):
+                    token = part.split("=", 1)[1]
+                    break
+
+        if not token:
             # Return 401 JSON response
             await self._send_json(send, 401, {"detail": "Missing or invalid Authorization header"})
             return
 
-        token = auth_header.replace("Bearer ", "")
         try:
             payload = decode_token(token)
         except (InvalidTokenError, Exception):
@@ -90,6 +102,12 @@ class TenantMiddleware:
         user_id = payload.get("sub")
         company_id = payload.get("company_id")
         role = payload.get("role")
+
+        # Audit fix #14: Store decoded payload on scope so get_verified_token
+        # can reuse it instead of decoding the JWT a second time.
+        if "state" not in scope:
+            scope["state"] = {}
+        scope["state"]["jwt_payload"] = payload
 
         user_id_token = current_user_id.set(UUID(user_id) if user_id else None)
         company_id_token = current_company_id.set(UUID(company_id) if company_id else None)
