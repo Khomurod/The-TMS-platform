@@ -10,7 +10,7 @@ import { useAdminCompanies, type AdminCompany } from '@/lib/hooks/admin';
 import { toggleCompanyStatus, impersonateCompany } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,

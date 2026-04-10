@@ -10,9 +10,7 @@ import ComplianceAlert from '@/components/dashboard/ComplianceAlert';
 import RecentEvents from '@/components/dashboard/RecentEvents';
 import { useKpis } from '@/lib/hooks/dashboard';
 export default function DashboardPage() {
-  const { data: kpis, isLoading, error } = useKpis();
-
-  const loading = isLoading || !kpis;
+  const { data: kpis } = useKpis();
 
   // Format a number with space-separated thousands (e.g. 125 750)
   const fmt = (n: number | undefined): string => {

@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Upload, Download, Search, FolderOpen, Clock, Shield } from 'lucide-react';
+import { FileText, Upload, Search, FolderOpen, Clock, Shield } from 'lucide-react';
 
 const DOCUMENT_CATEGORIES = [
   { key: 'cdl', label: 'CDL Licenses', icon: Shield, count: 0 },

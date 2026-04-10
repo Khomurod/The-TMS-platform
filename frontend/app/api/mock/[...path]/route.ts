@@ -149,7 +149,8 @@ export async function GET(req: NextRequest) {
   // GET /auth/me
   if (path === '/auth/me') {
     if (!user) return NextResponse.json({ detail: 'Not authenticated' }, { status: 401 });
-    const { password, ...safe } = user;
+    const safe = { ...user };
+    delete (safe as Record<string, unknown>).password;
     return NextResponse.json(safe);
   }
 
@@ -330,7 +331,11 @@ export async function GET(req: NextRequest) {
 
   // GET /settings/users
   if (path === '/settings/users') {
-    const users = USERS.filter((u) => u.company_id === '00000000-0000-0000-0000-000000000010').map(({ password, ...u }) => u);
+    const users = USERS.filter((u) => u.company_id === '00000000-0000-0000-0000-000000000010').map((u) => {
+      const safe = { ...u };
+      delete (safe as Record<string, unknown>).password;
+      return safe;
+    });
     return NextResponse.json({ items: users, total: users.length });
   }
 
@@ -371,10 +376,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ detail: 'Not found' }, { status: 404 });
 }
 
-export async function PUT(req: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function PUT(_req: NextRequest) {
   return NextResponse.json({ message: 'Updated successfully' });
 }
 
-export async function PATCH(req: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function PATCH(_req: NextRequest) {
   return NextResponse.json({ message: 'Updated', is_active: true });
 }

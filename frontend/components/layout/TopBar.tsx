@@ -36,7 +36,7 @@ export default function TopBar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { theme, setTheme } = useTheme();
-  const { sidebarCollapsed, setSidebarCollapsed, toggleSidebar } = useUIStore();
+  const { toggleSidebar } = useUIStore();
 
   const initials = user
     ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`
