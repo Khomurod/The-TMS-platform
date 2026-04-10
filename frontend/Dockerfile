@@ -14,6 +14,9 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL=/api/mock
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+# Ensure public/ exists even if Git didn't track the empty dir
+RUN mkdir -p /app/public
+
 # Build the Next.js app
 RUN npm run build
 
