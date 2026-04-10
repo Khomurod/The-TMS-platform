@@ -1,4 +1,4 @@
-"""Application configuration via pydantic-settings."""
+"""Application configuration via pydantic-settings.  # v2.1 — concurrency hardening"""
 
 from typing import List
 
