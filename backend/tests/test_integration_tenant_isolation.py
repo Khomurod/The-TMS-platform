@@ -104,8 +104,8 @@ class TestTenantIsolation:
         if not load_id:
             pytest.skip("Load creation not available")
 
-        # Attempt to advance status as Tenant A
-        r = await client.post(
+        # Attempt to advance status as Tenant A (endpoint is PATCH, not POST)
+        r = await client.patch(
             f"/api/v1/loads/{load_id}/status",
             headers=await auth_headers(token_a),
             json={"status": "booked"},

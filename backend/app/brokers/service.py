@@ -51,7 +51,15 @@ class BrokerService:
 
     async def create_broker(self, data: BrokerCreate) -> BrokerResponse:
         """Create a new broker."""
-        broker = await self.repo.create(**data.model_dump())
+        from sqlalchemy.exc import IntegrityError
+        from fastapi import HTTPException
+        try:
+            broker = await self.repo.create(**data.model_dump())
+        except IntegrityError:
+            raise HTTPException(
+                status_code=409,
+                detail=f"A broker named '{data.name}' already exists.",
+            )
         return BrokerResponse.model_validate(broker)
 
     async def update_broker(

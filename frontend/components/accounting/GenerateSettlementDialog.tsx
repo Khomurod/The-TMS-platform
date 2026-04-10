@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { generateSettlement, getDrivers } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 interface DriverOption {
   id: string;
@@ -72,7 +73,7 @@ export default function GenerateSettlementDialog() {
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to generate settlement');
+      setError(extractApiError(err, 'Failed to generate settlement'));
     } finally {
       setSubmitting(false);
     }

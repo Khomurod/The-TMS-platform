@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { createLoad, searchBrokers } from '@/lib/api';
 import { Plus, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 interface BrokerOption {
   id: string;
@@ -209,8 +210,7 @@ export default function CreateLoadDialog() {
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create load';
-      setError(msg);
+      setError(extractApiError(err, 'Failed to create load'));
     } finally {
       setSubmitting(false);
     }

@@ -1,14 +1,16 @@
 """Loads service — business logic including state machine, Trip creation, dispatch, and board tabs.
 
 Fixes Applied:
-  - HIGH-3: broker_id properly converted from str to UUID
+  - HIGH-3: broker_id conversion consolidated into safe_update_dict()
   - HIGH-4: LoadUpdate uses safe_update_dict() for explicit allowlisting
   - HIGH-5: dispatch_load() now follows state machine transitions properly
   - HIGH-6: Trip assignment query now includes company_id filter
   - Cancelled status now releases resources (driver/equipment)
   - Added structured logging for all state transitions
+  - MEDIUM-3: inspect.signature() cached at module load time
 """
 
+import inspect
 import logging
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -107,6 +109,25 @@ TRANSITION_SIDE_EFFECTS: dict[tuple[str, str], list[str]] = {
 }
 
 
+# ── Pre-computed side-effect signature cache (audit fix MEDIUM-3) ─
+# Avoids calling inspect.signature() on every state transition.
+# Built once at module load time.
+_EFFECTS_ACCEPTING_TARGET_STATUS: set[str] = set()
+
+
+def _build_effect_signature_cache() -> None:
+    """Inspect all side-effect methods on LoadService to determine which accept target_status."""
+    for effects_list in TRANSITION_SIDE_EFFECTS.values():
+        for effect_name in effects_list:
+            if effect_name in _EFFECTS_ACCEPTING_TARGET_STATUS:
+                continue
+            method = getattr(LoadService, effect_name, None)
+            if method is not None:
+                sig = inspect.signature(method)
+                if 'target_status' in sig.parameters:
+                    _EFFECTS_ACCEPTING_TARGET_STATUS.add(effect_name)
+
+
 class LoadService:
     """Load business logic — CRUD, state machine, dispatch, Trip management, board tabs."""
 
@@ -203,7 +224,15 @@ class LoadService:
         # Prepare kwargs for Load model
         load_kwargs = {}
         if data.broker_id:
-            load_kwargs["broker_id"] = UUID(data.broker_id)  # Proper UUID conversion
+            broker_uuid = UUID(data.broker_id)
+            # Validate broker exists in this tenant
+            from app.models.broker import Broker
+            broker = (await self.db.execute(
+                select(Broker).where(Broker.id == broker_uuid).where(Broker.company_id == self.company_id)
+            )).scalar_one_or_none()
+            if not broker:
+                raise NotFoundError("Broker not found")
+            load_kwargs["broker_id"] = broker_uuid
 
         load_kwargs["broker_load_id"] = data.broker_load_id
         load_kwargs["contact_agent"] = data.contact_agent
@@ -236,10 +265,8 @@ class LoadService:
                 detail="Load is locked (invoiced). Financial fields cannot be edited.",
             )
 
-        # HIGH-3: Handle broker_id conversion separately
-        update_data = data.safe_update_dict()  # HIGH-4: Only allowed fields
-        if data.broker_id is not None:
-            update_data["broker_id"] = UUID(data.broker_id)
+        # safe_update_dict() handles broker_id str→UUID conversion + allowlisting
+        update_data = data.safe_update_dict()
 
         updated = await self.repo.update(load, **update_data)
         logger.info("Load %s updated, fields: %s", load.load_number, list(update_data.keys()))
@@ -262,7 +289,20 @@ class LoadService:
     # ══════════════════════════════════════════════════════════════
 
     async def advance_status(self, load_id: UUID, target_status: str) -> LoadResponse:
-        """Enforce valid transitions, execute side-effects, and update status."""
+        """Enforce valid transitions, execute side-effects, and update status.
+
+        Uses SELECT ... FOR UPDATE to prevent concurrent status races.
+        """
+        # Use advisory lock to serialize concurrent status transitions
+        from sqlalchemy import text as sa_text
+        lock_key = load_id.int % (2**31 - 1)
+        try:
+            dialect = self.db.bind.dialect.name if self.db.bind else "unknown"
+        except Exception:
+            dialect = "unknown"
+        if dialect == "postgresql":
+            await self.db.execute(sa_text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
         load = await self.repo.get_by_id(load_id)
         if not load:
             raise NotFoundError("Load not found")
@@ -286,10 +326,8 @@ class LoadService:
         if side_effect_key in TRANSITION_SIDE_EFFECTS:
             for effect_name in TRANSITION_SIDE_EFFECTS[side_effect_key]:
                 effect_fn = getattr(self, effect_name)
-                # Pass target_status for effects that need to know the destination
-                import inspect
-                sig = inspect.signature(effect_fn)
-                if 'target_status' in sig.parameters:
+                # Use pre-computed cache instead of inspect.signature() per call
+                if effect_name in _EFFECTS_ACCEPTING_TARGET_STATUS:
                     await effect_fn(load, target_status=target)
                 else:
                     await effect_fn(load)
@@ -551,9 +589,10 @@ class LoadService:
         truck_id = UUID(data.truck_id)
         trailer_id = UUID(data.trailer_id) if data.trailer_id else None
 
-        # 1. Validate driver (with tenant isolation)
+        # 1. Validate driver (with tenant isolation + row lock for concurrency)
         driver = (await self.db.execute(
             select(Driver).where(Driver.id == driver_id).where(Driver.company_id == self.company_id)
+            .with_for_update()
         )).scalar_one_or_none()
         if not driver:
             raise NotFoundError("Driver not found")
@@ -562,9 +601,10 @@ class LoadService:
         if driver.status != DriverStatus.available:
             raise HTTPException(409, f"Driver is not available (status: {driver.status.value}).")
 
-        # 2. Validate truck (with tenant isolation)
+        # 2. Validate truck (with tenant isolation + row lock for concurrency)
         truck = (await self.db.execute(
             select(Truck).where(Truck.id == truck_id).where(Truck.company_id == self.company_id)
+            .with_for_update()
         )).scalar_one_or_none()
         if not truck:
             raise NotFoundError("Truck not found")
@@ -605,8 +645,9 @@ class LoadService:
         # booked → assigned (side effect: _effect_create_trip)
         if load.status == LoadStatus.booked:
             await self._advance_status_no_commit(load, LoadStatus.assigned)
-            # Flush so trip is visible, then inject driver/truck onto the new trip
+            # Flush so trip is visible, then refresh to re-populate the trips relationship
             await self.db.flush()
+            await self.db.refresh(load, ["trips"])
 
         # Assign driver/truck to the primary trip
         if load.trips:
@@ -616,7 +657,7 @@ class LoadService:
             primary_trip.trailer_id = trailer_id
             await self.db.flush()
         else:
-            raise HTTPException(500, "Trip was not created during dispatch — internal error.")
+            raise HTTPException(500, "Trip was not created during dispatch - internal error.")
 
         # assigned → dispatched (side effects: compliance check, set driver on trip, set equipment in use)
         # Note: compliance + equipment side effects inside advance_status use the trip data we just set.
@@ -651,10 +692,8 @@ class LoadService:
         if side_effect_key in TRANSITION_SIDE_EFFECTS:
             for effect_name in TRANSITION_SIDE_EFFECTS[side_effect_key]:
                 effect_fn = getattr(self, effect_name)
-                # Pass target_status for effects that need to know the destination
-                import inspect
-                sig = inspect.signature(effect_fn)
-                if 'target_status' in sig.parameters:
+                # Use pre-computed cache instead of inspect.signature() per call
+                if effect_name in _EFFECTS_ACCEPTING_TARGET_STATUS:
                     await effect_fn(load, target_status=target)
                 else:
                     await effect_fn(load)
@@ -763,3 +802,7 @@ class LoadService:
             items=[self._to_list_item(load) for load in items],
             total=total, page=page, page_size=page_size,
         )
+
+
+# Build the signature cache now that LoadService is fully defined
+_build_effect_signature_cache()

@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { createDriver } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 const EMPLOYMENT_TYPES = [
   { value: 'company_w2', label: 'Company (W-2)' },
@@ -90,7 +91,7 @@ export default function CreateDriverDialog() {
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create driver');
+      setError(extractApiError(err, 'Failed to create driver'));
     } finally {
       setSubmitting(false);
     }

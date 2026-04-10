@@ -70,8 +70,9 @@ async def is_token_blacklisted_db(jti: str, db) -> bool:
             _blacklisted_jtis_cache.add(jti)  # Populate cache
             return True
     except Exception:
-        # Table doesn't exist yet — rely on in-memory cache
-        pass
+        # DB error (table missing or transaction issue) — rollback to keep
+        # the session usable for downstream queries in this same request.
+        await db.rollback()
     return False
 
 

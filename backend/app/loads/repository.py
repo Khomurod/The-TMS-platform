@@ -103,11 +103,27 @@ class LoadRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
+    async def _advisory_lock(self, lock_key: int) -> None:
+        """Acquire a PostgreSQL advisory lock for the current transaction.
+
+        Skips gracefully on non-PostgreSQL dialects (e.g. SQLite in tests)
+        so that integration tests can run without being skipped.
+
+        Audit fix MEDIUM-1: Enables tenant isolation tests to pass in CI.
+        """
+        try:
+            dialect = self.db.bind.dialect.name if self.db.bind else "unknown"
+        except Exception:
+            dialect = "unknown"
+
+        if dialect == "postgresql":
+            await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
     async def get_next_load_number(self) -> str:
         """Generate next load number using database sequence (race-condition safe).
 
-        Uses SELECT ... FOR UPDATE on a MAX query to prevent duplicate numbers
-        under concurrent inserts.
+        Uses pg_advisory_xact_lock on PostgreSQL to prevent duplicate numbers
+        under concurrent inserts. Falls back gracefully on other dialects.
         """
         # Count all loads ever (including soft-deleted) to prevent reuse of numbers
         count_query = (
@@ -119,7 +135,7 @@ class LoadRepository:
         # CRC32 is used instead of Python hash() because hash() is randomized
         # per-process (PYTHONHASHSEED), making it non-deterministic across workers.
         lock_key = binascii.crc32(str(self.company_id).encode()) & 0x7FFFFFFF
-        await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+        await self._advisory_lock(lock_key)
 
         count = (await self.db.execute(count_query)).scalar() or 0
         return f"LD-{count + 1:05d}"
@@ -128,7 +144,7 @@ class LoadRepository:
         """Generate next shipment ID using deterministic advisory lock (race-condition safe)."""
         # Offset by 1 from load_number lock so the two operations don't serialize on each other
         lock_key = (binascii.crc32(str(self.company_id).encode()) + 1) & 0x7FFFFFFF
-        await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+        await self._advisory_lock(lock_key)
 
         count_query = (
             select(func.count())

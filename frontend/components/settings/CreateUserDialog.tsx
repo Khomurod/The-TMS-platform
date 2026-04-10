@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createUser } from '@/lib/api';
 import { UserPlus, Loader2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 const ROLES = [
   { value: 'dispatcher', label: 'Dispatcher' },
@@ -65,7 +66,7 @@ export default function CreateUserDialog() {
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
+      setError(extractApiError(err, 'Failed to create user'));
     } finally {
       setSubmitting(false);
     }

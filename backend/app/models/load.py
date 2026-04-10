@@ -44,6 +44,7 @@ class Load(Base, TenantMixin):
     __tablename__ = "loads"
     __table_args__ = (
         UniqueConstraint('company_id', 'load_number', name='uq_loads_company_number'),
+        UniqueConstraint('company_id', 'shipment_id', name='uq_loads_company_shipment'),
     )
 
     # ── Load Identification ──────────────────────────────────────
@@ -51,7 +52,7 @@ class Load(Base, TenantMixin):
         String(50), nullable=False  # Auto-generated, unique per company
     )
     shipment_id: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, unique=True  # External-facing ID, e.g. 'SH-000123'
+        String(20), nullable=True  # External-facing ID, e.g. 'SH-000123'
     )
     broker_load_id: Mapped[str | None] = mapped_column(
         String(100), nullable=True  # Broker's reference number from Rate Con

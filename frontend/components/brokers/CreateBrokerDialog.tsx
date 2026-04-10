@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createBroker } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 export default function CreateBrokerDialog() {
   const queryClient = useQueryClient();
@@ -62,7 +63,7 @@ export default function CreateBrokerDialog() {
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create broker');
+      setError(extractApiError(err, 'Failed to create broker'));
     } finally {
       setSubmitting(false);
     }

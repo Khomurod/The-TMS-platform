@@ -110,15 +110,23 @@ class LoadUpdate(BaseModel):
     notes: Optional[str] = Field(None, max_length=5000)
 
     # Explicit allowlist of fields that can be set via update
+    # broker_id is included but converted from str → UUID inside safe_update_dict()
     _ALLOWED_UPDATE_FIELDS = frozenset({
-        "broker_load_id", "contact_agent", "base_rate", "total_miles", "notes",
+        "broker_id", "broker_load_id", "contact_agent", "base_rate", "total_miles", "notes",
     })
 
     def safe_update_dict(self) -> dict:
-        """Return only the explicitly allowed fields, excluding unset ones."""
+        """Return only the explicitly allowed fields, excluding unset ones.
+
+        Handles broker_id str → UUID conversion inline so the service layer
+        doesn't need special-case code (audit fix MEDIUM-2).
+        """
+        from uuid import UUID as _UUID
         data = self.model_dump(exclude_unset=True)
-        # broker_id needs special handling (string → UUID conversion)
         safe = {k: v for k, v in data.items() if k in self._ALLOWED_UPDATE_FIELDS}
+        # Convert broker_id from string to UUID if present
+        if "broker_id" in safe and safe["broker_id"] is not None:
+            safe["broker_id"] = _UUID(safe["broker_id"])
         return safe
 
 

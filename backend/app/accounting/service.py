@@ -121,6 +121,8 @@ async def calculate_settlement_for_trips(
         "earning": total_earning,
         "deductions": total_deductions,
         "bonus": Decimal("0.00"),
+        # NOTE: net_pay here is a subtotal (earning - deductions only).
+        # The caller adds accessorials and bonus before persisting.
         "net_pay": net_pay,
         "driver_gross": driver_gross,
         "trip_count": len(trips),
@@ -155,8 +157,18 @@ class AccountingService:
             )
 
         # Audit fix #9: Guard against duplicate settlements for same driver + period
+        # Use advisory lock keyed on driver UUID to serialize settlement generation
         from app.models.accounting import DriverSettlement
-        from sqlalchemy import and_
+        from sqlalchemy import and_, text
+        # driver_id.int is deterministic (hash() is randomized per process)
+        lock_key = driver_id.int % (2**31 - 1)
+        try:
+            dialect = self.db.bind.dialect.name if self.db.bind else "unknown"
+        except Exception:
+            dialect = "unknown"
+        if dialect == "postgresql":
+            await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
         existing_settlement = (await self.db.execute(
             select(DriverSettlement).where(and_(
                 DriverSettlement.driver_id == driver_id,
@@ -218,15 +230,15 @@ class AccountingService:
             trip = detail["trip"]
             load = detail["load"]
             stops = sorted(load.stops, key=lambda s: s.stop_sequence) if load.stops else []
-            origin = stops[0].city if stops else "—"
-            dest = stops[-1].city if stops else "—"
+            origin = stops[0].city if stops else "-"
+            dest = stops[-1].city if stops else "-"
 
             await self.repo.add_line_item(
                 settlement_id=settlement.id,
                 load_id=load.id,
                 trip_id=trip.id,
                 type="load_pay",
-                description=f"{load.load_number} ({origin} → {dest}) — {trip.loaded_miles or 0} mi",
+                description=f"{load.load_number} ({origin} -> {dest}) - {trip.loaded_miles or 0} mi",
                 amount=detail["earning"],
             )
 
@@ -239,7 +251,7 @@ class AccountingService:
                         load_id=load.id,
                         trip_id=trip.id,
                         type="accessorial",
-                        description=f"{acc.type.replace('_', ' ').title()} — {load.load_number}",
+                        description=f"{acc.type.replace('_', ' ').title()} - {load.load_number}",
                         amount=acc_amount,
                     )
 

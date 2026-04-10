@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { createTenant } from '@/lib/api';
 import { Plus, Loader2, Building2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 export default function CreateTenantDialog() {
   const queryClient = useQueryClient();
@@ -67,7 +68,7 @@ export default function CreateTenantDialog() {
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create tenant');
+      setError(extractApiError(err, 'Failed to create tenant'));
     } finally {
       setSubmitting(false);
     }

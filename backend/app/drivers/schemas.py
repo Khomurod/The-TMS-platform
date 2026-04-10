@@ -3,8 +3,12 @@
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
+
+# Valid enum values matching DB constraints
+EmploymentTypeStr = Literal["company_w2", "owner_operator_1099", "lease_operator"]
+PayRateTypeStr = Literal["cpm", "percentage", "fixed_per_load", "hourly", "salary"]
 
 
 # ── Request Schemas ──────────────────────────────────────────────
@@ -16,13 +20,13 @@ class DriverCreate(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
-    employment_type: str  # company_w2 | owner_operator_1099 | lease_operator
+    employment_type: EmploymentTypeStr  # company_w2 | owner_operator_1099 | lease_operator
     cdl_number: Optional[str] = None
     cdl_class: Optional[str] = None
     cdl_expiry_date: Optional[date] = None
     medical_card_expiry_date: Optional[date] = None
     experience_years: Optional[int] = None
-    pay_rate_type: Optional[str] = None  # cpm | percentage | fixed_per_load | hourly | salary
+    pay_rate_type: Optional[PayRateTypeStr] = None  # cpm | percentage | fixed_per_load | hourly | salary
     pay_rate_value: Optional[Decimal] = None
     payment_tariff_type: Optional[str] = None
     payment_tariff_value: Optional[Decimal] = None
@@ -41,13 +45,13 @@ class DriverUpdate(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
-    employment_type: Optional[str] = None
+    employment_type: Optional[EmploymentTypeStr] = None
     cdl_number: Optional[str] = None
     cdl_class: Optional[str] = None
     cdl_expiry_date: Optional[date] = None
     medical_card_expiry_date: Optional[date] = None
     experience_years: Optional[int] = None
-    pay_rate_type: Optional[str] = None
+    pay_rate_type: Optional[PayRateTypeStr] = None
     pay_rate_value: Optional[Decimal] = None
     payment_tariff_type: Optional[str] = None
     payment_tariff_value: Optional[Decimal] = None

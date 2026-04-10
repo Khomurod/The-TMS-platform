@@ -26,6 +26,7 @@ import {
   getDriverCompliance,
 } from '@/lib/api';
 import { Loader2, Check, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 interface AvailableDriver {
   id: string;
@@ -152,8 +153,7 @@ export default function DispatchDialog({
       onOpenChange(false);
       reset();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Dispatch failed';
-      setError(msg);
+      setError(extractApiError(err, 'Dispatch failed'));
     } finally {
       setSubmitting(false);
     }

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createTruck, createTrailer } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
+import { extractApiError } from '@/lib/errors';
 
 const OWNERSHIP_TYPES = ['owned', 'financed', 'leased', 'rented'];
 const TRAILER_TYPES = ['dry_van', 'reefer', 'flatbed', 'step_deck', 'lowboy', 'tanker', 'other'];
@@ -81,7 +82,7 @@ export default function CreateEquipmentDialog({ type }: CreateEquipmentDialogPro
       reset();
       setOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : `Failed to create ${type}`);
+      setError(extractApiError(err, `Failed to create ${type}`));
     } finally {
       setSubmitting(false);
     }
