@@ -2,7 +2,7 @@
 #   Safehaul TMS — Backend Dockerfile (Cloud Run Ready)
 # ═══════════════════════════════════════════════════════════════════
 
-FROM python:3.13-slim AS base
+FROM python:3.12-slim AS base
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
