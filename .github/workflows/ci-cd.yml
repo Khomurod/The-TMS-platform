@@ -9,7 +9,7 @@
 #     GCP_SA_KEY        — Service account JSON key
 #     GCP_PROJECT_ID    — tms-service-491512
 #     API_URL           — https://kinetic-api-1065403267999.us-central1.run.app
-#     CORS_ORIGINS      — https://kinetic-frontend-1065403267999.us-central1.run.app
+#     CORS_ORIGINS      — ["https://kinetic-frontend-1065403267999.us-central1.run.app"]
 #     JWT_SECRET_KEY    — production JWT secret
 #     DATABASE_URL      — production postgres connection string
 #     GCS_BUCKET_NAME   — tms_bucket123
@@ -209,6 +209,37 @@ jobs:
         run: |
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }}
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:latest
+
+      - name: Validate deploy env format
+        env:
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          value = (os.getenv("CORS_ORIGINS") or "").strip()
+          if not value:
+              print("CORS_ORIGINS is empty")
+              sys.exit(1)
+
+          try:
+              if value.startswith("["):
+                  parsed = json.loads(value)
+                  if not isinstance(parsed, list) or not parsed:
+                      raise ValueError("JSON value must be a non-empty array")
+              elif "," in value:
+                  parsed = [p.strip() for p in value.split(",") if p.strip()]
+                  if not parsed:
+                      raise ValueError("Comma-separated value has no valid URLs")
+              else:
+                  parsed = [value]
+              print(f"CORS_ORIGINS validated ({len(parsed)} value(s))")
+          except Exception as exc:
+              print(f"Invalid CORS_ORIGINS: {exc}")
+              sys.exit(1)
+          PY
 
       # ── Run DB migrations via ephemeral Cloud Run Job ──
       # This runs BEFORE the deploy so the schema is ready when the new revision starts.

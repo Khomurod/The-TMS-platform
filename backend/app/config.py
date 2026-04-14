@@ -1,8 +1,9 @@
-"""Application configuration via pydantic-settings.  # v2.1 — concurrency hardening"""
+"""Application configuration via pydantic-settings.  # v2.2 — env parsing hardening"""
 
+import json
 from typing import List
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +45,28 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "https://kinetic-frontend-1065403267999.us-central1.run.app",
     ]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value):
+        """Accept JSON array, comma-separated string, or single URL."""
+        if isinstance(value, list):
+            return value
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                parsed = json.loads(raw)
+                if not isinstance(parsed, list):
+                    raise ValueError("CORS_ORIGINS JSON must decode to a list")
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            if "," in raw:
+                return [part.strip() for part in raw.split(",") if part.strip()]
+            return [raw]
+        raise ValueError("Unsupported CORS_ORIGINS value type")
 
     @property
     def is_production(self) -> bool:
