@@ -1,6 +1,7 @@
 """Application configuration via pydantic-settings.  # v2.3 — env parsing hardening"""
 
 import json
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from typing import Annotated, List
 
 from pydantic import field_validator, model_validator
@@ -22,6 +23,37 @@ class Settings(BaseSettings):
 
     # ── Database ─────────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://Safehaul:Safehaul_dev_2024@localhost:5432/Safehaul_tms"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value):
+        """Normalize DB URLs to avoid hidden whitespace/socket path failures."""
+        if value is None:
+            return value
+        if not isinstance(value, str):
+            raise ValueError("DATABASE_URL must be a string")
+
+        raw = value.replace("\r", "").replace("\n", "").strip()
+        if not raw:
+            return raw
+
+        parsed = urlparse(raw)
+        query_items = parse_qsl(parsed.query, keep_blank_values=True)
+        if not query_items:
+            return raw
+
+        normalized_items = []
+        for key, item_value in query_items:
+            if key == "host":
+                host = item_value.strip()
+                if host.startswith("/cloudsql/"):
+                    host = "".join(host.split())
+                normalized_items.append((key, host))
+            else:
+                normalized_items.append((key, item_value))
+
+        normalized_query = urlencode(normalized_items, doseq=True)
+        return urlunparse(parsed._replace(query=normalized_query))
 
     # ── JWT Authentication ───────────────────────────────────────
     jwt_secret_key: str = "dev-secret-key-change-in-production"

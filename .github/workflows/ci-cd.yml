@@ -256,8 +256,55 @@ jobs:
         id: normalize_cloudsql
         run: |
           CLOUDSQL_INSTANCE_RAW="tms-service-491512:us-central1:safehaultms"
-          CLOUDSQL_INSTANCE="$(printf '%s' "$CLOUDSQL_INSTANCE_RAW" | tr -d '\r\n')"
+          CLOUDSQL_INSTANCE="$(printf '%s' "$CLOUDSQL_INSTANCE_RAW" | tr -d '\r\n' | xargs)"
           echo "cloudsql_instance=$CLOUDSQL_INSTANCE" >> "$GITHUB_OUTPUT"
+
+      - name: Validate DATABASE_URL secret format
+        run: |
+          python - <<'PY'
+          import re
+          import subprocess
+          import sys
+          from urllib.parse import parse_qsl, urlparse
+
+          secret = subprocess.check_output(
+              [
+                  "gcloud",
+                  "secrets",
+                  "versions",
+                  "access",
+                  "latest",
+                  "--secret",
+                  "DATABASE_URL",
+                  "--project",
+                  "${{ secrets.GCP_PROJECT_ID }}",
+              ],
+              text=True,
+          )
+
+          if secret != secret.strip():
+              print("DATABASE_URL has leading/trailing whitespace. Re-save the secret without extra spaces/newlines.")
+              sys.exit(1)
+
+          if "\r" in secret or "\n" in secret:
+              print("DATABASE_URL contains CR/LF characters. Re-save the secret as a single line.")
+              sys.exit(1)
+
+          parsed = urlparse(secret)
+          query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+          host = query.get("host", "")
+          if host and (host != host.strip() or any(ch.isspace() for ch in host)):
+              print("DATABASE_URL host query parameter contains whitespace. Fix Secret Manager value.")
+              sys.exit(1)
+
+          if host.startswith("/cloudsql/"):
+              instance = host[len("/cloudsql/") :]
+              if not re.fullmatch(r"[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+", instance):
+                  print("DATABASE_URL host Cloud SQL instance format is invalid.")
+                  sys.exit(1)
+
+          print("DATABASE_URL secret format validated.")
+          PY
 
       # ── Run DB migrations via ephemeral Cloud Run Job ──
       # This runs BEFORE the deploy so the schema is ready when the new revision starts.
