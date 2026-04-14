@@ -46,5 +46,5 @@ def test_database_url_normalizes_cloudsql_host_whitespace():
     )
     assert (
         s.database_url
-        == "postgresql+asyncpg://u:p@/db?host=%2Fcloudsql%2Ftms-service-491512%3Aus-central1%3Asafehaultms"
+        == "postgresql+asyncpg://u:p@/db?host=/cloudsql/tms-service-491512:us-central1:safehaultms"
     )

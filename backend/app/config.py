@@ -1,7 +1,6 @@
 """Application configuration via pydantic-settings.  # v2.3 — env parsing hardening"""
 
 import json
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from typing import Annotated, List
 
 from pydantic import field_validator, model_validator
@@ -37,23 +36,22 @@ class Settings(BaseSettings):
         if not raw:
             return raw
 
-        parsed = urlparse(raw)
-        query_items = parse_qsl(parsed.query, keep_blank_values=True)
-        if not query_items:
+        if "host=" not in raw:
             return raw
 
-        normalized_items = []
-        for key, item_value in query_items:
-            if key == "host":
-                host = item_value.strip()
-                if host.startswith("/cloudsql/"):
-                    host = "".join(host.split())
-                normalized_items.append((key, host))
-            else:
-                normalized_items.append((key, item_value))
+        head, tail = raw.split("host=", 1)
+        if "&" in tail:
+            host_value, rest = tail.split("&", 1)
+            suffix = "&" + rest
+        else:
+            host_value = tail
+            suffix = ""
 
-        normalized_query = urlencode(normalized_items, doseq=True)
-        return urlunparse(parsed._replace(query=normalized_query))
+        host_value = host_value.strip()
+        if host_value.startswith("/cloudsql/"):
+            host_value = "".join(host_value.split())
+
+        return f"{head}host={host_value}{suffix}"
 
     # ── JWT Authentication ───────────────────────────────────────
     jwt_secret_key: str = "dev-secret-key-change-in-production"
