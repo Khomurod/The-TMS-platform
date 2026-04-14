@@ -253,10 +253,11 @@ jobs:
           EOF
 
       - name: Normalize Cloud SQL connection name
+        id: normalize_cloudsql
         run: |
           CLOUDSQL_INSTANCE_RAW="tms-service-491512:us-central1:safehaultms"
           CLOUDSQL_INSTANCE="$(printf '%s' "$CLOUDSQL_INSTANCE_RAW" | tr -d '\r\n')"
-          echo "CLOUDSQL_INSTANCE=$CLOUDSQL_INSTANCE" >> "$GITHUB_ENV"
+          echo "cloudsql_instance=$CLOUDSQL_INSTANCE" >> "$GITHUB_OUTPUT"
 
       # ── Run DB migrations via ephemeral Cloud Run Job ──
       # This runs BEFORE the deploy so the schema is ready when the new revision starts.
@@ -269,7 +270,7 @@ jobs:
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
-            --set-cloudsql-instances "${{ env.CLOUDSQL_INSTANCE }}" \
+            --set-cloudsql-instances "${{ steps.normalize_cloudsql.outputs.cloudsql_instance }}" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
             --env-vars-file /tmp/backend-env.yaml \
             --command python \
@@ -297,7 +298,7 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --allow-unauthenticated \
             --no-traffic \
-            --set-cloudsql-instances "${{ env.CLOUDSQL_INSTANCE }}" \
+            --set-cloudsql-instances "${{ steps.normalize_cloudsql.outputs.cloudsql_instance }}" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
             --env-vars-file /tmp/backend-env.yaml \
             --quiet
