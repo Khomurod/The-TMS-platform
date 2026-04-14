@@ -1,10 +1,10 @@
-"""Application configuration via pydantic-settings.  # v2.2 — env parsing hardening"""
+"""Application configuration via pydantic-settings.  # v2.3 — env parsing hardening"""
 
 import json
-from typing import List
+from typing import Annotated, List
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
         return self.encryption_key or self.jwt_secret_key
 
     # ── CORS ─────────────────────────────────────────────────────
-    cors_origins: List[str] = [
+    cors_origins: Annotated[List[str], NoDecode] = [
         "http://localhost:3000",
         "https://kinetic-frontend-1065403267999.us-central1.run.app",
     ]
@@ -59,10 +59,17 @@ class Settings(BaseSettings):
             if not raw:
                 return []
             if raw.startswith("["):
-                parsed = json.loads(raw)
-                if not isinstance(parsed, list):
-                    raise ValueError("CORS_ORIGINS JSON must decode to a list")
-                return [str(item).strip() for item in parsed if str(item).strip()]
+                try:
+                    parsed = json.loads(raw)
+                    if not isinstance(parsed, list):
+                        raise ValueError("CORS_ORIGINS JSON must decode to a list")
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+                except json.JSONDecodeError:
+                    # Support accidental bracketed non-JSON format: [https://foo.example.com]
+                    compact = raw.strip("[]").strip()
+                    if not compact:
+                        return []
+                    return [part.strip() for part in compact.split(",") if part.strip()]
             if "," in raw:
                 return [part.strip() for part in raw.split(",") if part.strip()]
             return [raw]

@@ -241,6 +241,13 @@ jobs:
               sys.exit(1)
           PY
 
+      - name: Build backend env file
+        run: |
+          cat > /tmp/backend-env.yaml <<'EOF'
+          ENVIRONMENT: "production"
+          CORS_ORIGINS: '${{ secrets.CORS_ORIGINS }}'
+          EOF
+
       # ── Run DB migrations via ephemeral Cloud Run Job ──
       # This runs BEFORE the deploy so the schema is ready when the new revision starts.
       # Uses psycopg2 (sync driver) which supports Cloud SQL Unix sockets.
@@ -254,7 +261,7 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
-            --set-env-vars "ENVIRONMENT=production,CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
+            --env-vars-file /tmp/backend-env.yaml \
             --command python \
             --args="-m" --args="alembic" --args="upgrade" --args="head" \
             --max-retries 0 \
@@ -282,7 +289,7 @@ jobs:
             --no-traffic \
             --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
-            --set-env-vars "ENVIRONMENT=production,CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
+            --env-vars-file /tmp/backend-env.yaml \
             --quiet
 
       # Smoke test against the new revision's URL (gets a unique URL even with no traffic)
