@@ -34,6 +34,8 @@ class TrailerType(str, enum.Enum):
     flatbed = "flatbed"
     step_deck = "step_deck"
     tanker = "tanker"
+    lowboy = "lowboy"
+    other = "other"
 
 
 class Truck(Base, TenantMixin):

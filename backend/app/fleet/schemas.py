@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
 
+from app.models.fleet import TrailerType, OwnershipType, EquipmentStatus
+
 
 # ── Truck Schemas ────────────────────────────────────────────────
 
@@ -78,8 +80,8 @@ class TrailerCreate(BaseModel):
     model: Optional[str] = None
     vin: Optional[str] = None
     license_plate: Optional[str] = None
-    trailer_type: Optional[str] = None
-    ownership_type: Optional[str] = None
+    trailer_type: Optional[TrailerType] = None
+    ownership_type: Optional[OwnershipType] = None
     dot_inspection_date: Optional[date] = None
     dot_inspection_expiry: Optional[date] = None
 
@@ -91,11 +93,11 @@ class TrailerUpdate(BaseModel):
     model: Optional[str] = None
     vin: Optional[str] = None
     license_plate: Optional[str] = None
-    trailer_type: Optional[str] = None
-    ownership_type: Optional[str] = None
+    trailer_type: Optional[TrailerType] = None
+    ownership_type: Optional[OwnershipType] = None
     dot_inspection_date: Optional[date] = None
     dot_inspection_expiry: Optional[date] = None
-    status: Optional[str] = None
+    status: Optional[EquipmentStatus] = None
 
 
 class TrailerResponse(BaseModel):

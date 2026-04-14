@@ -70,13 +70,33 @@ class SettlementRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_next_settlement_number(self) -> str:
-        """Generate next settlement number using deterministic advisory lock (race-condition safe)."""
+    async def _advisory_lock(self, lock_key: int) -> None:
+        """Acquire a PostgreSQL advisory lock for the current transaction.
+
+        Skips gracefully on non-PostgreSQL dialects (e.g. SQLite in tests)
+        so that unit/integration tests can run without crashing.
+
+        Matches the pattern in loads/repository.py.
+        """
         from sqlalchemy import text
 
+        try:
+            dialect = self.db.bind.dialect.name if self.db.bind else "unknown"
+        except Exception:
+            dialect = "unknown"
+
+        if dialect == "postgresql":
+            await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+
+    async def get_next_settlement_number(self) -> str:
+        """Generate next settlement number using deterministic advisory lock (race-condition safe).
+
+        Uses pg_advisory_xact_lock on PostgreSQL to prevent duplicate numbers
+        under concurrent inserts. Falls back gracefully on other dialects.
+        """
         # Offset +100 to separate from load_number (+0) and shipment_id (+1) locks
         lock_key = (binascii.crc32(str(self.company_id).encode()) + 100) & 0x7FFFFFFF
-        await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+        await self._advisory_lock(lock_key)
 
         count_query = (
             select(func.count())
