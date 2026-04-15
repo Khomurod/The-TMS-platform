@@ -338,7 +338,7 @@ class TestLoadUpdateAllowlist:
     def test_allowed_fields_defined(self):
         """_ALLOWED_UPDATE_FIELDS must contain specific fields."""
         from app.loads.schemas import LoadUpdate
-        expected = frozenset({"broker_id", "broker_load_id", "contact_agent", "base_rate", "total_miles", "notes"})
+        expected = frozenset({"broker_id", "broker_load_id", "contact_agent", "base_rate", "total_miles", "stops", "accessorials", "notes"})
         # Pydantic stores private attrs as ModelPrivateAttr — access .default for the value
         actual = LoadUpdate._ALLOWED_UPDATE_FIELDS.default if hasattr(LoadUpdate._ALLOWED_UPDATE_FIELDS, 'default') else LoadUpdate._ALLOWED_UPDATE_FIELDS
         assert actual == expected
