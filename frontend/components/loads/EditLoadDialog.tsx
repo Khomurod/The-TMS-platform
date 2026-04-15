@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,21 +21,11 @@ interface EditLoadDialogProps {
 export default function EditLoadDialog({ open, onOpenChange, load }: EditLoadDialogProps) {
   const updateLoad = useUpdateLoad();
   const [error, setError] = useState('');
-  const [brokerLoadId, setBrokerLoadId] = useState('');
-  const [contactAgent, setContactAgent] = useState('');
-  const [baseRate, setBaseRate] = useState('');
-  const [totalMiles, setTotalMiles] = useState('');
-  const [notes, setNotes] = useState('');
-
-  useEffect(() => {
-    if (!open) return;
-    setError('');
-    setBrokerLoadId(load.broker_load_id ?? '');
-    setContactAgent(load.contact_agent ?? '');
-    setBaseRate(load.base_rate != null ? String(load.base_rate) : '');
-    setTotalMiles(load.total_miles != null ? String(load.total_miles) : '');
-    setNotes(load.notes ?? '');
-  }, [open, load]);
+  const [brokerLoadId, setBrokerLoadId] = useState(load.broker_load_id ?? '');
+  const [contactAgent, setContactAgent] = useState(load.contact_agent ?? '');
+  const [baseRate, setBaseRate] = useState(load.base_rate != null ? String(load.base_rate) : '');
+  const [totalMiles, setTotalMiles] = useState(load.total_miles != null ? String(load.total_miles) : '');
+  const [notes, setNotes] = useState(load.notes ?? '');
 
   const handleSubmit = async () => {
     setError('');

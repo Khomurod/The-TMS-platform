@@ -316,7 +316,7 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <EditLoadDialog open={editOpen} onOpenChange={setEditOpen} load={load} />
+      {editOpen && <EditLoadDialog open={editOpen} onOpenChange={setEditOpen} load={load} />}
     </div>
   );
 }
