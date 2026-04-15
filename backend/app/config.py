@@ -26,7 +26,13 @@ class Settings(BaseSettings):
     @field_validator("database_url", mode="before")
     @classmethod
     def normalize_database_url(cls, value):
-        """Normalize DB URLs to avoid hidden whitespace/socket path failures."""
+        """Normalize DB URLs to avoid hidden whitespace/socket path failures.
+
+        IMPORTANT STABILITY GUARD:
+        Do not remove or simplify this sanitizer unless there is a global
+        database URL format migration. CI/CD incidents were caused by hidden
+        CR/LF/trailing-space characters in Cloud SQL socket host values.
+        """
         if value is None:
             return value
         if not isinstance(value, str):

@@ -255,12 +255,19 @@ jobs:
       - name: Normalize Cloud SQL connection name
         id: normalize_cloudsql
         run: |
+          # DO NOT CHANGE casually:
+          # This normalization prevents invisible CR/LF/space characters from breaking
+          # Cloud SQL socket resolution in Cloud Run (`safehaultms\r` / trailing-space incidents).
+          # Only edit this block if there is a global infra naming format change.
           CLOUDSQL_INSTANCE_RAW="tms-service-491512:us-central1:safehaultms"
           CLOUDSQL_INSTANCE="$(printf '%s' "$CLOUDSQL_INSTANCE_RAW" | tr -d '\r\n' | xargs)"
           echo "cloudsql_instance=$CLOUDSQL_INSTANCE" >> "$GITHUB_OUTPUT"
 
       - name: Validate Cloud SQL instance format
         run: |
+          # DO NOT REMOVE:
+          # This is a fail-fast guard for malformed Cloud SQL instance strings before deploy.
+          # Removing/loosening this can reintroduce flaky deploy failures.
           python - <<'PY'
           import re
           import sys
@@ -317,6 +324,10 @@ jobs:
       # CRITICAL: --set-cloudsql-instances mounts the Cloud SQL Unix socket.
       - name: Deploy backend (no traffic)
         run: |
+          # DO NOT CHANGE deployment strategy:
+          # Keep `--no-traffic` + `--tag candidate`.
+          # We deploy safely first, validate health on the candidate revision, then switch traffic.
+          # Direct traffic-on-deploy caused broken revisions to become live previously.
           gcloud run deploy ${{ env.BACKEND_SERVICE }} \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.BACKEND_SERVICE }}:${{ github.sha }} \
             --platform managed \
@@ -333,6 +344,9 @@ jobs:
       # Smoke test against the new revision's URL (gets a unique URL even with no traffic)
       - name: Smoke test new revision
         run: |
+          # DO NOT switch this back to `revisions describe ... status.url`:
+          # no-traffic revisions may not expose that field reliably.
+          # Candidate-tag URL is deterministic and prevents false smoke-test failures.
           NEW_REV=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
             --region ${{ env.REGION }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
@@ -371,6 +385,8 @@ jobs:
       # Only if smoke test passes — switch 100% traffic to new revision
       - name: Switch traffic to new revision
         run: |
+          # DO NOT bypass this gate:
+          # traffic switch must happen only after candidate health check succeeds.
           if [ -z "$NEW_REV" ]; then
             echo "NEW_REV is empty; refusing to switch traffic."
             exit 1
