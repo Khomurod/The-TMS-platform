@@ -186,5 +186,14 @@ async def assign_trip(
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin", "dispatcher")),
 ):
-    """Assign driver + truck + trailer to an existing Trip."""
-    return await svc.assign_trip(load_id, trip_id, data.driver_id, data.truck_id, data.trailer_id)
+    """Assign assets and trip financials to an existing Trip."""
+    return await svc.assign_trip(
+        load_id,
+        trip_id,
+        data.driver_id,
+        data.truck_id,
+        data.trailer_id,
+        data.loaded_miles,
+        data.empty_miles,
+        data.driver_gross,
+    )

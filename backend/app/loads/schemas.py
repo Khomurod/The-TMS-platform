@@ -107,12 +107,14 @@ class LoadUpdate(BaseModel):
     contact_agent: Optional[str] = Field(None, max_length=255)
     base_rate: Optional[Decimal] = None
     total_miles: Optional[Decimal] = None
+    stops: Optional[list[StopCreate]] = None
+    accessorials: Optional[list[AccessorialCreate]] = None
     notes: Optional[str] = Field(None, max_length=5000)
 
     # Explicit allowlist of fields that can be set via update
     # broker_id is included but converted from str → UUID inside safe_update_dict()
     _ALLOWED_UPDATE_FIELDS = frozenset({
-        "broker_id", "broker_load_id", "contact_agent", "base_rate", "total_miles", "notes",
+        "broker_id", "broker_load_id", "contact_agent", "base_rate", "total_miles", "stops", "accessorials", "notes",
     })
 
     def safe_update_dict(self) -> dict:
@@ -124,6 +126,14 @@ class LoadUpdate(BaseModel):
         from uuid import UUID as _UUID
         data = self.model_dump(exclude_unset=True)
         safe = {k: v for k, v in data.items() if k in self._ALLOWED_UPDATE_FIELDS}
+        if "stops" in safe and safe["stops"] is not None:
+            safe["stops"] = [
+                s.model_dump() if hasattr(s, "model_dump") else s for s in safe["stops"]
+            ]
+        if "accessorials" in safe and safe["accessorials"] is not None:
+            safe["accessorials"] = [
+                a.model_dump() if hasattr(a, "model_dump") else a for a in safe["accessorials"]
+            ]
         # Convert broker_id from string to UUID if present
         if "broker_id" in safe and safe["broker_id"] is not None:
             safe["broker_id"] = _UUID(safe["broker_id"])
@@ -147,6 +157,9 @@ class AssignTripRequest(BaseModel):
     driver_id: Optional[str] = None
     truck_id: Optional[str] = None
     trailer_id: Optional[str] = None
+    loaded_miles: Optional[Decimal] = None
+    empty_miles: Optional[Decimal] = None
+    driver_gross: Optional[Decimal] = None
 
 
 # ── Load Response Schemas ────────────────────────────────────────

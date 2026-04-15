@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/loads/StatusBadge';
 import StatusStepper from '@/components/loads/StatusStepper';
 import EditLoadDialog from '@/components/loads/EditLoadDialog';
+import AssignTripDialog from '@/components/loads/AssignTripDialog';
 import { ArrowLeft, ChevronRight, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import type { StopResponse, AccessorialResponse, TripResponse } from '@/lib/types/loads';
@@ -71,12 +72,25 @@ function StopTimeline({ stops }: { stops: StopResponse[] }) {
   );
 }
 
-function TripCard({ trip }: { trip: TripResponse }) {
+function TripCard({
+  trip,
+  onAssign,
+  canAssign,
+}: {
+  trip: TripResponse;
+  onAssign: (trip: TripResponse) => void;
+  canAssign: boolean;
+}) {
   return (
     <div className="rounded-lg border border-border p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="font-medium text-sm">{trip.trip_number}</span>
-        <StatusBadge status={trip.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={trip.status} />
+          <Button size="sm" variant="outline" onClick={() => onAssign(trip)} disabled={!canAssign}>
+            Assign Assets
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
         <div>
@@ -105,6 +119,12 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
   const { data: load, isLoading, error } = useLoadDetail(id);
   const advanceStatus = useAdvanceStatus();
   const [editOpen, setEditOpen] = useState(false);
+  const [assignTripOpen, setAssignTripOpen] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<TripResponse | null>(null);
+  const handleAssignTrip = (trip: TripResponse) => {
+    setSelectedTrip(trip);
+    setAssignTripOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -242,7 +262,12 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
                 {load.trips
                   .sort((a, b) => a.sequence_number - b.sequence_number)
                   .map((trip) => (
-                    <TripCard key={trip.id} trip={trip} />
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      canAssign={!load.is_locked}
+                      onAssign={handleAssignTrip}
+                    />
                   ))}
               </CardContent>
             </Card>
@@ -317,6 +342,15 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {editOpen && <EditLoadDialog open={editOpen} onOpenChange={setEditOpen} load={load} />}
+      {assignTripOpen && selectedTrip && (
+        <AssignTripDialog
+          open={assignTripOpen}
+          onOpenChange={setAssignTripOpen}
+          loadId={load.id}
+          loadNumber={load.load_number}
+          trip={selectedTrip}
+        />
+      )}
     </div>
   );
 }

@@ -198,6 +198,22 @@ export const updateLoad = async (loadId: string, payload: Record<string, unknown
   return data;
 };
 
+export const assignTrip = async (
+  loadId: string,
+  tripId: string,
+  payload: {
+    driver_id?: string;
+    truck_id?: string;
+    trailer_id?: string;
+    loaded_miles?: number;
+    empty_miles?: number;
+    driver_gross?: number;
+  }
+) => {
+  const { data } = await api.patch(`/loads/${loadId}/trips/${tripId}/assign`, payload);
+  return data;
+};
+
 export const advanceLoadStatus = async (loadId: string, status: string) => {
   const { data } = await api.patch(`/loads/${loadId}/status`, { status });
   return data;

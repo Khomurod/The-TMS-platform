@@ -7,6 +7,7 @@ import {
   getCompletedLoads,
   getLoadDetail,
   updateLoad,
+  assignTrip,
   advanceLoadStatus,
 } from '@/lib/api';
 import type { LoadListResponse, LoadResponse } from '@/lib/types/loads';
@@ -61,6 +62,33 @@ export const useUpdateLoad = () => {
   return useMutation({
     mutationFn: ({ loadId, payload }: { loadId: string; payload: Record<string, unknown> }) =>
       updateLoad(loadId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['loads'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['loads', 'detail', variables.loadId] });
+    },
+  });
+};
+
+export const useAssignTrip = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      loadId,
+      tripId,
+      payload,
+    }: {
+      loadId: string;
+      tripId: string;
+      payload: {
+        driver_id?: string;
+        truck_id?: string;
+        trailer_id?: string;
+        loaded_miles?: number;
+        empty_miles?: number;
+        driver_gross?: number;
+      };
+    }) => assignTrip(loadId, tripId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['loads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });

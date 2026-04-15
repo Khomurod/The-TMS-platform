@@ -37,6 +37,7 @@ from app.loads.schemas import (
 from app.core.exceptions import NotFoundError
 from app.models.base import LoadStatus, TripStatus, DriverStatus
 from app.models.load import Load, Trip, LoadStop
+from app.models.accounting import LoadAccessorial
 from app.models.driver import Driver
 from app.models.fleet import Truck, Trailer, EquipmentStatus
 from app.models.company import Company
@@ -267,6 +268,67 @@ class LoadService:
 
         # safe_update_dict() handles broker_id str→UUID conversion + allowlisting
         update_data = data.safe_update_dict()
+        stops_data = update_data.pop("stops", None)
+        accessorials_data = update_data.pop("accessorials", None)
+
+        # Replace stops when provided.
+        if stops_data is not None:
+            if len(stops_data) < 2:
+                raise HTTPException(status_code=400, detail="Load must have at least 2 stops.")
+            if not any(s.get("stop_type") == "pickup" for s in stops_data):
+                raise HTTPException(status_code=400, detail="Load must include at least one pickup stop.")
+            if not any(s.get("stop_type") == "delivery" for s in stops_data):
+                raise HTTPException(status_code=400, detail="Load must include at least one delivery stop.")
+
+            load.stops.clear()
+            await self.db.flush()
+            for idx, stop in enumerate(stops_data, start=1):
+                self.db.add(
+                    LoadStop(
+                        company_id=self.company_id,
+                        load_id=load.id,
+                        stop_type=stop.get("stop_type"),
+                        stop_sequence=idx,
+                        facility_name=stop.get("facility_name"),
+                        address=stop.get("address"),
+                        city=stop.get("city"),
+                        state=stop.get("state"),
+                        zip_code=stop.get("zip_code"),
+                        scheduled_date=stop.get("scheduled_date"),
+                        scheduled_time=stop.get("scheduled_time"),
+                        notes=stop.get("notes"),
+                    )
+                )
+            await self.db.flush()
+
+        # Replace accessorial rows when provided.
+        if accessorials_data is not None:
+            load.accessorials.clear()
+            await self.db.flush()
+            for acc in accessorials_data:
+                self.db.add(
+                    LoadAccessorial(
+                        company_id=self.company_id,
+                        load_id=load.id,
+                        type=acc.get("type"),
+                        amount=acc.get("amount"),
+                        description=acc.get("description"),
+                    )
+                )
+            await self.db.flush()
+
+        # Keep total_rate consistent when base_rate or accessorials change.
+        if "base_rate" in update_data or accessorials_data is not None:
+            effective_base_rate = update_data.get("base_rate", load.base_rate)
+            effective_accessorials = accessorials_data
+            if effective_accessorials is None:
+                effective_accessorials = [
+                    {"amount": a.amount} for a in load.accessorials
+                ]
+            update_data["total_rate"] = self._calculate_total_rate(
+                effective_base_rate,
+                effective_accessorials,
+            )
 
         updated = await self.repo.update(load, **update_data)
         logger.info("Load %s updated, fields: %s", load.load_number, list(update_data.keys()))
@@ -711,8 +773,9 @@ class LoadService:
     async def assign_trip(
         self, load_id: UUID, trip_id: UUID,
         driver_id: Optional[str], truck_id: Optional[str], trailer_id: Optional[str],
+        loaded_miles: Optional[Decimal], empty_miles: Optional[Decimal], driver_gross: Optional[Decimal],
     ) -> LoadResponse:
-        """Assign driver + truck + trailer to an existing Trip."""
+        """Assign assets and optional trip financial fields to an existing Trip."""
         load = await self.repo.get_by_id(load_id)
         if not load:
             raise NotFoundError("Load not found")
@@ -769,6 +832,13 @@ class LoadService:
 
         if errors:
             raise HTTPException(status_code=400, detail="; ".join(errors))
+
+        if loaded_miles is not None:
+            trip.loaded_miles = loaded_miles
+        if empty_miles is not None:
+            trip.empty_miles = empty_miles
+        if driver_gross is not None:
+            trip.driver_gross = driver_gross
 
         await self.db.commit()
         await self.db.refresh(load)
