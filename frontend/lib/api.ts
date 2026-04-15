@@ -8,8 +8,20 @@
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const normalizeApiBaseUrl = (raw?: string): string => {
+  const fallback = "http://localhost:8000/api/v1";
+  const value = (raw || "").trim();
+  if (!value) return fallback;
+
+  // Guardrail: some environments set the API host without /api/v1.
+  if (value.endsWith("/api/v1")) return value;
+  if (value.endsWith("/api/v1/")) return value.slice(0, -1);
+  if (value.endsWith("/api")) return `${value}/v1`;
+  if (value.endsWith("/api/")) return `${value}v1`;
+  return `${value.replace(/\/+$/, "")}/api/v1`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
