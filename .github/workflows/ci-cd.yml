@@ -324,6 +324,7 @@ jobs:
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --allow-unauthenticated \
             --no-traffic \
+            --tag candidate \
             --set-cloudsql-instances "${{ steps.normalize_cloudsql.outputs.cloudsql_instance }}" \
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
             --env-vars-file /tmp/backend-env.yaml \
@@ -342,14 +343,15 @@ jobs:
           fi
           echo "NEW_REV=$NEW_REV" >> "$GITHUB_ENV"
 
-          TEST_URL=$(gcloud run revisions describe "$NEW_REV" \
+          SERVICE_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
             --region ${{ env.REGION }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --format="value(status.url)")
-          if [ -z "$TEST_URL" ]; then
-            echo "Could not resolve URL for revision: $NEW_REV"
+          if [ -z "$SERVICE_URL" ]; then
+            echo "Could not resolve service URL."
             exit 1
           fi
+          TEST_URL="${SERVICE_URL/https:\/\//https://candidate---}"
 
           echo "Testing: $TEST_URL/api/v1/health"
           for i in 1 2 3; do
