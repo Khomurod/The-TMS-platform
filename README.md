@@ -69,6 +69,43 @@ All secrets are in Google Secret Manager. Images are tagged with Git SHA for imm
 | **Cloud** | GCP Cloud Run + Cloud SQL + Cloud Storage |
 | **CI/CD** | GitHub Actions (build → migrate → deploy → smoke test → route) |
 
+## How This App Works (Plain English)
+
+Think of it as 3 parts:
+
+1. **Frontend (website)**  
+   This is what people use in the browser.
+2. **Backend (server brain)**  
+   This receives requests from the website, applies business rules, and decides what to save or return.
+3. **Database (storage)**  
+   This is where your real company data is stored.
+
+### Where it runs
+
+- The website and API run on **Google Cloud Run**.
+- The database runs on **Google Cloud SQL (PostgreSQL)**.
+
+### Where data comes from
+
+- User opens website → website calls backend API.
+- Backend reads/writes data in Cloud SQL.
+- Backend returns results back to website.
+- Website shows the data to the user.
+
+The frontend does **not** connect directly to the database.
+
+### What happens when you deploy
+
+When code is pushed to `main`, CI/CD does this:
+
+1. Build and test code.
+2. Run database migrations.
+3. Deploy backend as a **safe candidate** with no user traffic yet.
+4. Health-check candidate (`/api/v1/health`).
+5. Only if healthy, switch user traffic to it.
+
+If health check fails, users stay on the previous working version.
+
 ## Project Structure
 
 ```
