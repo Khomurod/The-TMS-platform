@@ -6,6 +6,7 @@ import {
   getUpcomingLoads,
   getCompletedLoads,
   getLoadDetail,
+  updateLoad,
   advanceLoadStatus,
 } from '@/lib/api';
 import type { LoadListResponse, LoadResponse } from '@/lib/types/loads';
@@ -51,6 +52,19 @@ export const useAdvanceStatus = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useUpdateLoad = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ loadId, payload }: { loadId: string; payload: Record<string, unknown> }) =>
+      updateLoad(loadId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['loads'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['loads', 'detail', variables.loadId] });
     },
   });
 };

@@ -193,6 +193,11 @@ export const getLoadDetail = async (loadId: string) => {
   return data;
 };
 
+export const updateLoad = async (loadId: string, payload: Record<string, unknown>) => {
+  const { data } = await api.put(`/loads/${loadId}`, payload);
+  return data;
+};
+
 export const advanceLoadStatus = async (loadId: string, status: string) => {
   const { data } = await api.patch(`/loads/${loadId}/status`, { status });
   return data;

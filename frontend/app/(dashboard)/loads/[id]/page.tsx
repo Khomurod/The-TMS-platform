@@ -3,7 +3,7 @@
  */
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { useLoadDetail, useAdvanceStatus } from '@/lib/hooks/loads';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/loads/StatusBadge';
 import StatusStepper from '@/components/loads/StatusStepper';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import EditLoadDialog from '@/components/loads/EditLoadDialog';
+import { ArrowLeft, ChevronRight, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import type { StopResponse, AccessorialResponse, TripResponse } from '@/lib/types/loads';
 
@@ -103,6 +104,7 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const { data: load, isLoading, error } = useLoadDetail(id);
   const advanceStatus = useAdvanceStatus();
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -158,15 +160,23 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {nextStatus && !load.is_locked && (
-          <Button
-            onClick={() => advanceStatus.mutate({ loadId: load.id, status: nextStatus })}
-            disabled={advanceStatus.isPending}
-          >
-            Advance to {nextStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {!load.is_locked && (
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="w-4 h-4 mr-1" />
+              Edit Load
+            </Button>
+          )}
+          {nextStatus && !load.is_locked && (
+            <Button
+              onClick={() => advanceStatus.mutate({ loadId: load.id, status: nextStatus })}
+              disabled={advanceStatus.isPending}
+            >
+              Advance to {nextStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Status Pipeline */}
@@ -305,6 +315,8 @@ export default function LoadDetailPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
       </div>
+
+      <EditLoadDialog open={editOpen} onOpenChange={setEditOpen} load={load} />
     </div>
   );
 }
