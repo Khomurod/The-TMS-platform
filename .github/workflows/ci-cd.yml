@@ -332,15 +332,24 @@ jobs:
       # Smoke test against the new revision's URL (gets a unique URL even with no traffic)
       - name: Smoke test new revision
         run: |
-          REVISION_URL=$(gcloud run revisions list \
-            --service ${{ env.BACKEND_SERVICE }} \
+          NEW_REV=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
             --region ${{ env.REGION }} \
             --project ${{ secrets.GCP_PROJECT_ID }} \
-            --format="value(status.url)" \
-            --limit=1 2>/dev/null || echo "")
+            --format="value(status.latestCreatedRevisionName)")
+          if [ -z "$NEW_REV" ]; then
+            echo "Could not determine latest created revision."
+            exit 1
+          fi
+          echo "NEW_REV=$NEW_REV" >> "$GITHUB_ENV"
 
-          # Fallback: test main service URL
-          TEST_URL="${REVISION_URL:-https://kinetic-api-1065403267999.us-central1.run.app}"
+          TEST_URL=$(gcloud run revisions describe "$NEW_REV" \
+            --region ${{ env.REGION }} \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(status.url)")
+          if [ -z "$TEST_URL" ]; then
+            echo "Could not resolve URL for revision: $NEW_REV"
+            exit 1
+          fi
 
           echo "Testing: $TEST_URL/api/v1/health"
           for i in 1 2 3; do
@@ -360,12 +369,10 @@ jobs:
       # Only if smoke test passes — switch 100% traffic to new revision
       - name: Switch traffic to new revision
         run: |
-          NEW_REV=$(gcloud run revisions list \
-            --service ${{ env.BACKEND_SERVICE }} \
-            --region ${{ env.REGION }} \
-            --project ${{ secrets.GCP_PROJECT_ID }} \
-            --format="value(metadata.name)" \
-            --limit=1)
+          if [ -z "$NEW_REV" ]; then
+            echo "NEW_REV is empty; refusing to switch traffic."
+            exit 1
+          fi
           echo "Switching 100% traffic to: $NEW_REV"
           gcloud run services update-traffic ${{ env.BACKEND_SERVICE }} \
             --to-revisions "$NEW_REV=100" \
