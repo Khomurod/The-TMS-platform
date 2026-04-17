@@ -84,9 +84,13 @@ export default function LoadsTable({ items, onRowClick }: LoadsTableProps) {
               </TableCell>
               <TableCell className="text-sm">
                 {/* Accommodate both flat driver_name or nested driver.first_name to prevent crashes */}
-                {(load as any)?.driver?.first_name 
-                  ? `${(load as any).driver.first_name} ${(load as any).driver.last_name || ''}` 
-                  : (load?.driver_name || 'Unassigned')}
+                {(() => {
+                  const l = load as LoadListItem & { driver?: { first_name?: string; last_name?: string } };
+                  if (l?.driver?.first_name) {
+                    return `${l.driver.first_name} ${l.driver.last_name || ''}`;
+                  }
+                  return load?.driver_name || 'Unassigned';
+                })()}
               </TableCell>
               <TableCell className="text-right font-medium">
                 {formatCurrency(load?.total_rate ?? load?.base_rate)}
