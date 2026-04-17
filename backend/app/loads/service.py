@@ -198,7 +198,7 @@ class LoadService:
             broker_name=broker_name,
             driver_name=driver_name,
             truck_number=truck_number,
-            trip_count=len(load.trips) if load.trips else 0,
+            trip_count=len(trips) if trips else 0,
         )
 
     def _calculate_total_rate(self, base_rate, accessorials_data: list) -> Decimal:

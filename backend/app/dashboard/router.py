@@ -7,9 +7,14 @@ Endpoints:
   GET /dashboard/recent-events    — Latest load status changes
 """
 
+import logging
+import traceback
+
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
+
+logger = logging.getLogger("safehaul.dashboard")
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func, and_, or_
@@ -92,81 +97,91 @@ async def get_compliance_alerts(
     company_id: UUID = Depends(get_current_company_id),
 ):
     """Expiring documents within 30 days."""
-    threshold = datetime.now(timezone.utc).date() + timedelta(days=30)
+    try:
+        threshold = datetime.now(timezone.utc).date() + timedelta(days=30)
+        today = datetime.now(timezone.utc).date()
 
-    # Driver CDL expiry
-    cdl_query = (
-        select(Driver)
-        .where(Driver.company_id == company_id)
-        .where(Driver.is_active == True)
-        .where(Driver.cdl_expiry_date != None)
-        .where(Driver.cdl_expiry_date <= threshold)
-    )
-    cdl_results = (await db.execute(cdl_query)).scalars().all()
+        # Driver CDL expiry
+        cdl_query = (
+            select(Driver)
+            .where(Driver.company_id == company_id)
+            .where(Driver.is_active == True)
+            .where(Driver.cdl_expiry_date.isnot(None))
+            .where(Driver.cdl_expiry_date <= threshold)
+        )
+        cdl_results = (await db.execute(cdl_query)).scalars().all()
 
-    # Driver medical card expiry
-    medical_query = (
-        select(Driver)
-        .where(Driver.company_id == company_id)
-        .where(Driver.is_active == True)
-        .where(Driver.medical_card_expiry_date != None)
-        .where(Driver.medical_card_expiry_date <= threshold)
-    )
-    medical_results = (await db.execute(medical_query)).scalars().all()
+        # Driver medical card expiry
+        medical_query = (
+            select(Driver)
+            .where(Driver.company_id == company_id)
+            .where(Driver.is_active == True)
+            .where(Driver.medical_card_expiry_date.isnot(None))
+            .where(Driver.medical_card_expiry_date <= threshold)
+        )
+        medical_results = (await db.execute(medical_query)).scalars().all()
 
-    # Truck DOT inspection expiry
-    dot_query = (
-        select(Truck)
-        .where(Truck.company_id == company_id)
-        .where(Truck.is_active == True)
-        .where(Truck.dot_inspection_expiry != None)
-        .where(Truck.dot_inspection_expiry <= threshold)
-    )
-    dot_results = (await db.execute(dot_query)).scalars().all()
+        # Truck DOT inspection expiry
+        dot_query = (
+            select(Truck)
+            .where(Truck.company_id == company_id)
+            .where(Truck.is_active == True)
+            .where(Truck.dot_inspection_expiry.isnot(None))
+            .where(Truck.dot_inspection_expiry <= threshold)
+        )
+        dot_results = (await db.execute(dot_query)).scalars().all()
 
-    alerts = []
-    today = datetime.now(timezone.utc).date()
+        alerts = []
 
-    for d in cdl_results:
-        is_expired = d.cdl_expiry_date <= today
-        alerts.append({
-            "type": "cdl_expiry",
-            "severity": "critical" if is_expired else "warning",
-            "entity_type": "driver",
-            "entity_id": str(d.id),
-            "entity_name": f"{d.first_name} {d.last_name}",
-            "description": f"CDL {'expired' if is_expired else 'expires'} on {d.cdl_expiry_date}",
-            "expiry_date": str(d.cdl_expiry_date),
-        })
+        for d in cdl_results:
+            if d.cdl_expiry_date is None:
+                continue
+            is_expired = d.cdl_expiry_date <= today
+            alerts.append({
+                "type": "cdl_expiry",
+                "severity": "critical" if is_expired else "warning",
+                "entity_type": "driver",
+                "entity_id": str(d.id),
+                "entity_name": f"{d.first_name} {d.last_name}",
+                "description": f"CDL {'expired' if is_expired else 'expires'} on {d.cdl_expiry_date}",
+                "expiry_date": str(d.cdl_expiry_date),
+            })
 
-    for d in medical_results:
-        is_expired = d.medical_card_expiry_date <= today
-        alerts.append({
-            "type": "medical_card_expiry",
-            "severity": "critical" if is_expired else "warning",
-            "entity_type": "driver",
-            "entity_id": str(d.id),
-            "entity_name": f"{d.first_name} {d.last_name}",
-            "description": f"Medical card {'expired' if is_expired else 'expires'} on {d.medical_card_expiry_date}",
-            "expiry_date": str(d.medical_card_expiry_date),
-        })
+        for d in medical_results:
+            if d.medical_card_expiry_date is None:
+                continue
+            is_expired = d.medical_card_expiry_date <= today
+            alerts.append({
+                "type": "medical_card_expiry",
+                "severity": "critical" if is_expired else "warning",
+                "entity_type": "driver",
+                "entity_id": str(d.id),
+                "entity_name": f"{d.first_name} {d.last_name}",
+                "description": f"Medical card {'expired' if is_expired else 'expires'} on {d.medical_card_expiry_date}",
+                "expiry_date": str(d.medical_card_expiry_date),
+            })
 
-    for t in dot_results:
-        is_expired = t.dot_inspection_expiry <= today
-        alerts.append({
-            "type": "dot_inspection_expiry",
-            "severity": "critical" if is_expired else "warning",
-            "entity_type": "truck",
-            "entity_id": str(t.id),
-            "entity_name": t.unit_number,
-            "description": f"DOT inspection {'expired' if is_expired else 'expires'} on {t.dot_inspection_expiry}",
-            "expiry_date": str(t.dot_inspection_expiry),
-        })
+        for t in dot_results:
+            if t.dot_inspection_expiry is None:
+                continue
+            is_expired = t.dot_inspection_expiry <= today
+            alerts.append({
+                "type": "dot_inspection_expiry",
+                "severity": "critical" if is_expired else "warning",
+                "entity_type": "truck",
+                "entity_id": str(t.id),
+                "entity_name": t.unit_number,
+                "description": f"DOT inspection {'expired' if is_expired else 'expires'} on {t.dot_inspection_expiry}",
+                "expiry_date": str(t.dot_inspection_expiry),
+            })
 
-    # Sort: critical first, then by expiry date
-    alerts.sort(key=lambda a: (0 if a["severity"] == "critical" else 1, a["expiry_date"]))
+        # Sort: critical first, then by expiry date
+        alerts.sort(key=lambda a: (0 if a["severity"] == "critical" else 1, a["expiry_date"]))
 
-    return {"alerts": alerts, "critical_count": sum(1 for a in alerts if a["severity"] == "critical")}
+        return {"alerts": alerts, "critical_count": sum(1 for a in alerts if a["severity"] == "critical")}
+    except Exception:
+        logger.error("compliance-alerts crashed:\n%s", traceback.format_exc())
+        raise
 
 
 # ── Fleet Status ─────────────────────────────────────────────────
@@ -220,53 +235,61 @@ async def get_recent_events(
     company_id: UUID = Depends(get_current_company_id),
 ):
     """Latest load status changes (most recently updated loads)."""
-    from sqlalchemy.orm import selectinload
+    try:
+        from sqlalchemy.orm import selectinload
 
-    query = (
-        select(Load)
-        .where(Load.company_id == company_id)
-        .where(Load.is_active == True)
-        .options(
-            selectinload(Load.trips).selectinload(Trip.driver),
-            selectinload(Load.stops),
+        query = (
+            select(Load)
+            .where(Load.company_id == company_id)
+            .where(Load.is_active == True)
+            .options(
+                selectinload(Load.trips).selectinload(Trip.driver),
+                selectinload(Load.stops),
+            )
+            .order_by(func.coalesce(Load.updated_at, Load.created_at).desc())
+            .limit(10)
         )
-        .order_by(func.coalesce(Load.updated_at, Load.created_at).desc())
-        .limit(10)
-    )
-    result = await db.execute(query)
-    loads = result.scalars().unique().all()
+        result = await db.execute(query)
+        loads = result.scalars().unique().all()
 
-    events = []
-    for load in loads:
-        # Driver info from primary trip
-        driver_name = None
-        if load.trips:
-            primary_trip = next(
-                (t for t in load.trips if t.sequence_number == 1), load.trips[0]
-            ) if load.trips else None
-            if primary_trip and primary_trip.driver:
-                driver_name = f"{primary_trip.driver.first_name} {primary_trip.driver.last_name}"
+        events = []
+        for load in loads:
+            # Driver info from primary trip
+            driver_name = None
+            trips = getattr(load, 'trips', None) or []
+            if trips:
+                primary_trip = next(
+                    (t for t in trips if getattr(t, 'sequence_number', 0) == 1),
+                    trips[0] if trips else None
+                )
+                if primary_trip and getattr(primary_trip, 'driver', None):
+                    driver_name = f"{primary_trip.driver.first_name} {primary_trip.driver.last_name}"
 
-        stops = sorted(load.stops, key=lambda s: s.stop_sequence) if load.stops else []
-        origin = stops[0].city if stops else None
-        dest = stops[-1].city if stops else None
+            stops = getattr(load, 'stops', None) or []
+            stops = sorted(stops, key=lambda s: getattr(s, 'stop_sequence', 0)) if stops else []
+            origin = getattr(stops[0], 'city', None) if stops else None
+            dest = getattr(stops[-1], 'city', None) if stops else None
 
-        # Determine event color
-        event_color = "blue"
-        status_val = load.status.value if hasattr(load.status, 'value') else load.status
-        if status_val in ("delivered", "invoiced", "paid"):
-            event_color = "green"
-        elif status_val == "cancelled":
-            event_color = "red"
+            # Determine event color
+            event_color = "blue"
+            status_val = load.status.value if hasattr(load.status, 'value') else load.status
+            if status_val in ("delivered", "invoiced", "paid"):
+                event_color = "green"
+            elif status_val == "cancelled":
+                event_color = "red"
 
-        events.append({
-            "load_id": str(load.id),
-            "load_number": load.load_number,
-            "status": status_val,
-            "description": f"{origin or '—'} → {dest or '—'}",
-            "driver_name": driver_name,
-            "timestamp": load.updated_at.isoformat() if load.updated_at else None,
-            "color": event_color,
-        })
+            updated = getattr(load, 'updated_at', None)
+            events.append({
+                "load_id": str(load.id),
+                "load_number": load.load_number,
+                "status": status_val,
+                "description": f"{origin or '—'} → {dest or '—'}",
+                "driver_name": driver_name,
+                "timestamp": updated.isoformat() if updated else None,
+                "color": event_color,
+            })
 
-    return {"events": events}
+        return {"events": events}
+    except Exception:
+        logger.error("recent-events crashed:\n%s", traceback.format_exc())
+        raise

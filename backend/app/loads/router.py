@@ -24,6 +24,7 @@ Endpoints:
 """
 
 from datetime import date
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
@@ -94,14 +95,14 @@ async def get_completed_loads(
 async def list_loads(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    status: str = Query(None),
-    driver_id: str = Query(None),
-    date_from: date = Query(None),
-    date_to: date = Query(None),
+    status: Optional[str] = Query(None),
+    driver_id: Optional[UUID] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
     svc: LoadService = Depends(_get_service),
 ):
     """List loads with optional filters."""
-    return await svc.list_loads(page, page_size, status, driver_id, date_from, date_to)
+    return await svc.list_loads(page, page_size, status, str(driver_id) if driver_id else None, date_from, date_to)
 
 
 @router.post("", response_model=LoadResponse, status_code=201)
