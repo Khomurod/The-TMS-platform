@@ -76,10 +76,13 @@ function emptyStop(type: 'pickup' | 'delivery', seq: number): StopEntry {
 export interface ParsedLoadData {
   broker_name?: string;
   broker_id?: string;
-  payout?: number | string;
-  pickup_location?: string;
-  delivery_location?: string;
+  base_rate?: number | string;
+  pickup_city?: string;
+  pickup_state?: string;
+  delivery_city?: string;
+  delivery_state?: string;
   commodity?: string;
+  weight?: number | string;
   [key: string]: unknown;
 }
 
@@ -144,29 +147,27 @@ export default function CreateLoadDialog({
     if (dialogOpen && initialData) {
       if (initialData.broker_name) setBrokerName(initialData.broker_name);
       if (initialData.broker_id) setBrokerId(initialData.broker_id);
-      if (initialData.payout) setBaseRate(String(initialData.payout));
+      if (initialData.base_rate) setBaseRate(String(initialData.base_rate));
       
       const newStops = [emptyStop('pickup', 1), emptyStop('delivery', 2)];
-      if (initialData.pickup_location) {
-        const parts = initialData.pickup_location.split(',').map((s: string) => s.trim());
-        if (parts.length >= 2) {
-          newStops[0].city = parts[0];
-          newStops[0].state = parts[1];
-        } else {
-          newStops[0].city = parts[0] || '';
-        }
+      if (initialData.pickup_city) {
+        newStops[0].city = initialData.pickup_city;
       }
-      if (initialData.delivery_location) {
-        const parts = initialData.delivery_location.split(',').map((s: string) => s.trim());
-        if (parts.length >= 2) {
-          newStops[1].city = parts[0];
-          newStops[1].state = parts[1];
-        } else {
-          newStops[1].city = parts[0] || '';
-        }
+      if (initialData.pickup_state) {
+        newStops[0].state = initialData.pickup_state;
       }
-      if (initialData.commodity) {
-        setNotes(`Commodity: ${initialData.commodity}`);
+      if (initialData.delivery_city) {
+        newStops[1].city = initialData.delivery_city;
+      }
+      if (initialData.delivery_state) {
+        newStops[1].state = initialData.delivery_state;
+      }
+      
+      const notesParts = [];
+      if (initialData.commodity) notesParts.push(`Commodity: ${initialData.commodity}`);
+      if (initialData.weight) notesParts.push(`Weight: ${initialData.weight}`);
+      if (notesParts.length > 0) {
+        setNotes(notesParts.join(' | '));
       }
       
       setStops(newStops);

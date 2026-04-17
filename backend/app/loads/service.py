@@ -517,9 +517,12 @@ class LoadService:
         system_prompt = (
             "You are a freight logistics expert. Extract information from the provided document. "
             "Return strictly formatted JSON containing the following keys: "
-            "pickup_location (string or null), delivery_location (string or null), "
-            "payout (numeric or null), commodity (string or null), broker_name (string or null), "
+            "pickup_city (string or null), pickup_state (string or null), "
+            "delivery_city (string or null), delivery_state (string or null), "
+            "base_rate (numeric or null), commodity (string or null), broker_name (string or null), "
             "and weight (numeric or null). "
+            "Crucial instructions: Separate locations into city and state natively. "
+            "If the document uses internal location codes (like FedEx's '00291/SVNH'), map that code directly into the city field. "
             "If a piece of information is missing from the document, set its value to null. "
             "Do not include markdown formatting, backticks, or any explanatory text. Return ONLY the raw JSON object."
         )
