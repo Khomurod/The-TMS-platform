@@ -1,37 +1,47 @@
 /**
- * Load Board — Tabbed view with Live, Upcoming, and Completed loads.
+ * Load Board - Tabbed view with Live, Upcoming, Completed, and All loads.
  * Core operational module of the TMS.
  */
 'use client';
 
 import { useState } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoadsTable from '@/components/loads/LoadsTable';
 import LoadDrawer from '@/components/loads/LoadDrawer';
 import CreateLoadDialog from '@/components/loads/CreateLoadDialog';
-import { useLiveLoads, useUpcomingLoads, useCompletedLoads } from '@/lib/hooks/loads';
+import {
+  useAllLoads,
+  useCompletedLoads,
+  useLiveLoads,
+  useUpcomingLoads,
+} from '@/lib/hooks/loads';
 
-type BoardTab = 'live' | 'upcoming' | 'completed';
+type BoardTab = 'live' | 'upcoming' | 'completed' | 'all';
 
 export default function LoadsPage() {
   const [activeTab, setActiveTab] = useState<BoardTab>('live');
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const page = 1;
+  const pageSize = 20;
 
-  const live = useLiveLoads();
-  const upcoming = useUpcomingLoads();
-  const completed = useCompletedLoads();
+  const live = useLiveLoads(page, pageSize);
+  const upcoming = useUpcomingLoads(page, pageSize);
+  const completed = useCompletedLoads(page, pageSize);
+  const allLoads = useAllLoads(page, pageSize);
 
   const handleRowClick = (loadId: string) => {
     setSelectedLoadId(loadId);
     setDrawerOpen(true);
   };
 
-  const renderTabContent = (
-    data: typeof live,
-    label: string,
-  ) => {
+  const renderTabContent = (data: typeof live, label: string) => {
+    const normalizedLabel = label.toLowerCase();
+    const errorLabel = normalizedLabel.endsWith('loads')
+      ? normalizedLabel
+      : `${normalizedLabel} loads`;
+
     if (data.isLoading) {
       return (
         <div className="space-y-2">
@@ -45,8 +55,8 @@ export default function LoadsPage() {
     if (data.error) {
       return (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
-          <p className="text-destructive text-sm">
-            Error loading {label.toLowerCase()} loads. Please retry.
+          <p className="text-sm text-destructive">
+            Error loading {errorLabel}. Please retry.
           </p>
         </div>
       );
@@ -54,12 +64,9 @@ export default function LoadsPage() {
 
     return (
       <div className="space-y-3">
-        <LoadsTable
-          items={data.data?.items ?? []}
-          onRowClick={handleRowClick}
-        />
+        <LoadsTable items={data.data?.items ?? []} onRowClick={handleRowClick} />
         {data.data && (
-          <p className="text-xs text-muted-foreground text-right">
+          <p className="text-right text-xs text-muted-foreground">
             Showing {data.data.items.length} of {data.data.total} loads
           </p>
         )}
@@ -68,42 +75,46 @@ export default function LoadsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Page Header */}
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Load Board</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage your freight — Live, Upcoming, and Completed loads.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your freight - Live, Upcoming, Completed, and all loads.
           </p>
         </div>
         <div className="flex items-center gap-4">
           <CreateLoadDialog />
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
             <span className="text-muted-foreground">
-              Live: <span className="text-foreground font-medium">{live.data?.total ?? '—'}</span>
+              Live: <span className="font-medium text-foreground">{live.data?.total ?? '-'}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-blue-400" />
+            <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
             <span className="text-muted-foreground">
-              Upcoming: <span className="text-foreground font-medium">{upcoming.data?.total ?? '—'}</span>
+              Upcoming: <span className="font-medium text-foreground">{upcoming.data?.total ?? '-'}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
             <span className="text-muted-foreground">
-              Completed: <span className="text-foreground font-medium">{completed.data?.total ?? '—'}</span>
+              Completed: <span className="font-medium text-foreground">{completed.data?.total ?? '-'}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
+            <span className="text-muted-foreground">
+              All Loads: <span className="font-medium text-foreground">{allLoads.data?.total ?? '-'}</span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* Tabbed Board */}
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as BoardTab)}
+        onValueChange={(value) => setActiveTab(value as BoardTab)}
         className="w-full"
       >
         <TabsList className="bg-muted/50">
@@ -115,6 +126,9 @@ export default function LoadsPage() {
           </TabsTrigger>
           <TabsTrigger value="completed" className="data-[state=active]:bg-background">
             Completed
+          </TabsTrigger>
+          <TabsTrigger value="all" className="data-[state=active]:bg-background">
+            All Loads
           </TabsTrigger>
         </TabsList>
 
@@ -129,9 +143,12 @@ export default function LoadsPage() {
         <TabsContent value="completed" className="mt-4">
           {renderTabContent(completed, 'Completed')}
         </TabsContent>
+
+        <TabsContent value="all" className="mt-4">
+          {renderTabContent(allLoads, 'All Loads')}
+        </TabsContent>
       </Tabs>
 
-      {/* Load Detail Drawer */}
       <LoadDrawer
         loadId={selectedLoadId}
         open={drawerOpen}

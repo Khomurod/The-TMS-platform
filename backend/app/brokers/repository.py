@@ -1,18 +1,18 @@
-"""Brokers repository — async database queries with tenant isolation."""
+"""Brokers repository - async database queries with tenant isolation."""
 
 from __future__ import annotations
 
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.broker import Broker
 
 
 class BrokerRepository:
-    """All broker DB operations. Every query MUST filter by company_id."""
+    """All broker DB operations. Every query must filter by company_id."""
 
     def __init__(self, db: AsyncSession, company_id: UUID):
         self.db = db
@@ -28,13 +28,13 @@ class BrokerRepository:
         query = (
             select(Broker)
             .where(Broker.company_id == self.company_id)
-            .where(Broker.is_active == True)
+            .where(Broker.is_active.is_(True))
         )
         count_query = (
             select(func.count())
             .select_from(Broker)
             .where(Broker.company_id == self.company_id)
-            .where(Broker.is_active == True)
+            .where(Broker.is_active.is_(True))
         )
 
         if search:
@@ -59,12 +59,12 @@ class BrokerRepository:
         return items, total
 
     async def search(self, q: str, limit: int = 10) -> list[Broker]:
-        """Auto-complete search — returns lightweight results."""
+        """Auto-complete search returns lightweight results."""
         like_pattern = f"%{q}%"
         query = (
             select(Broker)
             .where(Broker.company_id == self.company_id)
-            .where(Broker.is_active == True)
+            .where(Broker.is_active.is_(True))
             .where(
                 or_(
                     Broker.name.ilike(like_pattern),
@@ -96,7 +96,7 @@ class BrokerRepository:
         return broker
 
     async def update(self, broker: Broker, **kwargs) -> Broker:
-        """Update broker fields (kwargs pre-filtered by service via exclude_unset)."""
+        """Update broker fields after service-level filtering."""
         for key, value in kwargs.items():
             setattr(broker, key, value)
         await self.db.commit()
@@ -104,6 +104,7 @@ class BrokerRepository:
         return broker
 
     async def soft_delete(self, broker: Broker) -> None:
-        """Soft delete — sets is_active = False."""
+        """Soft delete by marking the broker inactive."""
         broker.is_active = False
         await self.db.commit()
+        await self.db.refresh(broker)

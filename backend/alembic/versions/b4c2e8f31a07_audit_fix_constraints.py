@@ -26,17 +26,44 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # Fix 8: Scope shipment_id unique constraint per tenant
     # Drop the global unique constraint on shipment_id
-    op.drop_constraint("loads_shipment_id_key", "loads", type_="unique")
+    # Older/newer schemas may or may not have this constraint name; make drop safe.
+    op.execute("ALTER TABLE loads DROP CONSTRAINT IF EXISTS loads_shipment_id_key")
     # Add company-scoped unique constraint
-    op.create_unique_constraint(
-        "uq_loads_company_shipment_id", "loads", ["company_id", "shipment_id"]
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'uq_loads_company_shipment_id'
+          ) THEN
+            ALTER TABLE loads
+            ADD CONSTRAINT uq_loads_company_shipment_id
+            UNIQUE (company_id, shipment_id);
+          END IF;
+        END
+        $$;
+        """
     )
 
     # Fix 16: Prevent duplicate deduction names per company
-    op.create_unique_constraint(
-        "uq_deductions_company_name",
-        "company_default_deductions",
-        ["company_id", "name"],
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'uq_deductions_company_name'
+          ) THEN
+            ALTER TABLE company_default_deductions
+            ADD CONSTRAINT uq_deductions_company_name
+            UNIQUE (company_id, name);
+          END IF;
+        END
+        $$;
+        """
     )
 
 

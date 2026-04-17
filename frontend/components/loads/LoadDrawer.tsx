@@ -1,23 +1,34 @@
 /**
- * LoadDrawer — Slide-over panel for quick load preview and status advancement.
+ * LoadDrawer - Slide-over panel for quick load preview and status advancement.
  * Opens from the Load Board when a row is clicked.
  */
 'use client';
 
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
   SheetDescription,
   SheetFooter,
+  SheetHeader,
+  SheetTitle,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import StatusBadge from '@/components/loads/StatusBadge';
-import { useLoadDetail, useAdvanceStatus } from '@/lib/hooks/loads';
+import { useAdvanceStatus, useDeleteLoad, useLoadDetail } from '@/lib/hooks/loads';
+import { extractApiError } from '@/lib/errors';
 import type { StopResponse } from '@/lib/types/loads';
 
 interface LoadDrawerProps {
@@ -26,7 +37,6 @@ interface LoadDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// State machine: next valid transition
 const NEXT_STATUS: Record<string, string | null> = {
   offer: 'booked',
   booked: 'assigned',
@@ -39,14 +49,21 @@ const NEXT_STATUS: Record<string, string | null> = {
   cancelled: null,
 };
 
-function formatCurrency(val?: number): string {
-  if (val == null) return '—';
-  return `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatCurrency(value?: number): string {
+  if (value == null) return '-';
+  return `$${Number(value).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
-function formatDate(val?: string): string {
-  if (!val) return '—';
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+function formatDate(value?: string): string {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function StopRow({ stop }: { stop: StopResponse }) {
@@ -54,21 +71,23 @@ function StopRow({ stop }: { stop: StopResponse }) {
     <div className="flex items-start gap-3 py-2">
       <div className="flex flex-col items-center">
         <span
-          className={`inline-block w-3 h-3 rounded-full border-2 flex-shrink-0 ${
-            stop.stop_type === 'pickup' ? 'border-blue-400 bg-blue-400/30' : 'border-emerald-400 bg-emerald-400/30'
+          className={`inline-block h-3 w-3 flex-shrink-0 rounded-full border-2 ${
+            stop.stop_type === 'pickup'
+              ? 'border-blue-400 bg-blue-400/30'
+              : 'border-emerald-400 bg-emerald-400/30'
           }`}
         />
-        <div className="w-px h-full bg-border flex-1 min-h-[16px]" />
+        <div className="min-h-[16px] w-px flex-1 bg-border" />
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium uppercase text-muted-foreground">
             {stop.stop_type === 'pickup' ? 'Pickup' : 'Delivery'}
           </span>
           <span className="text-xs text-muted-foreground">#{stop.stop_sequence}</span>
         </div>
-        <p className="text-sm font-medium mt-0.5">
-          {(stop.facility_name ?? [stop.city, stop.state].filter(Boolean).join(', ')) || '—'}
+        <p className="mt-0.5 text-sm font-medium">
+          {(stop.facility_name ?? [stop.city, stop.state].filter(Boolean).join(', ')) || '-'}
         </p>
         {stop.city && (
           <p className="text-xs text-muted-foreground">
@@ -76,7 +95,7 @@ function StopRow({ stop }: { stop: StopResponse }) {
           </p>
         )}
         {stop.scheduled_date && (
-          <p className="text-xs text-muted-foreground mt-0.5">{formatDate(stop.scheduled_date)}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(stop.scheduled_date)}</p>
         )}
       </div>
     </div>
@@ -84,26 +103,53 @@ function StopRow({ stop }: { stop: StopResponse }) {
 }
 
 export default function LoadDrawer({ loadId, open, onOpenChange }: LoadDrawerProps) {
-  const { data: load, isLoading } = useLoadDetail(loadId);
+  const { data: load, isLoading } = useLoadDetail(open ? loadId : null);
   const advanceStatus = useAdvanceStatus();
+  const deleteLoad = useDeleteLoad();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const nextStatus = load ? NEXT_STATUS[load.status] : null;
+  const canDelete = load?.status === 'offer';
 
   const handleAdvance = () => {
     if (!load || !nextStatus) return;
+
     advanceStatus.mutate(
       { loadId: load.id, status: nextStatus },
       { onSuccess: () => {} },
     );
   };
 
+  const handleDelete = async () => {
+    if (!load) return;
+
+    setDeleteError('');
+    try {
+      await deleteLoad.mutateAsync(load.id);
+      setDeleteDialogOpen(false);
+      onOpenChange(false);
+    } catch (err: unknown) {
+      setDeleteError(extractApiError(err, 'Failed to delete load'));
+    }
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg w-full">
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) {
+          setDeleteDialogOpen(false);
+          setDeleteError('');
+        }
+      }}
+    >
+      <SheetContent side="right" className="w-full sm:max-w-lg">
         {isLoading || !load ? (
           <SheetHeader>
             <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-24 mt-1" />
+            <Skeleton className="mt-1 h-4 w-24" />
             <div className="mt-6 space-y-3">
               <Skeleton className="h-16 w-full rounded-lg" />
               <Skeleton className="h-16 w-full rounded-lg" />
@@ -123,29 +169,27 @@ export default function LoadDrawer({ loadId, open, onOpenChange }: LoadDrawerPro
             </SheetHeader>
 
             <ScrollArea className="flex-1 px-4">
-              {/* Financial Summary */}
               <div className="grid grid-cols-3 gap-3 py-3">
                 <div className="rounded-lg bg-muted/30 p-3 text-center">
                   <p className="text-xs text-muted-foreground">Base Rate</p>
-                  <p className="text-sm font-semibold mt-0.5">{formatCurrency(load.base_rate)}</p>
+                  <p className="mt-0.5 text-sm font-semibold">{formatCurrency(load.base_rate)}</p>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-3 text-center">
                   <p className="text-xs text-muted-foreground">Total Rate</p>
-                  <p className="text-sm font-semibold mt-0.5">{formatCurrency(load.total_rate)}</p>
+                  <p className="mt-0.5 text-sm font-semibold">{formatCurrency(load.total_rate)}</p>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-3 text-center">
                   <p className="text-xs text-muted-foreground">Miles</p>
-                  <p className="text-sm font-semibold mt-0.5">
-                    {load.total_miles != null ? `${Number(load.total_miles).toLocaleString()}` : '—'}
+                  <p className="mt-0.5 text-sm font-semibold">
+                    {load.total_miles != null ? Number(load.total_miles).toLocaleString() : '-'}
                   </p>
                 </div>
               </div>
 
               <Separator />
 
-              {/* Stops */}
               <div className="py-3">
-                <h3 className="text-xs font-medium uppercase text-muted-foreground mb-2">Stops</h3>
+                <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">Stops</h3>
                 {load.stops.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No stops defined.</p>
                 ) : (
@@ -161,21 +205,20 @@ export default function LoadDrawer({ loadId, open, onOpenChange }: LoadDrawerPro
 
               <Separator />
 
-              {/* Trips / Assignments */}
               {load.trips.length > 0 && (
                 <div className="py-3">
-                  <h3 className="text-xs font-medium uppercase text-muted-foreground mb-2">
+                  <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
                     Trips ({load.trips.length})
                   </h3>
                   {load.trips.map((trip) => (
-                    <div key={trip.id} className="rounded-lg bg-muted/20 p-3 mb-2">
+                    <div key={trip.id} className="mb-2 rounded-lg bg-muted/20 p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{trip.trip_number}</span>
                         <StatusBadge status={trip.status} />
                       </div>
-                      <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-muted-foreground">
-                        <span>Driver: {trip.driver_name ?? '—'}</span>
-                        <span>Truck: {trip.truck_number ?? '—'}</span>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <span>Driver: {trip.driver_name ?? '-'}</span>
+                        <span>Truck: {trip.truck_number ?? '-'}</span>
                         {trip.loaded_miles != null && <span>Loaded: {trip.loaded_miles} mi</span>}
                         {trip.empty_miles != null && <span>Empty: {trip.empty_miles} mi</span>}
                       </div>
@@ -184,37 +227,38 @@ export default function LoadDrawer({ loadId, open, onOpenChange }: LoadDrawerPro
                 </div>
               )}
 
-              {/* Accessorials */}
               {load.accessorials.length > 0 && (
                 <>
                   <Separator />
                   <div className="py-3">
-                    <h3 className="text-xs font-medium uppercase text-muted-foreground mb-2">
+                    <h3 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
                       Accessorials ({load.accessorials.length})
                     </h3>
-                    {load.accessorials.map((acc) => (
-                      <div key={acc.id} className="flex items-center justify-between py-1">
-                        <span className="text-sm capitalize">{acc.type.replace(/_/g, ' ')}</span>
-                        <span className="text-sm font-medium">{formatCurrency(acc.amount)}</span>
+                    {load.accessorials.map((accessorial) => (
+                      <div key={accessorial.id} className="flex items-center justify-between py-1">
+                        <span className="text-sm capitalize">
+                          {accessorial.type.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-sm font-medium">
+                          {formatCurrency(accessorial.amount)}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </>
               )}
 
-              {/* Notes */}
               {load.notes && (
                 <>
                   <Separator />
                   <div className="py-3">
-                    <h3 className="text-xs font-medium uppercase text-muted-foreground mb-1">Notes</h3>
+                    <h3 className="mb-1 text-xs font-medium uppercase text-muted-foreground">Notes</h3>
                     <p className="text-sm text-muted-foreground">{load.notes}</p>
                   </div>
                 </>
               )}
             </ScrollArea>
 
-            {/* Footer — Status Advancement */}
             <SheetFooter>
               {nextStatus && !load.is_locked ? (
                 <Button
@@ -223,15 +267,69 @@ export default function LoadDrawer({ loadId, open, onOpenChange }: LoadDrawerPro
                   className="w-full"
                 >
                   {advanceStatus.isPending
-                    ? 'Advancing…'
-                    : `Advance to ${nextStatus.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}`}
+                    ? 'Advancing...'
+                    : `Advance to ${nextStatus.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())}`}
                 </Button>
               ) : (
-                <p className="text-xs text-muted-foreground text-center w-full">
+                <p className="w-full text-center text-xs text-muted-foreground">
                   {load.is_locked ? 'Load is locked (post-invoiced)' : 'No further status transitions'}
                 </p>
               )}
+              {canDelete && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="w-full"
+                >
+                  Delete
+                </Button>
+              )}
             </SheetFooter>
+
+            <Dialog
+              open={deleteDialogOpen}
+              onOpenChange={(next) => {
+                setDeleteDialogOpen(next);
+                if (!next && !deleteLoad.isPending) {
+                  setDeleteError('');
+                }
+              }}
+            >
+              <DialogContent className="sm:max-w-md" showCloseButton={false}>
+                <DialogHeader>
+                  <DialogTitle>Delete Load</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete this load? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteDialogOpen(false)}
+                    disabled={deleteLoad.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteLoad.isPending}
+                  >
+                    {deleteLoad.isPending ? (
+                      <>
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </>
         )}
       </SheetContent>

@@ -1,3 +1,109 @@
+import type { UserRole } from "@/lib/stores/authStore";
+import {
+  DollarSign,
+  FileText,
+  LayoutDashboard,
+  Package,
+  Settings,
+  Shield,
+  Truck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+
+export interface SidebarNavChild {
+  title: string;
+  href: string;
+  roles?: UserRole[];
+}
+
+export interface SidebarNavItem {
+  title: string;
+  icon: LucideIcon;
+  roles: UserRole[];
+  href?: string;
+  children?: SidebarNavChild[];
+}
+
+export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
+  },
+  {
+    title: "Loads",
+    icon: Package,
+    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
+    children: [
+      {
+        title: "Load Board",
+        href: "/loads",
+        roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
+      },
+      {
+        title: "Dispatch",
+        href: "/dispatch",
+        roles: ["super_admin", "company_admin", "dispatcher"],
+      },
+      {
+        title: "Brokers",
+        href: "/brokers",
+        roles: ["super_admin", "company_admin", "dispatcher"],
+      },
+    ],
+  },
+];
+
+export const ASSET_NAV_ITEMS: SidebarNavItem[] = [
+  {
+    title: "Drivers",
+    href: "/drivers",
+    icon: Users,
+    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
+  },
+  {
+    title: "Fleet",
+    href: "/fleet",
+    icon: Truck,
+    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
+  },
+  {
+    title: "Documents",
+    href: "/documents",
+    icon: FileText,
+    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
+  },
+];
+
+export const FINANCE_NAV_ITEMS: SidebarNavItem[] = [
+  {
+    title: "Accounting",
+    href: "/accounting",
+    icon: DollarSign,
+    roles: ["super_admin", "company_admin", "accountant"],
+  },
+];
+
+export const SYSTEM_NAV_ITEMS: SidebarNavItem[] = [
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: Settings,
+    roles: ["super_admin", "company_admin"],
+  },
+];
+
+export const ADMIN_NAV_ITEMS: SidebarNavItem[] = [
+  {
+    title: "Admin Portal",
+    href: "/admin",
+    icon: Shield,
+    roles: ["super_admin"],
+  },
+];
+
 /**
  * Constants — Status colors, role labels, and enum mappings.
  *

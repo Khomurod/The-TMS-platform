@@ -9,6 +9,8 @@ import {
   updateLoad,
   assignTrip,
   advanceLoadStatus,
+  getLoads,
+  deleteLoad,
 } from '@/lib/api';
 import type { LoadListResponse, LoadResponse } from '@/lib/types/loads';
 
@@ -33,6 +35,14 @@ export const useCompletedLoads = (page = 1, pageSize = 20) => {
     queryKey: ['loads', 'completed', page, pageSize],
     queryFn: () => getCompletedLoads(page, pageSize),
     staleTime: 30_000,
+  });
+};
+
+export const useAllLoads = (page = 1, pageSize = 20) => {
+  return useQuery<LoadListResponse>({
+    queryKey: ['loads', 'all', page, pageSize],
+    queryFn: () => getLoads(page, pageSize),
+    staleTime: 15_000,
   });
 };
 
@@ -93,6 +103,18 @@ export const useAssignTrip = () => {
       queryClient.invalidateQueries({ queryKey: ['loads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['loads', 'detail', variables.loadId] });
+    },
+  });
+};
+
+export const useDeleteLoad = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (loadId: string) => deleteLoad(loadId),
+    onSuccess: (_, loadId) => {
+      queryClient.invalidateQueries({ queryKey: ['loads'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['loads', 'detail', loadId] });
     },
   });
 };

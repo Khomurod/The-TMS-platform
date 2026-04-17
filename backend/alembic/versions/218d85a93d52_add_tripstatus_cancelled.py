@@ -22,8 +22,23 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Add 'cancelled' to tripstatus_enum."""
-    # PostgreSQL allows adding values to an existing ENUM safely
-    op.execute("ALTER TYPE tripstatus_enum ADD VALUE IF NOT EXISTS 'cancelled'")
+    # NOTE:
+    # Earlier migrations create `trip_status_enum` (with an underscore), not
+    # `tripstatus_enum`. Some environments may still have the legacy name.
+    # Make this migration safe/idempotent across both.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'trip_status_enum') THEN
+            EXECUTE 'ALTER TYPE trip_status_enum ADD VALUE IF NOT EXISTS ''cancelled''';
+          ELSIF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tripstatus_enum') THEN
+            EXECUTE 'ALTER TYPE tripstatus_enum ADD VALUE IF NOT EXISTS ''cancelled''';
+          END IF;
+        END
+        $$;
+        """
+    )
 
 
 def downgrade() -> None:

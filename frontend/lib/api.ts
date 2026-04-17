@@ -161,14 +161,23 @@ export const getRecentEvents = async () => {
 
 // ── Loads endpoint helpers ──────────────────────────────────────
 
-export const getLoads = async (params?: {
+type GetLoadsParams = {
   page?: number;
   page_size?: number;
   status?: string;
   driver_id?: string;
   date_from?: string;
   date_to?: string;
-}) => {
+};
+
+export const getLoads = async (
+  pageOrParams?: number | GetLoadsParams,
+  pageSize = 20,
+) => {
+  const params =
+    typeof pageOrParams === 'number'
+      ? { page: pageOrParams, page_size: pageSize }
+      : pageOrParams;
   const { data } = await api.get('/loads', { params });
   return data;
 };
@@ -390,6 +399,21 @@ export const createBroker = async (payload: Record<string, unknown>) => {
   return data;
 };
 
+export const getBroker = async (brokerId: string) => {
+  const { data } = await api.get(`/brokers/${brokerId}`);
+  return data;
+};
+
+export const updateBroker = async (brokerId: string, payload: Record<string, unknown>) => {
+  const { data } = await api.put(`/brokers/${brokerId}`, payload);
+  return data;
+};
+
+export const deleteBroker = async (brokerId: string) => {
+  const { data } = await api.delete(`/brokers/${brokerId}`);
+  return data;
+};
+
 // ── Load creation ───────────────────────────────────────────────
 
 export const createLoad = async (payload: Record<string, unknown>) => {
@@ -437,3 +461,9 @@ export const impersonateCompany = async (companyId: string) => {
   const { data } = await api.post(`/admin/impersonate/${companyId}`);
   return data;
 };
+
+export const deleteLoad = async (loadId: string) => {
+  const { data } = await api.delete(`/loads/${loadId}`);
+  return data;
+};
+
