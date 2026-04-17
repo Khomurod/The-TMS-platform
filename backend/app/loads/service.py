@@ -23,7 +23,7 @@ from typing import Optional
 from uuid import UUID
 
 import httpx
-import pypdf
+import fitz
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -439,12 +439,12 @@ class LoadService:
     ) -> str:
         """Extract text from PDF, with OCR fallback for scanned/image PDFs."""
         try:
-            reader = pypdf.PdfReader(io.BytesIO(content))
+            reader = fitz.open(stream=content, filetype="pdf")
         except Exception as exc:
             logger.warning("Failed to read uploaded PDF: %s", exc)
             raise HTTPException(400, "Invalid or unreadable PDF document.") from exc
 
-        parsed_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        parsed_text = "\n".join([page.get_text() for page in reader if page.get_text()])
         parsed_len = len(parsed_text.strip())
         logger.info("PDF text extraction result length: %d", parsed_len)
 
@@ -456,35 +456,25 @@ class LoadService:
         ocr_text_chunks: list[str] = []
         first_ocr_error: HTTPException | None = None
 
-        for page_idx, page in enumerate(reader.pages, start=1):
-            page_images = list(getattr(page, "images", []) or [])
-            if not page_images:
-                logger.info("PDF page %d has no embedded images for OCR fallback", page_idx)
+        for page_idx, page in enumerate(reader, start=1):
+            try:
+                pix = page.get_pixmap()
+                image_bytes = pix.tobytes("png")
+                img_content_type = "image/png"
+                
+                page_text = await self._extract_text_from_image_with_yandex_ocr(
+                    content=image_bytes,
+                    content_type=img_content_type,
+                    api_key=api_key,
+                    folder_id=folder_id,
+                )
+            except HTTPException as exc:
+                logger.warning("OCR failed on page %d: %s", page_idx, exc.detail)
+                if first_ocr_error is None:
+                    first_ocr_error = exc
                 continue
-
-            for image_idx, image_obj in enumerate(page_images, start=1):
-                image_bytes = getattr(image_obj, "data", None)
-                if not image_bytes:
-                    logger.info("PDF page %d image %d has no byte payload", page_idx, image_idx)
-                    continue
-                img_content_type = self._detect_image_content_type(image_bytes)
-                if not img_content_type:
-                    logger.info("PDF page %d image %d has unsupported type", page_idx, image_idx)
-                    continue
-                try:
-                    page_text = await self._extract_text_from_image_with_yandex_ocr(
-                        content=image_bytes,
-                        content_type=img_content_type,
-                        api_key=api_key,
-                        folder_id=folder_id,
-                    )
-                except HTTPException as exc:
-                    logger.warning("OCR failed on page %d image %d: %s", page_idx, image_idx, exc.detail)
-                    if first_ocr_error is None:
-                        first_ocr_error = exc
-                    continue
-                if page_text.strip():
-                    ocr_text_chunks.append(page_text.strip())
+            if page_text.strip():
+                ocr_text_chunks.append(page_text.strip())
 
         ocr_combined = "\n".join(ocr_text_chunks).strip()
         logger.info("OCR result length: %d", len(ocr_combined))
@@ -521,9 +511,11 @@ class LoadService:
             "delivery_city (string or null), delivery_state (string or null), "
             "base_rate (numeric or null), commodity (string or null), broker_name (string or null), "
             "and weight (numeric or null). "
-            "Crucial instructions: Separate locations into city and state natively. "
-            "If the document uses internal location codes (like FedEx's '00291/SVNH'), map that code directly into the city field. "
-            "If a piece of information is missing from the document, set its value to null. "
+            "Crucial instructions: Adapt to ANY document type (Broker, FedEx, Shipper). "
+            "Extract locations, money, and weights. "
+            "Separate locations into city and state natively. "
+            "If standard cities are missing but internal codes exist (like FedEx's '00291/SVNH'), map that code directly into the city field. "
+            "If a rate is non-numeric (e.g., 'PAID') or missing, explicitly return null. Do not invent data. "
             "Do not include markdown formatting, backticks, or any explanatory text. Return ONLY the raw JSON object."
         )
 
@@ -585,6 +577,23 @@ class LoadService:
             parsed_data = json.loads(result_text.strip())
             if not isinstance(parsed_data, dict):
                 raise ValueError("AI response JSON must be an object")
+
+            # Sanitization
+            def sanitize_numeric(val):
+                if val is None:
+                    return None
+                if isinstance(val, (int, float)):
+                    return float(val)
+                # string stripping
+                cleaned = re.sub(r'[^\d\.]', '', str(val))
+                try:
+                    return float(cleaned) if cleaned else None
+                except ValueError:
+                    return None
+
+            parsed_data['base_rate'] = sanitize_numeric(parsed_data.get('base_rate'))
+            parsed_data['weight'] = sanitize_numeric(parsed_data.get('weight'))
+
             return parsed_data
         except Exception as exc:
             logger.error("Failed to parse Yandex response: %s - Response: %s", exc, data)
