@@ -3,14 +3,13 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetFooter,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,10 +22,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
+import type { DriverDetail } from '@/lib/hooks/drivers';
 import { useDriverDetail, useUpdateDriver, useDeleteDriver } from '@/lib/hooks/drivers';
-import { Loader2, Trash2, Save, X } from 'lucide-react';
+import { Loader2, Trash2, Save } from 'lucide-react';
 import { extractApiError } from '@/lib/errors';
 
 interface DriverDrawerProps {
@@ -49,73 +48,252 @@ const PAY_RATE_TYPES = [
   { value: 'salary', label: 'Salary' },
 ];
 
+type DriverFormValues = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  homeAddress: string;
+  employmentType: string;
+  cdlNumber: string;
+  cdlClass: string;
+  cdlExpiry: string;
+  medicalExpiry: string;
+  payRateType: string;
+  payRateValue: string;
+  hireDate: string;
+  notes: string;
+};
+
+const buildDriverFormValues = (driver: DriverDetail): DriverFormValues => ({
+  firstName: driver.first_name || '',
+  lastName: driver.last_name || '',
+  phone: driver.phone || '',
+  email: driver.email || '',
+  homeAddress: driver.home_address || '',
+  employmentType: driver.employment_type || 'company_w2',
+  cdlNumber: driver.cdl_number || '',
+  cdlClass: driver.cdl_class || '',
+  cdlExpiry: driver.cdl_expiry_date || '',
+  medicalExpiry: driver.medical_card_expiry_date || '',
+  payRateType: driver.pay_rate_type || 'cpm',
+  payRateValue: driver.pay_rate_value?.toString() || '',
+  hireDate: driver.hire_date || '',
+  notes: driver.notes || '',
+});
+
+interface DriverDrawerFormProps {
+  driver: DriverDetail;
+  error: string;
+  isSubmitting: boolean;
+  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+}
+
+function DriverDrawerForm({
+  driver,
+  error,
+  isSubmitting,
+  onSubmit,
+}: DriverDrawerFormProps) {
+  const [form, setForm] = useState<DriverFormValues>(() => buildDriverFormValues(driver));
+
+  const setField = (field: keyof DriverFormValues, value: string) => {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleUpdate = async () => {
+    await onSubmit({
+      first_name: form.firstName,
+      last_name: form.lastName,
+      phone: form.phone || null,
+      email: form.email || null,
+      home_address: form.homeAddress || null,
+      employment_type: form.employmentType,
+      cdl_number: form.cdlNumber || null,
+      cdl_class: form.cdlClass || null,
+      cdl_expiry_date: form.cdlExpiry || null,
+      medical_card_expiry_date: form.medicalExpiry || null,
+      pay_rate_type: form.payRateType,
+      pay_rate_value: form.payRateValue ? parseFloat(form.payRateValue) : null,
+      hire_date: form.hireDate || null,
+      notes: form.notes || null,
+    });
+  };
+
+  return (
+    <div className="py-6 space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>First Name</Label>
+          <Input value={form.firstName} onChange={(e) => setField('firstName', e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Last Name</Label>
+          <Input value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Phone</Label>
+        <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Email</Label>
+        <Input
+          type="email"
+          value={form.email}
+          onChange={(e) => setField('email', e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Home Address</Label>
+        <Input
+          value={form.homeAddress}
+          onChange={(e) => setField('homeAddress', e.target.value)}
+        />
+      </div>
+
+      <Separator />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Employment Type</Label>
+          <select
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+            value={form.employmentType}
+            onChange={(e) => setField('employmentType', e.target.value)}
+          >
+            {EMPLOYMENT_TYPES.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label>Hire Date</Label>
+          <Input
+            type="date"
+            value={form.hireDate}
+            onChange={(e) => setField('hireDate', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>CDL Number</Label>
+          <Input
+            value={form.cdlNumber}
+            onChange={(e) => setField('cdlNumber', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>CDL Class</Label>
+          <Input value={form.cdlClass} onChange={(e) => setField('cdlClass', e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>CDL Expiry</Label>
+          <Input
+            type="date"
+            value={form.cdlExpiry}
+            onChange={(e) => setField('cdlExpiry', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Medical Card Expiry</Label>
+          <Input
+            type="date"
+            value={form.medicalExpiry}
+            onChange={(e) => setField('medicalExpiry', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Pay Rate Type</Label>
+          <select
+            className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+            value={form.payRateType}
+            onChange={(e) => setField('payRateType', e.target.value)}
+          >
+            {PAY_RATE_TYPES.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label>Pay Rate Value</Label>
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={form.payRateValue}
+            onChange={(e) => setField('payRateValue', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Notes</Label>
+        <Input
+          value={form.notes}
+          onChange={(e) => setField('notes', e.target.value)}
+          placeholder="Compliance notes, internal comments..."
+        />
+      </div>
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <div className="pt-4 flex flex-col gap-3">
+        <Button className="w-full" onClick={handleUpdate} disabled={isSubmitting}>
+          {isSubmitting ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawerProps) {
   const { data: driver, isLoading } = useDriverDetail(driverId);
   const updateMutation = useUpdateDriver();
   const deleteMutation = useDeleteDriver();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [homeAddress, setHomeAddress] = useState('');
-  const [employmentType, setEmploymentType] = useState('company_w2');
-  const [cdlNumber, setCdlNumber] = useState('');
-  const [cdlClass, setCdlClass] = useState('');
-  const [cdlExpiry, setCdlExpiry] = useState('');
-  const [medicalExpiry, setMedicalExpiry] = useState('');
-  const [payRateType, setPayRateType] = useState('cpm');
-  const [payRateValue, setPayRateValue] = useState('');
-  const [hireDate, setHireDate] = useState('');
-  const [notes, setNotes] = useState('');
-
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [error, setError] = useState('');
 
-  // Sync form state when data loads
-  useEffect(() => {
-    if (driver) {
-      setFirstName(driver.first_name || '');
-      setLastName(driver.last_name || '');
-      setPhone(driver.phone || '');
-      setEmail(driver.email || '');
-      setHomeAddress(driver.home_address || '');
-      setEmploymentType(driver.employment_type || 'company_w2');
-      setCdlNumber(driver.cdl_number || '');
-      setCdlClass(driver.cdl_class || '');
-      setCdlExpiry(driver.cdl_expiry_date || '');
-      setMedicalExpiry(driver.medical_card_expiry_date || '');
-      setPayRateType(driver.pay_rate_type || 'cpm');
-      setPayRateValue(driver.pay_rate_value?.toString() || '');
-      setHireDate(driver.hire_date || '');
-      setNotes(driver.notes || '');
-    }
-  }, [driver]);
+  const handleClose = () => {
+    setError('');
+    setIsConfirmOpen(false);
+    onClose();
+  };
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (payload: Record<string, unknown>) => {
     if (!driverId) return;
     setError('');
     try {
       await updateMutation.mutateAsync({
         driverId,
-        payload: {
-          first_name: firstName,
-          last_name: lastName,
-          phone: phone || null,
-          email: email || null,
-          home_address: homeAddress || null,
-          employment_type: employmentType,
-          cdl_number: cdlNumber || null,
-          cdl_class: cdlClass || null,
-          cdl_expiry_date: cdlExpiry || null,
-          medical_card_expiry_date: medicalExpiry || null,
-          pay_rate_type: payRateType,
-          pay_rate_value: payRateValue ? parseFloat(payRateValue) : null,
-          hire_date: hireDate || null,
-          notes: notes || null,
-        },
+        payload,
       });
-      onClose();
+      handleClose();
     } catch (err) {
       setError(extractApiError(err, 'Failed to update driver'));
     }
@@ -123,10 +301,10 @@ export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawer
 
   const handleDelete = async () => {
     if (!driverId) return;
+    setError('');
     try {
       await deleteMutation.mutateAsync(driverId);
-      setIsConfirmOpen(false);
-      onClose();
+      handleClose();
     } catch (err) {
       setError(extractApiError(err, 'Failed to deactivate driver'));
     }
@@ -134,7 +312,7 @@ export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawer
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <SheetContent className="sm:max-w-md overflow-y-auto bg-background/60 backdrop-blur-xl border-l-white/10 shadow-2xl">
           <SheetHeader>
             <SheetTitle>Driver Profile</SheetTitle>
@@ -148,95 +326,30 @@ export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawer
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Loading driver profile...</p>
             </div>
+          ) : driver ? (
+            <DriverDrawerForm
+              key={driver.id}
+              driver={driver}
+              error={error}
+              isSubmitting={updateMutation.isPending}
+              onSubmit={handleUpdate}
+            />
           ) : (
-            <div className="py-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                </div>
-              </div>
+            <div className="py-6">
+              <p className="text-sm text-muted-foreground">Driver details could not be loaded.</p>
+            </div>
+          )}
 
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Home Address</Label>
-                <Input value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} />
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Employment Type</Label>
-                  <select
-                    className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
-                    value={employmentType}
-                    onChange={(e) => setEmploymentType(e.target.value)}
-                  >
-                    {EMPLOYMENT_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Hire Date</Label>
-                  <Input type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>CDL Class</Label>
-                  <Input value={cdlClass} onChange={(e) => setCdlClass(e.target.value)} />
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <Label>CDL Expiry</Label>
-                  <Input type="date" value={cdlExpiry} onChange={(e) => setCdlExpiry(e.target.value)} />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Compliance notes, internal comments..." />
-              </div>
-
-              {error && <p className="text-xs text-destructive">{error}</p>}
-
-              <div className="pt-4 flex flex-col gap-3">
-                <Button className="w-full" onClick={handleUpdate} disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Changes
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20"
-                  onClick={() => setIsConfirmOpen(true)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Deactivate Driver
-                </Button>
-              </div>
+          {!isLoading && driver && (
+            <div className="pb-6">
+              <Button
+                variant="destructive"
+                className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20"
+                onClick={() => setIsConfirmOpen(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Deactivate Driver
+              </Button>
             </div>
           )}
         </SheetContent>
@@ -251,9 +364,9 @@ export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawer
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
+            <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+              Cancel
+            </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}

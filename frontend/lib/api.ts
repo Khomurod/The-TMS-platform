@@ -469,7 +469,7 @@ export const deleteLoad = async (loadId: string) => {
 
 
 export const deleteDriver = async (driverId: string) => {
-  const { data } = await api.delete(/drivers/);
+  const { data } = await api.delete(`/drivers/${driverId}`);
   return data;
 };
 
