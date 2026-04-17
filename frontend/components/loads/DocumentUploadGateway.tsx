@@ -76,7 +76,7 @@ export default function DocumentUploadGateway({
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept=".pdf"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
             onChange={handleFileChange}
             disabled={isUploading}
           />
@@ -96,7 +96,7 @@ export default function DocumentUploadGateway({
               <>
                 <UploadCloud className="w-6 h-6 text-primary" />
                 <span className="font-medium">Upload Rate Con / BOL (Auto-fill)</span>
-                <span className="text-xs text-muted-foreground font-normal">PDF only</span>
+                <span className="text-xs text-muted-foreground font-normal">PDF or image (JPG/PNG/WEBP)</span>
               </>
             )}
           </Button>

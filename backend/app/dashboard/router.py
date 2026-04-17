@@ -101,25 +101,27 @@ async def get_compliance_alerts(
         threshold = datetime.now(timezone.utc).date() + timedelta(days=30)
         today = datetime.now(timezone.utc).date()
 
+        # Pull only required columns from Driver to avoid decrypting unrelated
+        # encrypted fields when assembling dashboard alerts.
         # Driver CDL expiry
         cdl_query = (
-            select(Driver)
+            select(Driver.id, Driver.first_name, Driver.last_name, Driver.cdl_expiry_date)
             .where(Driver.company_id == company_id)
             .where(Driver.is_active == True)
             .where(Driver.cdl_expiry_date.isnot(None))
             .where(Driver.cdl_expiry_date <= threshold)
         )
-        cdl_results = (await db.execute(cdl_query)).scalars().all()
+        cdl_results = (await db.execute(cdl_query)).all()
 
         # Driver medical card expiry
         medical_query = (
-            select(Driver)
+            select(Driver.id, Driver.first_name, Driver.last_name, Driver.medical_card_expiry_date)
             .where(Driver.company_id == company_id)
             .where(Driver.is_active == True)
             .where(Driver.medical_card_expiry_date.isnot(None))
             .where(Driver.medical_card_expiry_date <= threshold)
         )
-        medical_results = (await db.execute(medical_query)).scalars().all()
+        medical_results = (await db.execute(medical_query)).all()
 
         # Truck DOT inspection expiry
         dot_query = (
@@ -133,32 +135,34 @@ async def get_compliance_alerts(
 
         alerts = []
 
-        for d in cdl_results:
-            if d.cdl_expiry_date is None:
+        for row in cdl_results:
+            driver_id, first_name, last_name, cdl_expiry_date = row
+            if cdl_expiry_date is None:
                 continue
-            is_expired = d.cdl_expiry_date <= today
+            is_expired = cdl_expiry_date <= today
             alerts.append({
                 "type": "cdl_expiry",
                 "severity": "critical" if is_expired else "warning",
                 "entity_type": "driver",
-                "entity_id": str(d.id),
-                "entity_name": f"{d.first_name} {d.last_name}",
-                "description": f"CDL {'expired' if is_expired else 'expires'} on {d.cdl_expiry_date}",
-                "expiry_date": str(d.cdl_expiry_date),
+                "entity_id": str(driver_id),
+                "entity_name": f"{first_name} {last_name}",
+                "description": f"CDL {'expired' if is_expired else 'expires'} on {cdl_expiry_date}",
+                "expiry_date": str(cdl_expiry_date),
             })
 
-        for d in medical_results:
-            if d.medical_card_expiry_date is None:
+        for row in medical_results:
+            driver_id, first_name, last_name, medical_expiry_date = row
+            if medical_expiry_date is None:
                 continue
-            is_expired = d.medical_card_expiry_date <= today
+            is_expired = medical_expiry_date <= today
             alerts.append({
                 "type": "medical_card_expiry",
                 "severity": "critical" if is_expired else "warning",
                 "entity_type": "driver",
-                "entity_id": str(d.id),
-                "entity_name": f"{d.first_name} {d.last_name}",
-                "description": f"Medical card {'expired' if is_expired else 'expires'} on {d.medical_card_expiry_date}",
-                "expiry_date": str(d.medical_card_expiry_date),
+                "entity_id": str(driver_id),
+                "entity_name": f"{first_name} {last_name}",
+                "description": f"Medical card {'expired' if is_expired else 'expires'} on {medical_expiry_date}",
+                "expiry_date": str(medical_expiry_date),
             })
 
         for t in dot_results:
@@ -243,7 +247,7 @@ async def get_recent_events(
             .where(Load.company_id == company_id)
             .where(Load.is_active == True)
             .options(
-                selectinload(Load.trips).selectinload(Trip.driver),
+                selectinload(Load.trips),
                 selectinload(Load.stops),
             )
             .order_by(func.coalesce(Load.updated_at, Load.created_at).desc())
@@ -251,6 +255,33 @@ async def get_recent_events(
         )
         result = await db.execute(query)
         loads = result.scalars().unique().all()
+
+        # Build a lightweight driver name map (id -> full name) using only
+        # non-encrypted columns to avoid decrypt errors in dashboard lists.
+        driver_ids: set[UUID] = set()
+        for load in loads:
+            trips = getattr(load, 'trips', None) or []
+            if not trips:
+                continue
+            primary_trip = next(
+                (t for t in trips if getattr(t, 'sequence_number', 0) == 1),
+                trips[0] if trips else None
+            )
+            if primary_trip and getattr(primary_trip, "driver_id", None):
+                driver_ids.add(primary_trip.driver_id)
+
+        driver_name_map: dict[UUID, str] = {}
+        if driver_ids:
+            driver_rows = (await db.execute(
+                select(Driver.id, Driver.first_name, Driver.last_name)
+                .where(Driver.company_id == company_id)
+                .where(Driver.id.in_(driver_ids))
+                .where(Driver.is_active == True)
+            )).all()
+            for driver_id, first_name, last_name in driver_rows:
+                full_name = f"{first_name or ''} {last_name or ''}".strip()
+                if full_name:
+                    driver_name_map[driver_id] = full_name
 
         events = []
         for load in loads:
@@ -262,8 +293,8 @@ async def get_recent_events(
                     (t for t in trips if getattr(t, 'sequence_number', 0) == 1),
                     trips[0] if trips else None
                 )
-                if primary_trip and getattr(primary_trip, 'driver', None):
-                    driver_name = f"{primary_trip.driver.first_name} {primary_trip.driver.last_name}"
+                if primary_trip and getattr(primary_trip, "driver_id", None):
+                    driver_name = driver_name_map.get(primary_trip.driver_id)
 
             stops = getattr(load, 'stops', None) or []
             stops = sorted(stops, key=lambda s: getattr(s, 'stop_sequence', 0)) if stops else []

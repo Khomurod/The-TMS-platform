@@ -167,7 +167,7 @@ class TestParseDocumentGuards:
             await svc.parse_freight_document(file)
 
         assert exc_info.value.status_code == 400
-        assert "Only PDF documents are supported" in str(exc_info.value.detail)
+        assert "Only PDF or image" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
     async def test_unreadable_pdf_rejected_with_400(self):

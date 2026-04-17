@@ -15,6 +15,7 @@ import io
 import json
 import logging
 import os
+import base64
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -50,6 +51,12 @@ from app.models.company import Company
 
 logger = logging.getLogger("safehaul.loads")
 MAX_PARSE_DOC_SIZE = 10 * 1024 * 1024  # 10 MB
+ALLOWED_PARSE_IMAGE_MIME_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+}
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -370,20 +377,32 @@ class LoadService:
             raise HTTPException(400, "Uploaded file is empty.")
         if len(content) > MAX_PARSE_DOC_SIZE:
             raise HTTPException(400, "File exceeds maximum size of 10 MB.")
-        if not content.startswith(b"%PDF-"):
-            raise HTTPException(400, "Only PDF documents are supported.")
 
-        try:
-            reader = pypdf.PdfReader(io.BytesIO(content))
-            extracted_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.warning("Failed to read uploaded PDF: %s", exc)
-            raise HTTPException(400, "Invalid or unreadable PDF document.") from exc
+        content_type = (file.content_type or "").lower()
+        is_pdf = content.startswith(b"%PDF-")
+        is_image = content_type in ALLOWED_PARSE_IMAGE_MIME_TYPES
+
+        if not is_pdf and not is_image:
+            raise HTTPException(400, "Only PDF or image (JPG/PNG/WEBP) documents are supported.")
+
+        if is_pdf:
+            try:
+                reader = pypdf.PdfReader(io.BytesIO(content))
+                extracted_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+            except HTTPException:
+                raise
+            except Exception as exc:
+                logger.warning("Failed to read uploaded PDF: %s", exc)
+                raise HTTPException(400, "Invalid or unreadable PDF document.") from exc
+        else:
+            extracted_text = await self._extract_text_from_image_with_yandex_ocr(
+                content=content,
+                content_type=content_type,
+                api_key=api_key,
+            )
 
         if not extracted_text.strip():
-            raise HTTPException(400, "Could not extract text from PDF. Ensure it is not a flattened image.")
+            raise HTTPException(400, "Could not extract text from the document.")
 
         system_prompt = (
             "You are a freight logistics expert. Extract information from the provided document. "
@@ -473,6 +492,63 @@ class LoadService:
                 parsed_data["is_new_broker"] = True
         
         return parsed_data
+
+    async def _extract_text_from_image_with_yandex_ocr(
+        self,
+        content: bytes,
+        content_type: str,
+        api_key: str,
+    ) -> str:
+        """Run OCR for image uploads and return extracted text."""
+        mime_type = "JPEG" if "jpg" in content_type or "jpeg" in content_type else "PNG"
+        if "webp" in content_type:
+            mime_type = "WEBP"
+
+        payload = {
+            "mimeType": mime_type,
+            "languageCodes": ["*"],
+            "model": "page",
+            "content": base64.b64encode(content).decode("utf-8"),
+        }
+
+        headers = {
+            "Authorization": f"Api-Key {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText",
+                    headers=headers,
+                    json=payload,
+                    timeout=45.0,
+                )
+        except httpx.TimeoutException as exc:
+            logger.error("Yandex OCR timeout: %s", exc)
+            raise HTTPException(504, "Image OCR request timed out.") from exc
+        except httpx.HTTPError as exc:
+            logger.error("Yandex OCR network error: %s", exc)
+            raise HTTPException(502, "Could not reach OCR service.") from exc
+
+        if resp.status_code != 200:
+            logger.error("Yandex OCR error (%s): %s", resp.status_code, resp.text)
+            raise HTTPException(502, f"Image OCR failed with upstream status {resp.status_code}.")
+
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            logger.error("Yandex OCR returned non-JSON body: %s", resp.text)
+            raise HTTPException(502, "OCR service returned invalid response format.") from exc
+
+        text = (
+            data.get("result", {})
+            .get("textAnnotation", {})
+            .get("fullText", "")
+        )
+        if not isinstance(text, str):
+            return ""
+        return text
 
     # ══════════════════════════════════════════════════════════════
     #   STATE MACHINE — Advance Load Status
