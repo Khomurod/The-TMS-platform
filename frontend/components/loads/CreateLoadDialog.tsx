@@ -84,22 +84,22 @@ export interface ParsedLoadData {
 }
 
 export default function CreateLoadDialog({
-  open: externalOpen,
-  onOpenChange: externalOnOpenChange,
+  open,
+  onOpenChange,
   initialData,
-  trigger,
 }: {
   open?: boolean;
   onOpenChange?: (val: boolean) => void;
   initialData?: ParsedLoadData | null;
-  trigger?: React.ReactNode;
 } = {}) {
   const queryClient = useQueryClient();
   const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = externalOpen !== undefined;
-  const open = isControlled ? externalOpen : internalOpen;
-  const setOpen = isControlled ? externalOnOpenChange! : setInternalOpen;
-  
+  const isControlled = open !== undefined;
+  const dialogOpen = isControlled ? open! : internalOpen;
+  const setDialogOpen = (val: boolean) => {
+    if (isControlled) onOpenChange?.(val);
+    else setInternalOpen(val);
+  };
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -141,7 +141,7 @@ export default function CreateLoadDialog({
   };
 
   useEffect(() => {
-    if (open && initialData) {
+    if (dialogOpen && initialData) {
       if (initialData.broker_name) setBrokerName(initialData.broker_name);
       if (initialData.broker_id) setBrokerId(initialData.broker_id);
       if (initialData.payout) setBaseRate(String(initialData.payout));
@@ -171,7 +171,7 @@ export default function CreateLoadDialog({
       
       setStops(newStops);
     }
-  }, [open, initialData]);
+  }, [dialogOpen, initialData]);
 
   const handleBrokerSearch = useCallback(async (q: string) => {
     setBrokerSearch(q);
@@ -265,7 +265,7 @@ export default function CreateLoadDialog({
       queryClient.invalidateQueries({ queryKey: ['loads'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       reset();
-      setOpen(false);
+      setDialogOpen(false);
     } catch (err: unknown) {
       setError(extractApiError(err, 'Failed to create load'));
     } finally {
@@ -275,15 +275,13 @@ export default function CreateLoadDialog({
 
   return (
     <Dialog
-      open={open}
+      open={dialogOpen}
       onOpenChange={(val) => {
-        setOpen(val);
+        setDialogOpen(val);
         if (!val) reset();
       }}
     >
-      {trigger ? (
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-      ) : !isControlled ? (
+      {!isControlled && (
         <DialogTrigger
           render={
             <Button size="sm">
@@ -292,7 +290,7 @@ export default function CreateLoadDialog({
             </Button>
           }
         />
-      ) : null}
+      )}
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
