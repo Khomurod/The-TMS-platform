@@ -74,7 +74,8 @@ class Settings(BaseSettings):
     @property
     def effective_encryption_key(self) -> str:
         """Return the encryption key, falling back to JWT secret for dev."""
-        return self.encryption_key or self.jwt_secret_key
+        key = self.encryption_key or self.jwt_secret_key
+        return key.ljust(32, '0')[:32]
 
     # ── CORS ─────────────────────────────────────────────────────
     cors_origins: Annotated[List[str], NoDecode] = [

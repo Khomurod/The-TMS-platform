@@ -61,7 +61,7 @@ export default function FleetDonut() {
           {/* Donut */}
           <div className="w-36 h-36 shrink-0">
             {ready ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={chartData}
