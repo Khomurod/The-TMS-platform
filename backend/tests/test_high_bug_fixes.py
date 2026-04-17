@@ -12,6 +12,9 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
+from PIL import Image, ImageDraw
 
 from app.fleet.schemas import TrailerCreate, TrailerUpdate
 from app.loads.service import LoadService
@@ -180,3 +183,93 @@ class TestParseDocumentGuards:
 
         assert exc_info.value.status_code == 400
         assert "Invalid or unreadable PDF document" in str(exc_info.value.detail)
+
+
+class TestParseDocumentOcrFallback:
+    """Ensure image-based PDFs and images are handled through OCR fallback."""
+
+    def _make_text_pdf(self) -> bytes:
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf)
+        c.drawString(100, 760, "RATE CONFIRMATION")
+        c.drawString(100, 740, "Pickup: Chicago, IL")
+        c.drawString(100, 720, "Delivery: Dallas, TX")
+        c.drawString(100, 700, "Commodity: Produce")
+        c.drawString(100, 680, "Payout: 2500")
+        c.showPage()
+        c.save()
+        return buf.getvalue()
+
+    def _make_png(self, text: str) -> bytes:
+        img = Image.new("RGB", (900, 300), color="white")
+        draw = ImageDraw.Draw(img)
+        draw.text((20, 120), text, fill="black")
+        out = io.BytesIO()
+        img.save(out, format="PNG")
+        return out.getvalue()
+
+    def _make_scanned_pdf(self) -> bytes:
+        page1_png = self._make_png("Pickup: Chicago IL")
+        page2_png = self._make_png("Delivery: Dallas TX")
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf)
+        c.drawImage(ImageReader(io.BytesIO(page1_png)), 40, 350, width=500, height=180)
+        c.showPage()
+        c.drawImage(ImageReader(io.BytesIO(page2_png)), 40, 350, width=500, height=180)
+        c.showPage()
+        c.save()
+        return buf.getvalue()
+
+    @pytest.mark.asyncio
+    async def test_text_pdf_uses_standard_parser_without_ocr(self):
+        svc = LoadService(AsyncMock(), uuid4())
+        pdf_bytes = self._make_text_pdf()
+        file = UploadFile(filename="text.pdf", file=io.BytesIO(pdf_bytes), headers=None)
+
+        ocr_mock = AsyncMock(return_value="ocr should not run")
+        parse_mock = AsyncMock(return_value={"pickup_location": "Chicago"})
+        svc._extract_text_from_image_with_yandex_ocr = ocr_mock
+        svc._parse_structured_load_data = parse_mock
+
+        result = await svc.parse_freight_document(file)
+        assert result["pickup_location"] == "Chicago"
+        ocr_mock.assert_not_awaited()
+        parse_mock.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_scanned_pdf_triggers_ocr_fallback_multi_page(self):
+        svc = LoadService(AsyncMock(), uuid4())
+        scanned_pdf = self._make_scanned_pdf()
+        file = UploadFile(filename="scan.pdf", file=io.BytesIO(scanned_pdf), headers=None)
+
+        ocr_mock = AsyncMock(side_effect=["pickup chicago", "delivery dallas"])
+        parse_mock = AsyncMock(return_value={"delivery_location": "Dallas"})
+        svc._extract_text_from_image_with_yandex_ocr = ocr_mock
+        svc._parse_structured_load_data = parse_mock
+
+        result = await svc.parse_freight_document(file)
+        assert result["delivery_location"] == "Dallas"
+        assert ocr_mock.await_count >= 2
+        parse_input_text = parse_mock.await_args.args[0]
+        assert "pickup chicago" in parse_input_text
+        assert "delivery dallas" in parse_input_text
+
+    @pytest.mark.asyncio
+    async def test_png_uses_direct_ocr(self):
+        svc = LoadService(AsyncMock(), uuid4())
+        png_bytes = self._make_png("Rate con image")
+        file = UploadFile(
+            filename="ratecon.png",
+            file=io.BytesIO(png_bytes),
+            headers=None,
+        )
+
+        ocr_mock = AsyncMock(return_value="image text payload")
+        parse_mock = AsyncMock(return_value={"commodity": "Produce"})
+        svc._extract_text_from_image_with_yandex_ocr = ocr_mock
+        svc._parse_structured_load_data = parse_mock
+
+        result = await svc.parse_freight_document(file)
+        assert result["commodity"] == "Produce"
+        ocr_mock.assert_awaited_once()
+        parse_mock.assert_awaited_once()

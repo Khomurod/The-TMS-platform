@@ -392,25 +392,127 @@ class LoadService:
             raise HTTPException(400, "Only PDF or image (JPG/PNG/WEBP) documents are supported.")
 
         if is_pdf:
-            try:
-                reader = pypdf.PdfReader(io.BytesIO(content))
-                extracted_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-            except HTTPException:
-                raise
-            except Exception as exc:
-                logger.warning("Failed to read uploaded PDF: %s", exc)
-                raise HTTPException(400, "Invalid or unreadable PDF document.") from exc
+            extracted_text = await self._extract_text_from_pdf_with_ocr_fallback(
+                content=content,
+                api_key=api_key,
+                folder_id=folder_id,
+            )
         else:
+            logger.info("OCR fallback triggered: false (direct image input)")
             extracted_text = await self._extract_text_from_image_with_yandex_ocr(
                 content=content,
                 content_type=content_type,
                 api_key=api_key,
                 folder_id=folder_id,
             )
+            logger.info("OCR result length: %d", len(extracted_text.strip()))
 
         if not extracted_text.strip():
             raise HTTPException(400, "Could not extract text from the document.")
 
+        parsed_data = await self._parse_structured_load_data(extracted_text, api_key, folder_id)
+            
+        # Broker Resolution Logic
+        broker_name = parsed_data.get("broker_name")
+        if isinstance(broker_name, str) and broker_name.strip():
+            like_pattern = f"%{broker_name.strip()}%"
+            broker = (await self.db.execute(
+                select(Broker)
+                .where(Broker.company_id == self.company_id)
+                .where(Broker.is_active.is_(True))
+                .where(Broker.name.ilike(like_pattern))
+            )).scalar_one_or_none()
+
+            if broker:
+                parsed_data["broker_id"] = str(broker.id)
+            else:
+                parsed_data["is_new_broker"] = True
+        
+        return parsed_data
+
+    async def _extract_text_from_pdf_with_ocr_fallback(
+        self,
+        content: bytes,
+        api_key: str,
+        folder_id: str | None = None,
+    ) -> str:
+        """Extract text from PDF, with OCR fallback for scanned/image PDFs."""
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(content))
+        except Exception as exc:
+            logger.warning("Failed to read uploaded PDF: %s", exc)
+            raise HTTPException(400, "Invalid or unreadable PDF document.") from exc
+
+        parsed_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        parsed_len = len(parsed_text.strip())
+        logger.info("PDF text extraction result length: %d", parsed_len)
+
+        if parsed_len >= 50:
+            logger.info("OCR fallback triggered: false")
+            return parsed_text
+
+        logger.info("OCR fallback triggered: true")
+        ocr_text_chunks: list[str] = []
+        first_ocr_error: HTTPException | None = None
+
+        for page_idx, page in enumerate(reader.pages, start=1):
+            page_images = list(getattr(page, "images", []) or [])
+            if not page_images:
+                logger.info("PDF page %d has no embedded images for OCR fallback", page_idx)
+                continue
+
+            for image_idx, image_obj in enumerate(page_images, start=1):
+                image_bytes = getattr(image_obj, "data", None)
+                if not image_bytes:
+                    logger.info("PDF page %d image %d has no byte payload", page_idx, image_idx)
+                    continue
+                img_content_type = self._detect_image_content_type(image_bytes)
+                if not img_content_type:
+                    logger.info("PDF page %d image %d has unsupported type", page_idx, image_idx)
+                    continue
+                try:
+                    page_text = await self._extract_text_from_image_with_yandex_ocr(
+                        content=image_bytes,
+                        content_type=img_content_type,
+                        api_key=api_key,
+                        folder_id=folder_id,
+                    )
+                except HTTPException as exc:
+                    logger.warning("OCR failed on page %d image %d: %s", page_idx, image_idx, exc.detail)
+                    if first_ocr_error is None:
+                        first_ocr_error = exc
+                    continue
+                if page_text.strip():
+                    ocr_text_chunks.append(page_text.strip())
+
+        ocr_combined = "\n".join(ocr_text_chunks).strip()
+        logger.info("OCR result length: %d", len(ocr_combined))
+
+        # Keep parser output as last-resort text even if short; only hard-fail when both paths
+        # produced no text at all.
+        if ocr_combined:
+            return ocr_combined
+        if parsed_text.strip():
+            return parsed_text
+        if first_ocr_error is not None:
+            raise first_ocr_error
+        return ""
+
+    def _detect_image_content_type(self, content: bytes) -> str | None:
+        if content.startswith(b"\xFF\xD8\xFF"):
+            return "image/jpeg"
+        if content.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+        if content.startswith(b"RIFF") and b"WEBP" in content[:32]:
+            return "image/webp"
+        return None
+
+    async def _parse_structured_load_data(
+        self,
+        extracted_text: str,
+        api_key: str,
+        folder_id: str | None = None,
+    ) -> dict:
         system_prompt = (
             "You are a freight logistics expert. Extract information from the provided document. "
             "Return strictly formatted JSON containing: pickup_location (string), delivery_location (string), "
@@ -422,8 +524,6 @@ class LoadService:
             "x-folder-id": folder_id or "",
             "Content-Type": "application/json"
         }
-
-        # Handle different models or endpoints if needed, but standard Yandex GPT
         payload = {
             "modelUri": f"gpt://{folder_id}/yandexgpt/latest" if folder_id else "yandexgpt",
             "completionOptions": {
@@ -432,10 +532,7 @@ class LoadService:
                 "maxTokens": "2000"
             },
             "messages": [
-                {
-                    "role": "system",
-                    "text": system_prompt
-                },
+                {"role": "system", "text": system_prompt},
                 {
                     "role": "user",
                     "text": f"Here is the extracted text from the freight document:\n\n{extracted_text}\n\nParse it and return strictly formatted JSON."
@@ -474,31 +571,13 @@ class LoadService:
                 result_text = result_text[7:-3]
             elif result_text.startswith("```"):
                 result_text = result_text[3:-3]
-
             parsed_data = json.loads(result_text.strip())
             if not isinstance(parsed_data, dict):
                 raise ValueError("AI response JSON must be an object")
+            return parsed_data
         except Exception as exc:
             logger.error("Failed to parse Yandex response: %s - Response: %s", exc, data)
             raise HTTPException(502, "Failed to parse AI response into JSON.") from exc
-            
-        # Broker Resolution Logic
-        broker_name = parsed_data.get("broker_name")
-        if isinstance(broker_name, str) and broker_name.strip():
-            like_pattern = f"%{broker_name.strip()}%"
-            broker = (await self.db.execute(
-                select(Broker)
-                .where(Broker.company_id == self.company_id)
-                .where(Broker.is_active.is_(True))
-                .where(Broker.name.ilike(like_pattern))
-            )).scalar_one_or_none()
-
-            if broker:
-                parsed_data["broker_id"] = str(broker.id)
-            else:
-                parsed_data["is_new_broker"] = True
-        
-        return parsed_data
 
     async def _extract_text_from_image_with_yandex_ocr(
         self,
