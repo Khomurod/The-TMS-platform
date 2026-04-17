@@ -42,7 +42,9 @@ export default function DocumentUploadGateway({
     formData.append('file', file);
 
     try {
-      const response = await api.post('/loads/parse-document', formData);
+      const response = await api.post('/loads/parse-document', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       const data = response.data;
       onParseSuccess(data);
       onOpenChange(false);
