@@ -380,7 +380,13 @@ class LoadService:
 
         content_type = (file.content_type or "").lower()
         is_pdf = content.startswith(b"%PDF-")
-        is_image = content_type in ALLOWED_PARSE_IMAGE_MIME_TYPES
+        # Some browsers/clients may omit content_type; detect common image signatures.
+        inferred_image = (
+            content.startswith(b"\xFF\xD8\xFF")  # JPEG
+            or content.startswith(b"\x89PNG\r\n\x1a\n")  # PNG
+            or content.startswith(b"RIFF") and b"WEBP" in content[:32]  # WEBP
+        )
+        is_image = content_type in ALLOWED_PARSE_IMAGE_MIME_TYPES or inferred_image
 
         if not is_pdf and not is_image:
             raise HTTPException(400, "Only PDF or image (JPG/PNG/WEBP) documents are supported.")
@@ -399,6 +405,7 @@ class LoadService:
                 content=content,
                 content_type=content_type,
                 api_key=api_key,
+                folder_id=folder_id,
             )
 
         if not extracted_text.strip():
@@ -498,11 +505,20 @@ class LoadService:
         content: bytes,
         content_type: str,
         api_key: str,
+        folder_id: str | None = None,
     ) -> str:
         """Run OCR for image uploads and return extracted text."""
         mime_type = "JPEG" if "jpg" in content_type or "jpeg" in content_type else "PNG"
         if "webp" in content_type:
             mime_type = "WEBP"
+        elif not content_type:
+            # Fallback to byte signature when content_type is absent.
+            if content.startswith(b"\xFF\xD8\xFF"):
+                mime_type = "JPEG"
+            elif content.startswith(b"\x89PNG\r\n\x1a\n"):
+                mime_type = "PNG"
+            elif content.startswith(b"RIFF") and b"WEBP" in content[:32]:
+                mime_type = "WEBP"
 
         payload = {
             "mimeType": mime_type,
@@ -515,6 +531,8 @@ class LoadService:
             "Authorization": f"Api-Key {api_key}",
             "Content-Type": "application/json",
         }
+        if folder_id:
+            headers["x-folder-id"] = folder_id
 
         try:
             async with httpx.AsyncClient() as client:
@@ -533,6 +551,11 @@ class LoadService:
 
         if resp.status_code != 200:
             logger.error("Yandex OCR error (%s): %s", resp.status_code, resp.text)
+            if resp.status_code in (401, 403):
+                raise HTTPException(
+                    502,
+                    "Image OCR authorization failed. Verify YANDEX_API_KEY and YANDEX_FOLDER_ID permissions for OCR.",
+                )
             raise HTTPException(502, f"Image OCR failed with upstream status {resp.status_code}.")
 
         try:
