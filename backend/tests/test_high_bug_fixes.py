@@ -5,13 +5,16 @@
 3. Duplicate settlement prevention still enforced
 """
 
+import io
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
 
 from app.fleet.schemas import TrailerCreate, TrailerUpdate
+from app.loads.service import LoadService
 from app.models.fleet import TrailerType
 
 
@@ -150,3 +153,30 @@ class TestDuplicateSettlementPrevention:
         # Must raise 409 on duplicate
         assert "409" in source
         assert "Settlement already exists" in source
+
+
+class TestParseDocumentGuards:
+    """Ensure parse-document handles bad payloads without unhandled 500 crashes."""
+
+    @pytest.mark.asyncio
+    async def test_non_pdf_rejected_with_400(self):
+        svc = LoadService(AsyncMock(), uuid4())
+        file = UploadFile(filename="note.txt", file=io.BytesIO(b"hello world"), headers=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.parse_freight_document(file)
+
+        assert exc_info.value.status_code == 400
+        assert "Only PDF documents are supported" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_unreadable_pdf_rejected_with_400(self):
+        svc = LoadService(AsyncMock(), uuid4())
+        bad_pdf = b"%PDF-1.4\nthis is not a real pdf body"
+        file = UploadFile(filename="bad.pdf", file=io.BytesIO(bad_pdf), headers=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.parse_freight_document(file)
+
+        assert exc_info.value.status_code == 400
+        assert "Invalid or unreadable PDF document" in str(exc_info.value.detail)

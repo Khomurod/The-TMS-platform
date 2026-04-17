@@ -39,6 +39,7 @@ from app.loads.schemas import (
     TripResponse,
     DispatchRequest,
 )
+from app.config import settings
 from app.core.exceptions import NotFoundError
 from app.models.base import LoadStatus, TripStatus, DriverStatus
 from app.models.load import Load, Trip, LoadStop
@@ -48,6 +49,7 @@ from app.models.fleet import Truck, Trailer, EquipmentStatus
 from app.models.company import Company
 
 logger = logging.getLogger("safehaul.loads")
+MAX_PARSE_DOC_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -361,15 +363,27 @@ class LoadService:
     async def parse_freight_document(self, file: UploadFile) -> dict:
         from app.models.broker import Broker
 
-        api_key = os.getenv("YANDEX_API_KEY")
-        folder_id = os.getenv("YANDEX_FOLDER_ID")
+        api_key = settings.yandex_api_key or os.getenv("YANDEX_API_KEY")
+        folder_id = settings.yandex_folder_id or os.getenv("YANDEX_FOLDER_ID")
         if not api_key:
             raise HTTPException(500, "YANDEX_API_KEY is not configured.")
 
         content = await file.read()
-        
-        reader = pypdf.PdfReader(io.BytesIO(content))
-        extracted_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        if not content:
+            raise HTTPException(400, "Uploaded file is empty.")
+        if len(content) > MAX_PARSE_DOC_SIZE:
+            raise HTTPException(400, "File exceeds maximum size of 10 MB.")
+        if not content.startswith(b"%PDF-"):
+            raise HTTPException(400, "Only PDF documents are supported.")
+
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(content))
+            extracted_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("Failed to read uploaded PDF: %s", exc)
+            raise HTTPException(400, "Invalid or unreadable PDF document.") from exc
 
         if not extracted_text.strip():
             raise HTTPException(400, "Could not extract text from PDF. Ensure it is not a flattened image.")
@@ -406,48 +420,62 @@ class LoadService:
             ]
         }
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
-                headers=headers,
-                json=payload,
-                timeout=45.0
-            )
-            
-            if resp.status_code != 200:
-                logger.error(f"Yandex API error: {resp.text}")
-                raise HTTPException(500, f"AI Parsing failed: {resp.status_code}")
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+                    headers=headers,
+                    json=payload,
+                    timeout=45.0
+                )
+        except httpx.TimeoutException as exc:
+            logger.error("Yandex API timeout: %s", exc)
+            raise HTTPException(504, "AI parsing request timed out.") from exc
+        except httpx.HTTPError as exc:
+            logger.error("Yandex API network error: %s", exc)
+            raise HTTPException(502, "Could not reach AI parsing service.") from exc
 
+        if resp.status_code != 200:
+            logger.error("Yandex API error (%s): %s", resp.status_code, resp.text)
+            raise HTTPException(502, f"AI parsing failed with upstream status {resp.status_code}.")
+
+        try:
             data = resp.json()
-            try:
-                result_text = data["result"]["alternatives"][0]["message"]["text"]
-                if result_text.startswith("```json"):
-                    result_text = result_text[7:-3]
-                elif result_text.startswith("```"):
-                    result_text = result_text[3:-3]
-                    
-                parsed_data = json.loads(result_text.strip())
-            except Exception as e:
-                logger.error(f"Failed to parse Yandex response: {e} - Response: {data}")
-                raise HTTPException(500, "Failed to parse AI response into JSON.")
-            
-            # Broker Resolution Logic
-            broker_name = parsed_data.get("broker_name")
-            if broker_name:
-                like_pattern = f"%{broker_name}%"
-                broker = (await self.db.execute(
-                    select(Broker)
-                    .where(Broker.company_id == self.company_id)
-                    .where(Broker.is_active.is_(True))
-                    .where(Broker.name.ilike(like_pattern))
-                )).scalar_one_or_none()
+        except ValueError as exc:
+            logger.error("Yandex API returned non-JSON body: %s", resp.text)
+            raise HTTPException(502, "AI parsing service returned invalid response format.") from exc
 
-                if broker:
-                    parsed_data["broker_id"] = str(broker.id)
-                else:
-                    parsed_data["is_new_broker"] = True
+        try:
+            result_text = data["result"]["alternatives"][0]["message"]["text"]
+            if result_text.startswith("```json"):
+                result_text = result_text[7:-3]
+            elif result_text.startswith("```"):
+                result_text = result_text[3:-3]
+
+            parsed_data = json.loads(result_text.strip())
+            if not isinstance(parsed_data, dict):
+                raise ValueError("AI response JSON must be an object")
+        except Exception as exc:
+            logger.error("Failed to parse Yandex response: %s - Response: %s", exc, data)
+            raise HTTPException(502, "Failed to parse AI response into JSON.") from exc
             
-            return parsed_data
+        # Broker Resolution Logic
+        broker_name = parsed_data.get("broker_name")
+        if isinstance(broker_name, str) and broker_name.strip():
+            like_pattern = f"%{broker_name.strip()}%"
+            broker = (await self.db.execute(
+                select(Broker)
+                .where(Broker.company_id == self.company_id)
+                .where(Broker.is_active.is_(True))
+                .where(Broker.name.ilike(like_pattern))
+            )).scalar_one_or_none()
+
+            if broker:
+                parsed_data["broker_id"] = str(broker.id)
+            else:
+                parsed_data["is_new_broker"] = True
+        
+        return parsed_data
 
     # ══════════════════════════════════════════════════════════════
     #   STATE MACHINE — Advance Load Status
