@@ -76,11 +76,18 @@ function emptyStop(type: 'pickup' | 'delivery', seq: number): StopEntry {
 export interface ParsedLoadData {
   broker_name?: string;
   broker_id?: string;
+  broker_load_id?: string;
   base_rate?: number | string;
+  pickup_facility?: string;
   pickup_city?: string;
   pickup_state?: string;
+  pickup_zip?: string;
+  pickup_date?: string;
+  delivery_facility?: string;
   delivery_city?: string;
   delivery_state?: string;
+  delivery_zip?: string;
+  delivery_date?: string;
   commodity?: string;
   weight?: number | string;
   [key: string]: unknown;
@@ -147,20 +154,40 @@ export default function CreateLoadDialog({
     if (dialogOpen && initialData) {
       if (initialData.broker_name) setBrokerName(initialData.broker_name);
       if (initialData.broker_id) setBrokerId(initialData.broker_id);
+      if (initialData.broker_load_id) setBrokerLoadId(initialData.broker_load_id);
       if (initialData.base_rate) setBaseRate(String(initialData.base_rate));
       
       const newStops = [emptyStop('pickup', 1), emptyStop('delivery', 2)];
+      if (initialData.pickup_facility) {
+        newStops[0].facility_name = initialData.pickup_facility;
+      }
       if (initialData.pickup_city) {
         newStops[0].city = initialData.pickup_city;
       }
       if (initialData.pickup_state) {
         newStops[0].state = initialData.pickup_state;
       }
+      if (initialData.pickup_zip) {
+        newStops[0].zip_code = initialData.pickup_zip;
+      }
+      if (initialData.pickup_date) {
+        newStops[0].scheduled_date = initialData.pickup_date;
+      }
+
+      if (initialData.delivery_facility) {
+        newStops[1].facility_name = initialData.delivery_facility;
+      }
       if (initialData.delivery_city) {
         newStops[1].city = initialData.delivery_city;
       }
       if (initialData.delivery_state) {
         newStops[1].state = initialData.delivery_state;
+      }
+      if (initialData.delivery_zip) {
+        newStops[1].zip_code = initialData.delivery_zip;
+      }
+      if (initialData.delivery_date) {
+        newStops[1].scheduled_date = initialData.delivery_date;
       }
       
       const notesParts = [];
