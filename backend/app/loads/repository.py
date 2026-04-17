@@ -16,7 +16,6 @@ from app.models.base import LoadStatus
 from app.models.load import Load, LoadStop, Trip
 from app.models.accounting import LoadAccessorial
 from app.models.broker import Broker
-from app.models.driver import Driver
 from app.models.fleet import Truck, Trailer
 
 logger = logging.getLogger("safehaul.loads")
@@ -39,7 +38,6 @@ class LoadRepository:
                 selectinload(Load.stops),
                 selectinload(Load.accessorials),
                 selectinload(Load.broker),
-                selectinload(Load.trips).selectinload(Trip.driver),
                 selectinload(Load.trips).selectinload(Trip.truck),
                 selectinload(Load.trips).selectinload(Trip.trailer),
                 selectinload(Load.commodities),

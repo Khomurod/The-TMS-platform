@@ -177,9 +177,6 @@ class LoadService:
                 trips[0] if len(trips) > 0 else None
             )
             if primary_trip:
-                driver = getattr(primary_trip, 'driver', None)
-                if driver:
-                    driver_name = f"{getattr(driver, 'first_name', '')} {getattr(driver, 'last_name', '')}".strip()
                 truck = getattr(primary_trip, 'truck', None)
                 if truck:
                     truck_number = getattr(truck, 'unit_number', None)
