@@ -52,41 +52,44 @@ export default function LoadsTable({ items, onRowClick }: LoadsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((load) => (
+          {items?.map((load) => (
             <TableRow
-              key={load.id}
+              key={load?.id}
               className="cursor-pointer hover:bg-muted/20 transition-colors"
-              onClick={() => onRowClick?.(load.id)}
+              onClick={() => onRowClick?.(load?.id)}
             >
               <TableCell className="font-medium">
                 <Link
-                  href={`/loads/${load.id}`}
+                  href={`/loads/${load?.id}`}
                   className="text-primary hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {load.load_number}
+                  {load?.load_number || 'N/A'}
                 </Link>
               </TableCell>
               <TableCell>
-                <StatusBadge status={load.status} />
+                <StatusBadge status={load?.status || 'offer'} />
               </TableCell>
               <TableCell className="text-sm">
-                {load.pickup_city ?? '—'}
+                {load?.pickup_city || '—'}
               </TableCell>
               <TableCell className="text-sm">
-                {load.delivery_city ?? '—'}
+                {load?.delivery_city || '—'}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
-                {formatDate(load.pickup_date)}
+                {formatDate(load?.pickup_date)}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
-                {formatDate(load.delivery_date)}
+                {formatDate(load?.delivery_date)}
               </TableCell>
               <TableCell className="text-sm">
-                {load.driver_name ?? '—'}
+                {/* Accommodate both flat driver_name or nested driver.first_name to prevent crashes */}
+                {(load as any)?.driver?.first_name 
+                  ? `${(load as any).driver.first_name} ${(load as any).driver.last_name || ''}` 
+                  : (load?.driver_name || 'Unassigned')}
               </TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency(load.total_rate ?? load.base_rate)}
+                {formatCurrency(load?.total_rate ?? load?.base_rate)}
               </TableCell>
             </TableRow>
           ))}

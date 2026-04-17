@@ -16,10 +16,7 @@ venv/
 env/
 .env.bak
 
-# Dev environment secrets — never bake into image
-.env
-.env.*
-!.env.example
+
 
 # Test artifacts
 .pytest_cache/

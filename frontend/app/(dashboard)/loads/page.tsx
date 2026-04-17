@@ -70,10 +70,10 @@ export default function LoadsPage() {
 
     return (
       <div className="space-y-3">
-        <LoadsTable items={data.data?.items ?? []} onRowClick={handleRowClick} />
-        {data.data && (
+        <LoadsTable items={data?.data?.items ?? []} onRowClick={handleRowClick} />
+        {data?.data && (
           <p className="text-right text-xs text-muted-foreground">
-            Showing {data.data.items.length} of {data.data.total} loads
+            Showing {data.data.items?.length ?? 0} of {data.data.total ?? 0} loads
           </p>
         )}
       </div>
@@ -98,25 +98,25 @@ export default function LoadsPage() {
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
             <span className="text-muted-foreground">
-              All Loads: <span className="font-medium text-foreground">{allLoads.data?.total ?? '-'}</span>
+              All Loads: <span className="font-medium text-foreground">{allLoads?.data?.total ?? 0}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
             <span className="text-muted-foreground">
-              Live: <span className="font-medium text-foreground">{live.data?.total ?? '-'}</span>
+              Live: <span className="font-medium text-foreground">{live?.data?.total ?? 0}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
             <span className="text-muted-foreground">
-              Upcoming: <span className="font-medium text-foreground">{upcoming.data?.total ?? '-'}</span>
+              Upcoming: <span className="font-medium text-foreground">{upcoming?.data?.total ?? 0}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
             <span className="text-muted-foreground">
-              Completed: <span className="font-medium text-foreground">{completed.data?.total ?? '-'}</span>
+              Completed: <span className="font-medium text-foreground">{completed?.data?.total ?? 0}</span>
             </span>
           </div>
         </div>
