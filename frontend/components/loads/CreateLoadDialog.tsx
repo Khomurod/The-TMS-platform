@@ -37,6 +37,7 @@ interface StopEntry {
   stop_type: 'pickup' | 'delivery';
   stop_sequence: number;
   facility_name: string;
+  address: string;
   city: string;
   state: string;
   zip_code: string;
@@ -65,6 +66,7 @@ function emptyStop(type: 'pickup' | 'delivery', seq: number): StopEntry {
     stop_type: type,
     stop_sequence: seq,
     facility_name: '',
+    address: '',
     city: '',
     state: '',
     zip_code: '',
@@ -78,12 +80,15 @@ export interface ParsedLoadData {
   broker_id?: string;
   broker_load_id?: string;
   base_rate?: number | string;
+  total_miles?: number | string;
   pickup_facility?: string;
+  pickup_address?: string;
   pickup_city?: string;
   pickup_state?: string;
   pickup_zip?: string;
   pickup_date?: string;
   delivery_facility?: string;
+  delivery_address?: string;
   delivery_city?: string;
   delivery_state?: string;
   delivery_zip?: string;
@@ -156,10 +161,14 @@ export default function CreateLoadDialog({
       if (initialData.broker_id) setBrokerId(initialData.broker_id);
       if (initialData.broker_load_id) setBrokerLoadId(initialData.broker_load_id);
       if (initialData.base_rate) setBaseRate(String(initialData.base_rate));
+      if (initialData.total_miles) setTotalMiles(String(initialData.total_miles));
       
       const newStops = [emptyStop('pickup', 1), emptyStop('delivery', 2)];
       if (initialData.pickup_facility) {
         newStops[0].facility_name = initialData.pickup_facility;
+      }
+      if (initialData.pickup_address) {
+        newStops[0].address = initialData.pickup_address;
       }
       if (initialData.pickup_city) {
         newStops[0].city = initialData.pickup_city;
@@ -176,6 +185,9 @@ export default function CreateLoadDialog({
 
       if (initialData.delivery_facility) {
         newStops[1].facility_name = initialData.delivery_facility;
+      }
+      if (initialData.delivery_address) {
+        newStops[1].address = initialData.delivery_address;
       }
       if (initialData.delivery_city) {
         newStops[1].city = initialData.delivery_city;
@@ -276,6 +288,7 @@ export default function CreateLoadDialog({
           stop_type: s.stop_type,
           stop_sequence: s.stop_sequence,
           facility_name: s.facility_name || undefined,
+          address: s.address || undefined,
           city: s.city || undefined,
           state: s.state || undefined,
           zip_code: s.zip_code || undefined,
@@ -468,6 +481,13 @@ export default function CreateLoadDialog({
                     placeholder="Facility name"
                     value={stop.facility_name}
                     onChange={(e) => updateStop(idx, 'facility_name', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Input
+                    placeholder="Street address"
+                    value={stop.address}
+                    onChange={(e) => updateStop(idx, 'address', e.target.value)}
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
