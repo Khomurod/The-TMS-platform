@@ -23,11 +23,13 @@ async def test_parse_structured_load_data_with_expanded_schema():
     mock_llm_response_dict = {
         "broker_load_id": "LD-9999",
         "pickup_facility": "Georgia-Pacific Consumer Products",
+        "pickup_address": "2300 Enterprise Dr.",
         "pickup_city": "Atlanta",
         "pickup_state": "GA",
         "pickup_zip": "30303",
         "pickup_date": "2024-05-10",
         "delivery_facility": "Walmart DC",
+        "delivery_address": "123 Main St.",
         "delivery_city": "Dallas",
         "delivery_state": "TX",
         "delivery_zip": "75201",
@@ -35,7 +37,8 @@ async def test_parse_structured_load_data_with_expanded_schema():
         "base_rate": 1500.50,
         "commodity": "Paper Products",
         "broker_name": "Coyote Logistics",
-        "weight": 40000
+        "weight": 40000,
+        "total_miles": 641
     }
 
     # Construct a valid Yandex LLM response payload
@@ -69,6 +72,7 @@ async def test_parse_structured_load_data_with_expanded_schema():
 
         # Pickup asserts
         assert parsed_data["pickup_facility"] == "Georgia-Pacific Consumer Products"
+        assert parsed_data["pickup_address"] == "2300 Enterprise Dr."
         assert parsed_data["pickup_city"] == "Atlanta"
         assert parsed_data["pickup_state"] == "GA"
         assert parsed_data["pickup_zip"] == "30303"
@@ -76,6 +80,7 @@ async def test_parse_structured_load_data_with_expanded_schema():
 
         # Delivery asserts
         assert parsed_data["delivery_facility"] == "Walmart DC"
+        assert parsed_data["delivery_address"] == "123 Main St."
         assert parsed_data["delivery_city"] == "Dallas"
         assert parsed_data["delivery_state"] == "TX"
         assert parsed_data["delivery_zip"] == "75201"
@@ -85,4 +90,5 @@ async def test_parse_structured_load_data_with_expanded_schema():
         assert parsed_data["base_rate"] == 1500.50
         assert parsed_data["commodity"] == "Paper Products"
         assert parsed_data["broker_name"] == "Coyote Logistics"
-        assert parsed_data["weight"] == 40000
+        assert parsed_data["weight"] == 40000.0
+        assert parsed_data["total_miles"] == 641.0

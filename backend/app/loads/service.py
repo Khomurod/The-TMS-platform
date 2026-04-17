@@ -508,13 +508,14 @@ class LoadService:
             "You are a freight logistics expert. Extract information from the provided document. "
             "Return strictly formatted JSON containing the following keys: "
             "broker_load_id (string or null), "
-            "pickup_facility (string or null), pickup_city (string or null), pickup_state (string or null), pickup_zip (string or null), pickup_date (YYYY-MM-DD or null), "
-            "delivery_facility (string or null), delivery_city (string or null), delivery_state (string or null), delivery_zip (string or null), delivery_date (YYYY-MM-DD or null), "
+            "pickup_facility (string or null), pickup_address (string or null), pickup_city (string or null), pickup_state (string or null), pickup_zip (string or null), pickup_date (YYYY-MM-DD or null), "
+            "delivery_facility (string or null), delivery_address (string or null), delivery_city (string or null), delivery_state (string or null), delivery_zip (string or null), delivery_date (YYYY-MM-DD or null), "
             "base_rate (numeric or null), commodity (string or null), broker_name (string or null), "
-            "and weight (numeric or null). "
+            "weight (numeric or null), and total_miles (numeric or null). "
             "Crucial instructions: Adapt to ANY document type (Broker, FedEx, Shipper). "
             "Extract locations, money, and weights. "
-            "Separate locations into facility name, city, state, and zip natively, and ALWAYS format dates as YYYY-MM-DD. "
+            "Extract the exact street address for pickup and delivery locations (e.g., '2300 Enterprise Dr.'). "
+            "Separate locations into facility name, address, city, state, and zip natively, and ALWAYS format dates as YYYY-MM-DD. "
             "If standard cities are missing but internal codes exist (like FedEx's '00291/SVNH'), map that code directly into the city field. "
             "If a rate is non-numeric (e.g., 'PAID') or missing, explicitly return null. Do not invent data. "
             "Do not include markdown formatting, backticks, or any explanatory text. Return ONLY the raw JSON object."
@@ -594,6 +595,7 @@ class LoadService:
 
             parsed_data['base_rate'] = sanitize_numeric(parsed_data.get('base_rate'))
             parsed_data['weight'] = sanitize_numeric(parsed_data.get('weight'))
+            parsed_data['total_miles'] = sanitize_numeric(parsed_data.get('total_miles'))
 
             return parsed_data
         except Exception as exc:
