@@ -11,6 +11,7 @@ Fixes Applied:
 """
 
 import inspect
+import re
 import io
 import json
 import logging
@@ -515,8 +516,12 @@ class LoadService:
     ) -> dict:
         system_prompt = (
             "You are a freight logistics expert. Extract information from the provided document. "
-            "Return strictly formatted JSON containing: pickup_location (string), delivery_location (string), "
-            "payout (numeric), commodity (string), and broker_name (string). Do not include markdown formatting or extra text."
+            "Return strictly formatted JSON containing the following keys: "
+            "pickup_location (string or null), delivery_location (string or null), "
+            "payout (numeric or null), commodity (string or null), broker_name (string or null), "
+            "and weight (numeric or null). "
+            "If a piece of information is missing from the document, set its value to null. "
+            "Do not include markdown formatting, backticks, or any explanatory text. Return ONLY the raw JSON object."
         )
 
         headers = {
@@ -567,10 +572,13 @@ class LoadService:
 
         try:
             result_text = data["result"]["alternatives"][0]["message"]["text"]
-            if result_text.startswith("```json"):
-                result_text = result_text[7:-3]
-            elif result_text.startswith("```"):
-                result_text = result_text[3:-3]
+            
+            # Use regex to robustly find the first JSON object in the LLM response.
+            # This handles cases where the LLM adds text before/after or uses backticks incorrectly.
+            json_match = re.search(r'(\{[\s\S]*\})', result_text)
+            if json_match:
+                result_text = json_match.group(1)
+            
             parsed_data = json.loads(result_text.strip())
             if not isinstance(parsed_data, dict):
                 raise ValueError("AI response JSON must be an object")
