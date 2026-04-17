@@ -2,3 +2,5 @@ ENVIRONMENT: production
 JWT_SECRET_KEY: KineticTMS_Secret_99
 DATABASE_URL: "postgresql+asyncpg://safehaul_tms:Welcomeme96.@/safehaul_tms?host=/cloudsql/tms-service-491512:us-central1:safehaultms"
 CORS_ORIGINS: '["*"]'
+YANDEX_API_KEY: "AQVNxTqFz0LLHgLbM42evQSxBfNqHoU-3kTsVrC2"
+YANDEX_FOLDER_ID: "b1g3bq30m1s8c1ik4tqj"
