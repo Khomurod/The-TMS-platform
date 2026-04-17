@@ -56,23 +56,31 @@ def is_token_blacklisted(jti: str) -> bool:
 
 
 async def is_token_blacklisted_db(jti: str, db) -> bool:
-    """Check if a JTI is blacklisted (DB check — authoritative)."""
+    """Check if a JTI is blacklisted (DB check — authoritative).
+
+    Uses a SAVEPOINT (nested transaction) so that a failure here does NOT
+    rollback the parent session. Previous implementation called db.rollback()
+    which poisoned the session for every downstream query in the same request,
+    causing all authenticated endpoints to crash with 500.
+    """
     if jti in _blacklisted_jtis_cache:
         return True
     from sqlalchemy import text
 
     try:
-        result = await db.execute(
-            text("SELECT 1 FROM token_blacklist WHERE jti = :jti"),
-            {"jti": jti},
-        )
-        if result.scalar_one_or_none():
-            _blacklisted_jtis_cache.add(jti)  # Populate cache
-            return True
+        async with db.begin_nested():
+            result = await db.execute(
+                text("SELECT 1 FROM token_blacklist WHERE jti = :jti"),
+                {"jti": jti},
+            )
+            if result.scalar_one_or_none():
+                _blacklisted_jtis_cache.add(jti)  # Populate cache
+                return True
     except Exception:
-        # DB error (table missing or transaction issue) — rollback to keep
-        # the session usable for downstream queries in this same request.
-        await db.rollback()
+        # DB error (table missing, transient) — the savepoint is already
+        # rolled back, so the parent transaction stays clean. No manual
+        # rollback needed.
+        pass
     return False
 
 

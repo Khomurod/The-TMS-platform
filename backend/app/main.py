@@ -112,7 +112,14 @@ logging.basicConfig(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Catch-all exception handler — logs the error with a correlation ID."""
+    """Catch-all exception handler — logs the error with a correlation ID.
+
+    IMPORTANT: CORSMiddleware does NOT wrap exception handler responses that
+    are returned directly (it only processes responses that flow through the
+    normal ASGI stack). We manually inject the CORS header here so that 500
+    responses are not blocked by the browser as CORS violations — the real
+    error detail can then be read from the response body.
+    """
     request_id = str(uuid.uuid4())[:8]
     logger.error(
         "[%s] Unhandled %s on %s %s: %s",
@@ -123,11 +130,21 @@ async def global_exception_handler(request: Request, exc: Exception):
         str(exc),
         exc_info=True,
     )
+
+    # Determine the origin from the request and reflect it back so the
+    # browser can read the error body (same logic as CORSMiddleware would use).
+    origin = request.headers.get("origin", "")
+    cors_origin = origin if origin in origins else (origins[0] if origins else "*")
+
     return JSONResponse(
         status_code=500,
         content={
             "detail": "Internal Server Error",
             "request_id": request_id,
+        },
+        headers={
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Credentials": "true",
         },
     )
 
