@@ -62,6 +62,7 @@ class Driver(Base, TenantMixin):
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    home_address: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ── Employment ───────────────────────────────────────────────
     employment_type: Mapped[EmploymentType] = mapped_column(

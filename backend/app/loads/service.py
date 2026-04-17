@@ -11,13 +11,18 @@ Fixes Applied:
 """
 
 import inspect
+import io
+import json
 import logging
+import os
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from fastapi import HTTPException
+import httpx
+import pypdf
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -346,13 +351,7 @@ class LoadService:
         logger.info("Load %s soft-deleted", load.load_number)
         await self.repo.soft_delete(load)
 
-    async def parse_freight_document(self, file: __import__("fastapi").UploadFile) -> dict:
-        import base64
-        import os
-        import json
-        import httpx
-        from fastapi import HTTPException
-        from sqlalchemy import select
+    async def parse_freight_document(self, file: UploadFile) -> dict:
         from app.models.broker import Broker
 
         api_key = os.getenv("YANDEX_API_KEY")
@@ -361,7 +360,20 @@ class LoadService:
             raise HTTPException(500, "YANDEX_API_KEY is not configured.")
 
         content = await file.read()
-        encoded = base64.b64encode(content).decode("utf-8")
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(content))
+            extracted_pages: list[str] = []
+            for page in reader.pages:
+                page_text = (page.extract_text() or "").strip()
+                if page_text:
+                    extracted_pages.append(page_text)
+            extracted_text = "\n\n".join(extracted_pages)
+        except Exception as exc:
+            logger.error("Failed to extract PDF text from %s: %s", file.filename, exc)
+            raise HTTPException(400, "Could not extract text from PDF.") from exc
+
+        if not extracted_text.strip():
+            raise HTTPException(400, "Could not extract text from PDF.")
 
         system_prompt = (
             "You are a freight logistics expert. Extract information from the provided document. "
@@ -390,7 +402,7 @@ class LoadService:
                 },
                 {
                     "role": "user",
-                    "text": f"Here is the document in base64: {encoded}. Parse it and return JSON."
+                    "text": f"Here is the extracted text from the freight document:\n\n{extracted_text}\n\nParse it and return JSON."
                 }
             ]
         }

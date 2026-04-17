@@ -19,4 +19,4 @@ redis==5.2.1
 pytest==8.3.0
 pytest-asyncio==0.25.0
 aiosqlite==0.20.0
-
+pypdf>=4.0.0

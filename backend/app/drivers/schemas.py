@@ -20,6 +20,7 @@ class DriverCreate(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
+    home_address: Optional[str] = None
     employment_type: EmploymentTypeStr  # company_w2 | owner_operator_1099 | lease_operator
     cdl_number: Optional[str] = None
     cdl_class: Optional[str] = None
@@ -45,6 +46,7 @@ class DriverUpdate(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
+    home_address: Optional[str] = None
     employment_type: Optional[EmploymentTypeStr] = None
     cdl_number: Optional[str] = None
     cdl_class: Optional[str] = None
@@ -75,6 +77,7 @@ class DriverResponse(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    home_address: Optional[str] = None
     employment_type: str
     cdl_number: Optional[str] = None
     cdl_class: Optional[str] = None

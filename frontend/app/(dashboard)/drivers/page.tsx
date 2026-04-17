@@ -6,7 +6,8 @@
 import { useDrivers, type DriverItem } from '@/lib/hooks/drivers';
 import { Skeleton } from '@/components/ui/skeleton';
 import CreateDriverDialog from '@/components/drivers/CreateDriverDialog';
-import Link from 'next/link';
+import DriverDrawer from '@/components/drivers/DriverDrawer';
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -49,6 +50,13 @@ function ComplianceDot({ dateStr }: { dateStr?: string }) {
 
 export default function DriversPage() {
   const { data, isLoading, error } = useDrivers();
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const handleRowClick = (id: string) => {
+    setSelectedDriverId(id);
+    setDrawerOpen(true);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -105,11 +113,13 @@ export default function DriversPage() {
             </TableHeader>
             <TableBody>
               {data.items.map((d: DriverItem) => (
-                <TableRow key={d.id} className="hover:bg-muted/20 transition-colors">
-                  <TableCell className="font-medium">
-                    <Link href={`/drivers/${d.id}`} className="text-primary hover:underline">
-                      {d.first_name} {d.last_name}
-                    </Link>
+                <TableRow 
+                  key={d.id} 
+                  className="hover:bg-muted/20 transition-colors cursor-pointer"
+                  onClick={() => handleRowClick(d.id)}
+                >
+                  <TableCell className="font-medium text-primary">
+                    {d.first_name} {d.last_name}
                   </TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_COLORS[d.status] ?? 'bg-muted text-muted-foreground'}`}>
@@ -153,6 +163,12 @@ export default function DriversPage() {
           Showing {data.items.length} of {data.total} drivers
         </p>
       )}
+
+      <DriverDrawer 
+        driverId={selectedDriverId} 
+        isOpen={drawerOpen} 
+        onClose={() => setDrawerOpen(false)} 
+      />
     </div>
   );
 }

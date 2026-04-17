@@ -467,3 +467,15 @@ export const deleteLoad = async (loadId: string) => {
   return data;
 };
 
+
+export const deleteDriver = async (driverId: string) => {
+  const { data } = await api.delete(/drivers/);
+  return data;
+};
+
+export const uploadDocument = async (formData: FormData) => {
+  const { data } = await api.post('/documents/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};

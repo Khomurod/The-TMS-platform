@@ -33,13 +33,13 @@ class DriverRepository:
         query = (
             select(Driver)
             .where(Driver.company_id == self.company_id)
-            .where(Driver.is_active == True)
+            .where(Driver.is_active.is_(True))
         )
         count_query = (
             select(func.count())
             .select_from(Driver)
             .where(Driver.company_id == self.company_id)
-            .where(Driver.is_active == True)
+            .where(Driver.is_active.is_(True))
         )
 
         if search:
@@ -88,7 +88,7 @@ class DriverRepository:
         query = (
             select(Driver)
             .where(Driver.company_id == self.company_id)
-            .where(Driver.is_active == True)
+            .where(Driver.is_active.is_(True))
             .where(Driver.status == DriverStatus.available)
             .order_by(Driver.last_name, Driver.first_name)
         )
@@ -101,7 +101,7 @@ class DriverRepository:
         query = (
             select(Driver)
             .where(Driver.company_id == self.company_id)
-            .where(Driver.is_active == True)
+            .where(Driver.is_active.is_(True))
             .where(
                 or_(
                     and_(
@@ -162,3 +162,4 @@ class DriverRepository:
         """Soft delete — sets is_active = False."""
         driver.is_active = False
         await self.db.commit()
+        await self.db.refresh(driver)

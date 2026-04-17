@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { createDriver } from '@/lib/api';
+import { createDriver, uploadDocument } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
 import { extractApiError } from '@/lib/errors';
 
@@ -55,6 +55,8 @@ export default function CreateDriverDialog() {
   const [payRateType, setPayRateType] = useState('cpm');
   const [payRateValue, setPayRateValue] = useState('');
   const [hireDate, setHireDate] = useState('');
+  const [homeAddress, setHomeAddress] = useState('');
+  const [cdlFile, setCdlFile] = useState<File | null>(null);
 
   const reset = () => {
     setError('');
@@ -65,6 +67,8 @@ export default function CreateDriverDialog() {
     setCdlExpiry(''); setMedicalExpiry('');
     setPayRateType('cpm'); setPayRateValue('');
     setHireDate('');
+    setHomeAddress('');
+    setCdlFile(null);
   };
 
   const canSubmit = firstName.trim() && lastName.trim();
@@ -73,11 +77,12 @@ export default function CreateDriverDialog() {
     setSubmitting(true);
     setError('');
     try {
-      await createDriver({
+      const response = await createDriver({
         first_name: firstName,
         last_name: lastName,
         phone: phone || undefined,
         email: email || undefined,
+        home_address: homeAddress || undefined,
         employment_type: employmentType,
         cdl_number: cdlNumber || undefined,
         cdl_class: cdlClass || undefined,
@@ -87,6 +92,16 @@ export default function CreateDriverDialog() {
         pay_rate_value: payRateValue ? parseFloat(payRateValue) : undefined,
         hire_date: hireDate || undefined,
       });
+
+      if (cdlFile && response?.id) {
+        const formData = new FormData();
+        formData.append('file', cdlFile);
+        formData.append('document_type', 'cdl');
+        formData.append('entity_type', 'driver');
+        formData.append('entity_id', response.id);
+        await uploadDocument(formData);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['drivers'] });
       reset();
       setOpen(false);
@@ -136,6 +151,10 @@ export default function CreateDriverDialog() {
               <Input className="mt-1" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="driver@email.com" />
             </div>
           </div>
+          <div>
+            <Label>Home Address</Label>
+            <Input className="mt-1" value={homeAddress} onChange={(e) => setHomeAddress(e.target.value)} placeholder="123 Main St, City, ST 12345" />
+          </div>
 
           {/* Employment */}
           <div className="grid grid-cols-2 gap-3">
@@ -168,9 +187,26 @@ export default function CreateDriverDialog() {
               <Input className="mt-1" type="date" value={cdlExpiry} onChange={(e) => setCdlExpiry(e.target.value)} />
             </div>
           </div>
-          <div>
-            <Label>Medical Card Expiry</Label>
-            <Input className="mt-1 max-w-xs" type="date" value={medicalExpiry} onChange={(e) => setMedicalExpiry(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Medical Card Expiry</Label>
+              <Input className="mt-1 w-full" type="date" value={medicalExpiry} onChange={(e) => setMedicalExpiry(e.target.value)} />
+            </div>
+            <div>
+              <Label>Upload CDL (PDF/Image)</Label>
+              <Input 
+                className="mt-1" 
+                type="file" 
+                accept="application/pdf,image/*" 
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setCdlFile(e.target.files[0]);
+                  } else {
+                    setCdlFile(null);
+                  }
+                }} 
+              />
+            </div>
           </div>
 
           <Separator />

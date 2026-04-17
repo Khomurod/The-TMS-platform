@@ -1,7 +1,7 @@
 // lib/hooks/drivers.ts — TanStack Query hooks for driver management
 
-import { useQuery } from '@tanstack/react-query';
-import { getDrivers, getDriverDetail, getDriverCompliance } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getDrivers, getDriverDetail, getDriverCompliance, updateDriver, deleteDriver } from '@/lib/api';
 
 interface DriverListResponse {
   items: DriverItem[];
@@ -16,6 +16,7 @@ export interface DriverItem {
   last_name: string;
   phone?: string;
   email?: string;
+  home_address?: string;
   employment_type: string;
   cdl_number?: string;
   cdl_expiry_date?: string;
@@ -33,6 +34,7 @@ export interface DriverDetail {
   date_of_birth?: string;
   phone?: string;
   email?: string;
+  home_address?: string;
   employment_type: string;
   cdl_number?: string;
   cdl_class?: string;
@@ -89,5 +91,26 @@ export const useDriverCompliance = (driverId: string | null) => {
     queryFn: () => getDriverCompliance(driverId!),
     enabled: !!driverId,
     staleTime: 30_000,
+  });
+};
+
+export const useUpdateDriver = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ driverId, payload }: { driverId: string; payload: Record<string, unknown> }) =>
+      updateDriver(driverId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    },
+  });
+};
+
+export const useDeleteDriver = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (driverId: string) => deleteDriver(driverId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    },
   });
 };

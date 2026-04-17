@@ -26,7 +26,7 @@ Endpoints:
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.loads.schemas import (
@@ -116,7 +116,7 @@ async def create_load(
 
 @router.post("/parse-document")
 async def parse_freight_document(
-    file: __import__("fastapi").UploadFile,
+    file: UploadFile = File(...),
     svc: LoadService = Depends(_get_service),
     _role=Depends(require_roles("company_admin", "dispatcher")),
 ):

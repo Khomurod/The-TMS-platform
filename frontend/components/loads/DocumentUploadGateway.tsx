@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { UploadCloud, Edit3, Loader2 } from 'lucide-react';
 import type { ParsedLoadData } from '@/components/loads/CreateLoadDialog';
+import api from '@/lib/api';
 
 interface DocumentUploadGatewayProps {
   open: boolean;
@@ -40,22 +41,10 @@ export default function DocumentUploadGateway({
     formData.append('file', file);
 
     try {
-      // Get the API URL from window.location since it's a client component, or use relative
-      // We will assume relative path will be proxied or is available if standard Next.js
-      // But standard API path for backend here might be mapped via an env variable, but we'll try standard proxy or absolute URL if needed.
-      // Looking at `CreateLoadDialog`, it uses `@/lib/api`. We don't have a new api function but we can use relative.
-      
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${API_URL}/api/v1/loads/parse-document`, {
-        method: 'POST',
-        body: formData,
+      const response = await api.post('/loads/parse-document', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to parse document. Please try again.');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       onParseSuccess(data);
       onOpenChange(false);
     } catch (err: unknown) {
@@ -90,7 +79,7 @@ export default function DocumentUploadGateway({
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept=".pdf,.png,.jpg,.jpeg"
+            accept=".pdf"
             onChange={handleFileChange}
             disabled={isUploading}
           />
@@ -110,7 +99,7 @@ export default function DocumentUploadGateway({
               <>
                 <UploadCloud className="w-6 h-6 text-primary" />
                 <span className="font-medium">Upload Rate Con / BOL (Auto-fill)</span>
-                <span className="text-xs text-muted-foreground font-normal">PDF, PNG, or JPG</span>
+                <span className="text-xs text-muted-foreground font-normal">PDF only</span>
               </>
             )}
           </Button>
