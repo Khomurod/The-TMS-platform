@@ -73,6 +73,16 @@ function emptyStop(type: 'pickup' | 'delivery', seq: number): StopEntry {
   };
 }
 
+export interface ParsedLoadData {
+  broker_name?: string;
+  broker_id?: string;
+  payout?: number | string;
+  pickup_location?: string;
+  delivery_location?: string;
+  commodity?: string;
+  [key: string]: unknown;
+}
+
 export default function CreateLoadDialog({
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
@@ -81,7 +91,7 @@ export default function CreateLoadDialog({
 }: {
   open?: boolean;
   onOpenChange?: (val: boolean) => void;
-  initialData?: any;
+  initialData?: ParsedLoadData | null;
   trigger?: React.ReactNode;
 } = {}) {
   const queryClient = useQueryClient();

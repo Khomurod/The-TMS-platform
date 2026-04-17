@@ -10,11 +10,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, Edit3, Loader2 } from 'lucide-react';
+import type { ParsedLoadData } from '@/components/loads/CreateLoadDialog';
 
 interface DocumentUploadGatewayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onParseSuccess: (data: any) => void;
+  onParseSuccess: (data: ParsedLoadData) => void;
   onManualEntry: () => void;
 }
 
@@ -57,8 +58,12 @@ export default function DocumentUploadGateway({
       const data = await response.json();
       onParseSuccess(data);
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
       setIsUploading(false);
       // Reset input

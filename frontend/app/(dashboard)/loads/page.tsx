@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoadsTable from '@/components/loads/LoadsTable';
 import LoadDrawer from '@/components/loads/LoadDrawer';
-import CreateLoadDialog from '@/components/loads/CreateLoadDialog';
+import CreateLoadDialog, { ParsedLoadData } from '@/components/loads/CreateLoadDialog';
 import DocumentUploadGateway from '@/components/loads/DocumentUploadGateway';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -28,7 +28,7 @@ export default function LoadsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [gatewayOpen, setGatewayOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [parsedData, setParsedData] = useState<any>(null);
+  const [parsedData, setParsedData] = useState<ParsedLoadData | null>(null);
   const page = 1;
   const pageSize = 20;
 

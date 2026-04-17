@@ -130,6 +130,10 @@ class Settings(BaseSettings):
     # ── GCP Project ──────────────────────────────────────────────
     gcp_project_id: str = ""
 
+    # ── Yandex AI ────────────────────────────────────────────────
+    yandex_api_key: str = ""
+    yandex_folder_id: str = ""
+
     @model_validator(mode='after')
     def validate_production_secrets(self):
         if self.environment == "production":
