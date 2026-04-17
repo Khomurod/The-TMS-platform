@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -73,9 +73,23 @@ function emptyStop(type: 'pickup' | 'delivery', seq: number): StopEntry {
   };
 }
 
-export default function CreateLoadDialog() {
+export default function CreateLoadDialog({
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+  initialData,
+  trigger,
+}: {
+  open?: boolean;
+  onOpenChange?: (val: boolean) => void;
+  initialData?: any;
+  trigger?: React.ReactNode;
+} = {}) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const open = isControlled ? externalOpen : internalOpen;
+  const setOpen = isControlled ? externalOnOpenChange! : setInternalOpen;
+  
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -115,6 +129,39 @@ export default function CreateLoadDialog() {
     setAccessorials([]);
     setNotes('');
   };
+
+  useEffect(() => {
+    if (open && initialData) {
+      if (initialData.broker_name) setBrokerName(initialData.broker_name);
+      if (initialData.broker_id) setBrokerId(initialData.broker_id);
+      if (initialData.payout) setBaseRate(String(initialData.payout));
+      
+      const newStops = [emptyStop('pickup', 1), emptyStop('delivery', 2)];
+      if (initialData.pickup_location) {
+        const parts = initialData.pickup_location.split(',').map((s: string) => s.trim());
+        if (parts.length >= 2) {
+          newStops[0].city = parts[0];
+          newStops[0].state = parts[1];
+        } else {
+          newStops[0].city = parts[0] || '';
+        }
+      }
+      if (initialData.delivery_location) {
+        const parts = initialData.delivery_location.split(',').map((s: string) => s.trim());
+        if (parts.length >= 2) {
+          newStops[1].city = parts[0];
+          newStops[1].state = parts[1];
+        } else {
+          newStops[1].city = parts[0] || '';
+        }
+      }
+      if (initialData.commodity) {
+        setNotes(`Commodity: ${initialData.commodity}`);
+      }
+      
+      setStops(newStops);
+    }
+  }, [open, initialData]);
 
   const handleBrokerSearch = useCallback(async (q: string) => {
     setBrokerSearch(q);
@@ -224,14 +271,18 @@ export default function CreateLoadDialog() {
         if (!val) reset();
       }}
     >
-      <DialogTrigger
-        render={
-          <Button size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            New Load
-          </Button>
-        }
-      />
+      {trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : !isControlled ? (
+        <DialogTrigger
+          render={
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              New Load
+            </Button>
+          }
+        />
+      ) : null}
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">

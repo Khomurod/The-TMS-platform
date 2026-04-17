@@ -10,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import LoadsTable from '@/components/loads/LoadsTable';
 import LoadDrawer from '@/components/loads/LoadDrawer';
 import CreateLoadDialog from '@/components/loads/CreateLoadDialog';
+import DocumentUploadGateway from '@/components/loads/DocumentUploadGateway';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import {
   useAllLoads,
   useCompletedLoads,
@@ -20,9 +23,12 @@ import {
 type BoardTab = 'live' | 'upcoming' | 'completed' | 'all';
 
 export default function LoadsPage() {
-  const [activeTab, setActiveTab] = useState<BoardTab>('live');
+  const [activeTab, setActiveTab] = useState<BoardTab>('all');
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [gatewayOpen, setGatewayOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [parsedData, setParsedData] = useState<any>(null);
   const page = 1;
   const pageSize = 20;
 
@@ -84,7 +90,17 @@ export default function LoadsPage() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <CreateLoadDialog />
+          <Button size="sm" onClick={() => setGatewayOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            New Load
+          </Button>
+
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
+            <span className="text-muted-foreground">
+              All Loads: <span className="font-medium text-foreground">{allLoads.data?.total ?? '-'}</span>
+            </span>
+          </div>
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
             <span className="text-muted-foreground">
@@ -103,12 +119,6 @@ export default function LoadsPage() {
               Completed: <span className="font-medium text-foreground">{completed.data?.total ?? '-'}</span>
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />
-            <span className="text-muted-foreground">
-              All Loads: <span className="font-medium text-foreground">{allLoads.data?.total ?? '-'}</span>
-            </span>
-          </div>
         </div>
       </div>
 
@@ -118,6 +128,9 @@ export default function LoadsPage() {
         className="w-full"
       >
         <TabsList className="bg-muted/50">
+          <TabsTrigger value="all" className="data-[state=active]:bg-background">
+            All Loads
+          </TabsTrigger>
           <TabsTrigger value="live" className="data-[state=active]:bg-background">
             Live Loads
           </TabsTrigger>
@@ -127,10 +140,11 @@ export default function LoadsPage() {
           <TabsTrigger value="completed" className="data-[state=active]:bg-background">
             Completed
           </TabsTrigger>
-          <TabsTrigger value="all" className="data-[state=active]:bg-background">
-            All Loads
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="all" className="mt-4">
+          {renderTabContent(allLoads, 'All Loads')}
+        </TabsContent>
 
         <TabsContent value="live" className="mt-4">
           {renderTabContent(live, 'Live')}
@@ -143,16 +157,31 @@ export default function LoadsPage() {
         <TabsContent value="completed" className="mt-4">
           {renderTabContent(completed, 'Completed')}
         </TabsContent>
-
-        <TabsContent value="all" className="mt-4">
-          {renderTabContent(allLoads, 'All Loads')}
-        </TabsContent>
       </Tabs>
 
       <LoadDrawer
         loadId={selectedLoadId}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
+      />
+
+      <DocumentUploadGateway
+        open={gatewayOpen}
+        onOpenChange={setGatewayOpen}
+        onParseSuccess={(data) => {
+          setParsedData(data);
+          setCreateDialogOpen(true);
+        }}
+        onManualEntry={() => {
+          setParsedData(null);
+          setCreateDialogOpen(true);
+        }}
+      />
+
+      <CreateLoadDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        initialData={parsedData}
       />
     </div>
   );

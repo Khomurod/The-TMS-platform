@@ -114,6 +114,16 @@ async def create_load(
     return await svc.create_load(data)
 
 
+@router.post("/parse-document")
+async def parse_freight_document(
+    file: __import__("fastapi").UploadFile,
+    svc: LoadService = Depends(_get_service),
+    _role=Depends(require_roles("company_admin", "dispatcher")),
+):
+    """Upload and parse a freight document (BOL/Rate Con) using Yandex AI."""
+    return await svc.parse_freight_document(file)
+
+
 @router.get("/{load_id}", response_model=LoadResponse)
 async def get_load(
     load_id: UUID,

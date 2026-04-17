@@ -346,6 +346,98 @@ class LoadService:
         logger.info("Load %s soft-deleted", load.load_number)
         await self.repo.soft_delete(load)
 
+    async def parse_freight_document(self, file: __import__("fastapi").UploadFile) -> dict:
+        import base64
+        import os
+        import json
+        import httpx
+        from fastapi import HTTPException
+        from sqlalchemy import select
+        from app.models.broker import Broker
+
+        api_key = os.getenv("YANDEX_API_KEY")
+        folder_id = os.getenv("YANDEX_FOLDER_ID")
+        if not api_key:
+            raise HTTPException(500, "YANDEX_API_KEY is not configured.")
+
+        content = await file.read()
+        encoded = base64.b64encode(content).decode("utf-8")
+
+        system_prompt = (
+            "You are a freight logistics expert. Extract information from the provided document. "
+            "Return strictly formatted JSON containing: pickup_location (string), delivery_location (string), "
+            "payout (numeric), commodity (string), and broker_name (string). Do not include markdown formatting or extra text."
+        )
+
+        headers = {
+            "Authorization": f"Api-Key {api_key}",
+            "x-folder-id": folder_id or "",
+            "Content-Type": "application/json"
+        }
+
+        # Handle different models or endpoints if needed, but standard Yandex GPT
+        payload = {
+            "modelUri": f"gpt://{folder_id}/yandexgpt/latest" if folder_id else "yandexgpt",
+            "completionOptions": {
+                "stream": False,
+                "temperature": 0.1,
+                "maxTokens": "2000"
+            },
+            "messages": [
+                {
+                    "role": "system",
+                    "text": system_prompt
+                },
+                {
+                    "role": "user",
+                    "text": f"Here is the document in base64: {encoded}. Parse it and return JSON."
+                }
+            ]
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://llm.api.cloud.yandex.net/foundationModels/v1/completion",
+                headers=headers,
+                json=payload,
+                timeout=45.0
+            )
+            
+            if resp.status_code != 200:
+                logger.error(f"Yandex API error: {resp.text}")
+                raise HTTPException(500, f"AI Parsing failed: {resp.status_code}")
+
+            data = resp.json()
+            try:
+                result_text = data["result"]["alternatives"][0]["message"]["text"]
+                if result_text.startswith("```json"):
+                    result_text = result_text[7:-3]
+                elif result_text.startswith("```"):
+                    result_text = result_text[3:-3]
+                    
+                parsed_data = json.loads(result_text.strip())
+            except Exception as e:
+                logger.error(f"Failed to parse Yandex response: {e} - Response: {data}")
+                raise HTTPException(500, "Failed to parse AI response into JSON.")
+            
+            # Broker Resolution Logic
+            broker_name = parsed_data.get("broker_name")
+            if broker_name:
+                like_pattern = f"%{broker_name}%"
+                broker = (await self.db.execute(
+                    select(Broker)
+                    .where(Broker.company_id == self.company_id)
+                    .where(Broker.is_active.is_(True))
+                    .where(Broker.name.ilike(like_pattern))
+                )).scalar_one_or_none()
+
+                if broker:
+                    parsed_data["broker_id"] = str(broker.id)
+                else:
+                    parsed_data["is_new_broker"] = True
+            
+            return parsed_data
+
     # ══════════════════════════════════════════════════════════════
     #   STATE MACHINE — Advance Load Status
     # ══════════════════════════════════════════════════════════════
