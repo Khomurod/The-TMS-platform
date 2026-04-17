@@ -360,20 +360,12 @@ class LoadService:
             raise HTTPException(500, "YANDEX_API_KEY is not configured.")
 
         content = await file.read()
-        try:
-            reader = pypdf.PdfReader(io.BytesIO(content))
-            extracted_pages: list[str] = []
-            for page in reader.pages:
-                page_text = (page.extract_text() or "").strip()
-                if page_text:
-                    extracted_pages.append(page_text)
-            extracted_text = "\n\n".join(extracted_pages)
-        except Exception as exc:
-            logger.error("Failed to extract PDF text from %s: %s", file.filename, exc)
-            raise HTTPException(400, "Could not extract text from PDF.") from exc
+        
+        reader = pypdf.PdfReader(io.BytesIO(content))
+        extracted_text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
 
         if not extracted_text.strip():
-            raise HTTPException(400, "Could not extract text from PDF.")
+            raise HTTPException(400, "Could not extract text from PDF. Ensure it is not a flattened image.")
 
         system_prompt = (
             "You are a freight logistics expert. Extract information from the provided document. "
@@ -402,7 +394,7 @@ class LoadService:
                 },
                 {
                     "role": "user",
-                    "text": f"Here is the extracted text from the freight document:\n\n{extracted_text}\n\nParse it and return JSON."
+                    "text": f"Here is the extracted text from the freight document:\n\n{extracted_text}\n\nParse it and return strictly formatted JSON."
                 }
             ]
         }

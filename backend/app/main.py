@@ -56,12 +56,16 @@ if settings.is_production:
     app.add_middleware(HTTPSRedirectMiddleware)
 
 # 1. CORS runs outermost — wraps ALL responses with CORS headers
+origins = settings.effective_cors_origins
+if "https://kinetic-frontend-1065403267999.us-central1.run.app" not in origins:
+    origins = origins + ["https://kinetic-frontend-1065403267999.us-central1.run.app"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.effective_cors_origins,
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Register All Domain Routers under /api/v1/ ──────────────────

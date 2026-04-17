@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { UploadCloud, Edit3, Loader2 } from 'lucide-react';
 import type { ParsedLoadData } from '@/components/loads/CreateLoadDialog';
 import api from '@/lib/api';
+import { extractApiError } from '@/lib/errors';
 
 interface DocumentUploadGatewayProps {
   open: boolean;
@@ -48,11 +49,7 @@ export default function DocumentUploadGateway({
       onParseSuccess(data);
       onOpenChange(false);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred.');
-      }
+      setError(extractApiError(err, 'Failed to parse document. Please try again.'));
     } finally {
       setIsUploading(false);
       // Reset input
