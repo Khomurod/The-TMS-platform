@@ -151,29 +151,36 @@ class LoadService:
         delivery_city = None
         delivery_date = None
 
-        if load.stops:
-            sorted_stops = sorted(load.stops, key=lambda s: s.stop_sequence)
+        stops = getattr(load, 'stops', None)
+        if stops:
+            sorted_stops = sorted(stops, key=lambda s: s.stop_sequence)
             for s in sorted_stops:
                 if s.stop_type == "pickup" and pickup_city is None:
-                    pickup_city = s.city
-                    pickup_date = s.scheduled_date
+                    pickup_city = getattr(s, 'city', None)
+                    pickup_date = getattr(s, 'scheduled_date', None)
                 if s.stop_type == "delivery":
-                    delivery_city = s.city
-                    delivery_date = s.scheduled_date
+                    delivery_city = getattr(s, 'city', None)
+                    delivery_date = getattr(s, 'scheduled_date', None)
 
-        broker_name = load.broker.name if load.broker else None
+        broker = getattr(load, 'broker', None)
+        broker_name = broker.name if broker else None
 
         # Driver/truck info comes from the primary trip (sequence 1)
         driver_name = None
         truck_number = None
-        if load.trips:
+        trips = getattr(load, 'trips', None)
+        if trips:
             primary_trip = next(
-                (t for t in load.trips if t.sequence_number == 1), load.trips[0]
+                (t for t in trips if getattr(t, 'sequence_number', 0) == 1), 
+                trips[0] if len(trips) > 0 else None
             )
-            if primary_trip.driver:
-                driver_name = f"{primary_trip.driver.first_name} {primary_trip.driver.last_name}"
-            if primary_trip.truck:
-                truck_number = primary_trip.truck.unit_number
+            if primary_trip:
+                driver = getattr(primary_trip, 'driver', None)
+                if driver:
+                    driver_name = f"{getattr(driver, 'first_name', '')} {getattr(driver, 'last_name', '')}".strip()
+                truck = getattr(primary_trip, 'truck', None)
+                if truck:
+                    truck_number = getattr(truck, 'unit_number', None)
 
         return LoadListItem(
             id=str(load.id),
