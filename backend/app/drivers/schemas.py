@@ -78,7 +78,7 @@ class DriverResponse(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     home_address: Optional[str] = None
-    employment_type: str
+    employment_type: Optional[str] = None
     cdl_number: Optional[str] = None
     cdl_class: Optional[str] = None
     cdl_expiry_date: Optional[date] = None
@@ -89,9 +89,9 @@ class DriverResponse(BaseModel):
     payment_tariff_type: Optional[str] = None
     payment_tariff_value: Optional[Decimal] = None
     tax_classification: Optional[str] = None
-    use_company_defaults: bool
-    status: str
-    is_active: bool
+    use_company_defaults: Optional[bool] = False
+    status: Optional[str] = "available"
+    is_active: Optional[bool] = True
     hire_date: Optional[date] = None
     notes: Optional[str] = None
     created_at: Optional[datetime] = None

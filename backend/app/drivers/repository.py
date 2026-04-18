@@ -8,6 +8,7 @@ from uuid import UUID
 
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from app.models.base import DriverStatus, LoadStatus
 from app.models.driver import Driver
@@ -64,7 +65,11 @@ class DriverRepository:
         total = (await self.db.execute(count_query)).scalar() or 0
 
         query = (
-            query.order_by(Driver.last_name, Driver.first_name)
+            query.options(
+                defer(Driver.bank_routing_number),
+                defer(Driver.bank_account_number)
+            )
+            .order_by(Driver.last_name, Driver.first_name)
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
