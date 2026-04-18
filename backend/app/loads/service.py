@@ -22,8 +22,11 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
+try:
+    import fitz
+except ImportError:
+    fitz = None
 import httpx
-import fitz
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -438,6 +441,10 @@ class LoadService:
         folder_id: str | None = None,
     ) -> str:
         """Extract text from PDF, with OCR fallback for scanned/image PDFs."""
+        if fitz is None:
+            logger.error("fitz (PyMuPDF) is not installed. PDF parsing unavailable.")
+            raise HTTPException(500, "PDF parsing is temporarily unavailable on this server.")
+
         try:
             reader = fitz.open(stream=content, filetype="pdf")
         except Exception as exc:
