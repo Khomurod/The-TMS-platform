@@ -179,7 +179,7 @@ gcloud run jobs create "migrate-$SHA" `
   --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" `
   --set-env-vars "ENVIRONMENT=production" `
   --command python `
-  --args="-m" --args="alembic" --args="upgrade" --args="head" `
+  --args="-m,alembic,upgrade,head" `
   --max-retries 0 --task-timeout 120s `
   --execute-now --wait
 
@@ -308,7 +308,7 @@ gcloud run jobs create check-migration \
   --region us-central1 \
   --set-cloudsql-instances tms-service-491512:us-central1:safehaultms \
   --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
-  --command python --args="-m" --args="alembic" --args="current" \
+  --command python --args="-m,alembic,current" \
   --execute-now --wait
 ```
 

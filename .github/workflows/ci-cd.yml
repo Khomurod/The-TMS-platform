@@ -309,7 +309,7 @@ jobs:
             --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET_KEY=JWT_SECRET_KEY:latest" \
             --env-vars-file /tmp/backend-env.yaml \
             --command python \
-            --args="-m" --args="alembic" --args="upgrade" --args="head" \
+            --args="-m,alembic,upgrade,head" \
             --max-retries 0 \
             --task-timeout 120s \
             --execute-now \
