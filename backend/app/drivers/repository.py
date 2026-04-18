@@ -18,6 +18,15 @@ from app.models.load import Trip, Load
 class DriverRepository:
     """All driver DB operations. Every query MUST filter by company_id."""
 
+    _SAFE_DRIVER_DEFER_OPTIONS = (
+        # Bank routing/account are AES-encrypted via sqlalchemy-utils. If legacy/plaintext
+        # data ever lands in these columns, decrypt-on-read can raise and 500 the whole
+        # endpoint. These fields are not returned by our driver API responses, so we
+        # always defer them on read queries.
+        defer(Driver.bank_routing_number),
+        defer(Driver.bank_account_number),
+    )
+
     def __init__(self, db: AsyncSession, company_id: UUID):
         self.db = db
         self.company_id = company_id
@@ -65,10 +74,7 @@ class DriverRepository:
         total = (await self.db.execute(count_query)).scalar() or 0
 
         query = (
-            query.options(
-                defer(Driver.bank_routing_number),
-                defer(Driver.bank_account_number)
-            )
+            query.options(*self._SAFE_DRIVER_DEFER_OPTIONS)
             .order_by(Driver.last_name, Driver.first_name)
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -82,6 +88,7 @@ class DriverRepository:
         """Get single driver by ID (tenant-scoped)."""
         query = (
             select(Driver)
+            .options(*self._SAFE_DRIVER_DEFER_OPTIONS)
             .where(Driver.id == driver_id)
             .where(Driver.company_id == self.company_id)
         )
@@ -92,6 +99,7 @@ class DriverRepository:
         """Get drivers with status = available and is_active = true."""
         query = (
             select(Driver)
+            .options(*self._SAFE_DRIVER_DEFER_OPTIONS)
             .where(Driver.company_id == self.company_id)
             .where(Driver.is_active.is_(True))
             .where(Driver.status == DriverStatus.available)
@@ -105,6 +113,7 @@ class DriverRepository:
         threshold = date.today() + timedelta(days=days)
         query = (
             select(Driver)
+            .options(*self._SAFE_DRIVER_DEFER_OPTIONS)
             .where(Driver.company_id == self.company_id)
             .where(Driver.is_active.is_(True))
             .where(
