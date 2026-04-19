@@ -22,7 +22,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import type { DriverDetail } from '@/lib/hooks/drivers';
 import { useDriverDetail, useUpdateDriver, useDeleteDriver } from '@/lib/hooks/drivers';

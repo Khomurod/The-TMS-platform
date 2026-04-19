@@ -1,7 +1,6 @@
 import type { UserRole } from "@/lib/stores/authStore";
 import {
   DollarSign,
-  FileText,
   LayoutDashboard,
   Package,
   Settings,
