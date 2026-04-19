@@ -1,5 +1,5 @@
 /**
- * DriverDrawer — Slide-out details, editing, and deactivation for a driver.
+ * DriverDialog — Slide-out details, editing, and deactivation for a driver.
  */
 'use client';
 
@@ -22,13 +22,14 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import type { DriverDetail } from '@/lib/hooks/drivers';
 import { useDriverDetail, useUpdateDriver, useDeleteDriver } from '@/lib/hooks/drivers';
 import { Loader2, Trash2, Save } from 'lucide-react';
 import { extractApiError } from '@/lib/errors';
 
-interface DriverDrawerProps {
+interface DriverDialogProps {
   driverId: string | null;
   isOpen: boolean;
   onClose: () => void;
@@ -82,19 +83,19 @@ const buildDriverFormValues = (driver: DriverDetail): DriverFormValues => ({
   notes: driver.notes || '',
 });
 
-interface DriverDrawerFormProps {
+interface DriverDialogFormProps {
   driver: DriverDetail;
   error: string;
   isSubmitting: boolean;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }
 
-function DriverDrawerForm({
+function DriverDialogForm({
   driver,
   error,
   isSubmitting,
   onSubmit,
-}: DriverDrawerFormProps) {
+}: DriverDialogFormProps) {
   const [form, setForm] = useState<DriverFormValues>(() => buildDriverFormValues(driver));
 
   const setField = (field: keyof DriverFormValues, value: string) => {
@@ -271,7 +272,7 @@ function DriverDrawerForm({
   );
 }
 
-export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawerProps) {
+export default function DriverDialog({ driverId, isOpen, onClose }: DriverDialogProps) {
   const { data: driver, isLoading } = useDriverDetail(driverId);
   const updateMutation = useUpdateDriver();
   const deleteMutation = useDeleteDriver();
@@ -327,7 +328,7 @@ export default function DriverDrawer({ driverId, isOpen, onClose }: DriverDrawer
               <p className="text-sm text-muted-foreground">Loading driver profile...</p>
             </div>
           ) : driver ? (
-            <DriverDrawerForm
+            <DriverDialogForm
               key={driver.id}
               driver={driver}
               error={error}

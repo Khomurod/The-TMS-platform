@@ -69,12 +69,6 @@ export const ASSET_NAV_ITEMS: SidebarNavItem[] = [
     icon: Truck,
     roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
   },
-  {
-    title: "Documents",
-    href: "/documents",
-    icon: FileText,
-    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
-  },
 ];
 
 export const FINANCE_NAV_ITEMS: SidebarNavItem[] = [

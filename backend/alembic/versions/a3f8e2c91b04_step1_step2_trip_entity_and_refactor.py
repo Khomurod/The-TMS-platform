@@ -319,7 +319,7 @@ def upgrade() -> None:
         SELECT
             gen_random_uuid(),
             l.company_id,
-            'TR-' || REPLACE(l.load_number, 'LD-', '') || '-01',
+            'TR-' || REPLACE(l.load_number, 'SH-', '') || '-01',
             l.id,
             l.driver_id,
             l.truck_id,

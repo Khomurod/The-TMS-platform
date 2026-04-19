@@ -496,8 +496,8 @@ async def create_loads(
 ) -> None:
     loads_spec = [
         {
-            "label": "Creating load: LD-1001 (In Transit)...",
-            "load_number": "LD-1001",
+            "label": "Creating load: SH-1001 (In Transit)...",
+            "load_number": "SH-1001",
             "broker_load_id": "CHR-2026-44521",
             "broker": brokers["CH Robinson"],
             "driver": drivers["Robert Williams"],
@@ -531,8 +531,8 @@ async def create_loads(
             ],
         },
         {
-            "label": "Creating load: LD-1002 (Dispatched)...",
-            "load_number": "LD-1002",
+            "label": "Creating load: SH-1002 (Dispatched)...",
+            "load_number": "SH-1002",
             "broker_load_id": "TQL-88234",
             "broker": brokers["TQL (Total Quality Logistics)"],
             "driver": drivers["Michael Brown"],
@@ -566,8 +566,8 @@ async def create_loads(
             ],
         },
         {
-            "label": "Creating load: LD-1003 (Delivered)...",
-            "load_number": "LD-1003",
+            "label": "Creating load: SH-1003 (Delivered)...",
+            "load_number": "SH-1003",
             "broker_load_id": "ECH-77123",
             "broker": brokers["Echo Global Logistics"],
             "driver": drivers["Carlos Garcia"],
@@ -601,8 +601,8 @@ async def create_loads(
             ],
         },
         {
-            "label": "Creating load: LD-1004 (Offer)...",
-            "load_number": "LD-1004",
+            "label": "Creating load: SH-1004 (Offer)...",
+            "load_number": "SH-1004",
             "broker_load_id": "CHR-2026-44599",
             "broker": brokers["CH Robinson"],
             "driver": None,
@@ -636,8 +636,8 @@ async def create_loads(
             ],
         },
         {
-            "label": "Creating load: LD-1005 (Paid)...",
-            "load_number": "LD-1005",
+            "label": "Creating load: SH-1005 (Paid)...",
+            "load_number": "SH-1005",
             "broker_load_id": "TQL-77999",
             "broker": brokers["TQL (Total Quality Logistics)"],
             "driver": drivers["James Thompson"],
@@ -704,7 +704,7 @@ async def create_loads(
 
         # Create Trip if driver is assigned (new Trip-based architecture)
         if driver:
-            load_suffix = spec["load_number"].replace("LD-", "")
+            load_suffix = spec["load_number"].replace("SH-", "")
             trip = Trip(
                 company_id=company_id,
                 trip_number=f"TR-{load_suffix}-01",

@@ -136,7 +136,7 @@ class LoadRepository:
         await self._advisory_lock(lock_key)
 
         count = (await self.db.execute(count_query)).scalar() or 0
-        return f"LD-{count + 1:05d}"
+        return f"SH-{count + 1:06d}"
 
     async def generate_shipment_id(self) -> str:
         """Generate next shipment ID using deterministic advisory lock (race-condition safe)."""

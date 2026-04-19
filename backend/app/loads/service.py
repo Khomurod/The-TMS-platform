@@ -752,7 +752,7 @@ class LoadService:
             return  # Trip already exists
 
         # Generate trip number: TR-{load_number suffix}-01
-        load_suffix = load.load_number.replace("LD-", "")
+        load_suffix = load.load_number.replace("SH-", "")
         seq = 1
         trip_number = f"TR-{load_suffix}-{seq:02d}"
 
