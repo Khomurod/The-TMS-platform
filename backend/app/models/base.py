@@ -17,6 +17,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 # ══════════════════════════════════════════════════════════════════
 
 
+class EntityType(str, enum.Enum):
+    load = "load"
+    driver = "driver"
+    truck = "truck"
+    trailer = "trailer"
+    company = "company"
+
 class LoadStatus(str, enum.Enum):
     """8-stage load lifecycle. Transitions enforced in service layer."""
 

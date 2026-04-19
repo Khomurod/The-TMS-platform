@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
   // POST /loads
   if (path === '/loads') {
-    return NextResponse.json({ id: 'l-new', load_number: 'LD-1027', status: 'offer', ...body });
+    return NextResponse.json({ id: 'l-new', load_number: 'SH-1027', status: 'offer', ...body });
   }
 
   // POST /brokers
@@ -199,10 +199,10 @@ export async function GET(req: NextRequest) {
   // GET /loads (live/upcoming/completed)
   if (path === '/loads' || path === '/loads/live' || path === '/loads/upcoming' || path === '/loads/completed') {
     const loads = [
-      { id: 'l1', load_number: 'LD-1024', status: 'in_transit', pickup_city: 'Dallas, TX', delivery_city: 'Chicago, IL', pickup_date: '2026-04-05', delivery_date: '2026-04-08', driver_name: 'Mike Johnson', base_rate: 3200, total_rate: 3450 },
-      { id: 'l2', load_number: 'LD-1025', status: 'dispatched', pickup_city: 'Houston, TX', delivery_city: 'Atlanta, GA', pickup_date: '2026-04-07', delivery_date: '2026-04-09', driver_name: 'Sarah Williams', base_rate: 2800, total_rate: 2950 },
-      { id: 'l3', load_number: 'LD-1026', status: 'booked', pickup_city: 'Los Angeles, CA', delivery_city: 'Phoenix, AZ', pickup_date: '2026-04-10', delivery_date: '2026-04-11', driver_name: null, base_rate: 1800, total_rate: 1800 },
-      { id: 'l4', load_number: 'LD-1023', status: 'delivered', pickup_city: 'Miami, FL', delivery_city: 'Nashville, TN', pickup_date: '2026-04-01', delivery_date: '2026-04-03', driver_name: 'Tom Davis', base_rate: 2600, total_rate: 2850 },
+      { id: 'l1', load_number: 'SH-1024', status: 'in_transit', pickup_city: 'Dallas, TX', delivery_city: 'Chicago, IL', pickup_date: '2026-04-05', delivery_date: '2026-04-08', driver_name: 'Mike Johnson', base_rate: 3200, total_rate: 3450 },
+      { id: 'l2', load_number: 'SH-1025', status: 'dispatched', pickup_city: 'Houston, TX', delivery_city: 'Atlanta, GA', pickup_date: '2026-04-07', delivery_date: '2026-04-09', driver_name: 'Sarah Williams', base_rate: 2800, total_rate: 2950 },
+      { id: 'l3', load_number: 'SH-1026', status: 'booked', pickup_city: 'Los Angeles, CA', delivery_city: 'Phoenix, AZ', pickup_date: '2026-04-10', delivery_date: '2026-04-11', driver_name: null, base_rate: 1800, total_rate: 1800 },
+      { id: 'l4', load_number: 'SH-1023', status: 'delivered', pickup_city: 'Miami, FL', delivery_city: 'Nashville, TN', pickup_date: '2026-04-01', delivery_date: '2026-04-03', driver_name: 'Tom Davis', base_rate: 2600, total_rate: 2850 },
     ];
     return NextResponse.json({ items: loads, total: loads.length, page: 1, page_size: 20 });
   }
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
   // GET /loads/{id}
   if (path.match(/^\/loads\/[^/]+$/)) {
     return NextResponse.json({
-      id: 'l1', load_number: 'LD-1024', status: 'in_transit', base_rate: 3200, total_rate: 3450, total_miles: 920,
+      id: 'l1', load_number: 'SH-1024', status: 'in_transit', base_rate: 3200, total_rate: 3450, total_miles: 920,
       broker_name: 'ABC Logistics', broker_load_id: 'BRK-8892', shipment_id: 'SHP-44210', contact_agent: 'John Broker',
       is_locked: false, notes: 'Partial truckload — fragile cargo', created_at: '2026-04-04T10:00:00Z', updated_at: '2026-04-07T14:30:00Z',
       stops: [
@@ -306,12 +306,12 @@ export async function GET(req: NextRequest) {
       period_start: '2026-03-25', period_end: '2026-03-31',
       gross_pay: 4250, accessorial_total: 350, deduction_total: 430, net_pay: 3820,
       line_items: [
-        { id: 'li1', category: 'trip_pay', description: 'LD-1020 Dallas→Chicago (920mi)', amount: 1380 },
-        { id: 'li2', category: 'trip_pay', description: 'LD-1021 Chicago→Nashville (470mi)', amount: 940 },
-        { id: 'li3', category: 'trip_pay', description: 'LD-1022 Nashville→Atlanta (250mi)', amount: 500 },
-        { id: 'li4', category: 'trip_pay', description: 'LD-1023 Atlanta→Miami (660mi)', amount: 1080 },
-        { id: 'li5', category: 'accessorial', description: 'Detention (LD-1020)', amount: 150 },
-        { id: 'li6', category: 'accessorial', description: 'Lumper (LD-1023)', amount: 200 },
+        { id: 'li1', category: 'trip_pay', description: 'SH-1020 Dallas→Chicago (920mi)', amount: 1380 },
+        { id: 'li2', category: 'trip_pay', description: 'SH-1021 Chicago→Nashville (470mi)', amount: 940 },
+        { id: 'li3', category: 'trip_pay', description: 'SH-1022 Nashville→Atlanta (250mi)', amount: 500 },
+        { id: 'li4', category: 'trip_pay', description: 'SH-1023 Atlanta→Miami (660mi)', amount: 1080 },
+        { id: 'li5', category: 'accessorial', description: 'Detention (SH-1020)', amount: 150 },
+        { id: 'li6', category: 'accessorial', description: 'Lumper (SH-1023)', amount: 200 },
         { id: 'li7', category: 'deduction', description: 'Fuel advance', amount: -250 },
         { id: 'li8', category: 'deduction', description: 'Insurance premium', amount: -180 },
       ],

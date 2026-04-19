@@ -13,7 +13,10 @@ Endpoints:
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form
+from app.models.base import EntityType
+from app.core.storage import upload_document_shared
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.drivers.schemas import (
@@ -132,3 +135,16 @@ async def delete_driver(
 ):
     """Soft delete driver. Returns 409 if attached to active trip."""
     await svc.delete_driver(driver_id)
+
+# ── Upload Document ──────────────────────────────────────────────
+
+@router.post("/upload")
+async def upload_driver_document(
+    file: UploadFile = File(...),
+    document_type: str = Form(...),
+    entity_type: EntityType = Form(...),
+    entity_id: UUID = Form(...),
+    company_id: UUID = Depends(get_current_company_id),
+):
+    """Upload driver documents (e.g., CDL, Medical Card) with GCS fallback."""
+    return await upload_document_shared(file, entity_type, entity_id, company_id)

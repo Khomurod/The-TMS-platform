@@ -27,7 +27,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
   timeout: 30000,
-  withCredentials: true, // Audit fix #7: Send httpOnly cookies with every request
 });
 
 // ── Request Interceptor — attach access token ────────────────
@@ -73,7 +72,7 @@ api.interceptors.response.use(
     const is401 = error.response?.status === 401;
     const isCorsBlocked =
       !error.response && error.message?.includes("Network Error");
-    const isAuthEndpoint = originalRequest?.url?.includes("/auth/");
+    const isAuthEndpoint = originalRequest?.url?.includes("/auth/login") || originalRequest?.url?.includes("/auth/logout");
     const shouldAttemptRefresh =
       (is401 || isCorsBlocked) &&
       !originalRequest?._retry &&
@@ -474,7 +473,7 @@ export const deleteDriver = async (driverId: string) => {
 };
 
 export const uploadDocument = async (formData: FormData) => {
-  const { data } = await api.post('/documents/upload', formData, {
+  const { data } = await api.post('/drivers/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data;

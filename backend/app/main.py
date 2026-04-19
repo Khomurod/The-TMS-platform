@@ -31,7 +31,6 @@ from app.brokers.router import router as brokers_router
 from app.settings_mod.router import router as settings_router
 from app.auth.admin_router import router as admin_router
 from app.dashboard.router import router as dashboard_router
-from app.documents.router import router as documents_router
 
 # ── Disable Swagger/OpenAPI docs in production ───────────────────
 
@@ -84,7 +83,6 @@ app.include_router(brokers_router, prefix=API_V1_PREFIX)
 app.include_router(settings_router, prefix=API_V1_PREFIX)
 app.include_router(admin_router, prefix=API_V1_PREFIX)
 app.include_router(dashboard_router, prefix=API_V1_PREFIX)
-app.include_router(documents_router, prefix=API_V1_PREFIX)
 
 
 # ── Health Check ─────────────────────────────────────────────────
@@ -133,8 +131,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
     # Determine the origin from the request and reflect it back so the
     # browser can read the error body (same logic as CORSMiddleware would use).
-    origin = request.headers.get("origin", "")
-    cors_origin = origin if origin in origins else (origins[0] if origins else "*")
+    origin = request.headers.get("origin")
+    cors_origin = origin if origin else "null"
 
     return JSONResponse(
         status_code=500,

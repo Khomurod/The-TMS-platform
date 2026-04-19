@@ -21,7 +21,7 @@ async def test_parse_structured_load_data_with_expanded_schema():
 
     # Define the expanded JSON payload simulating the LLM response
     mock_llm_response_dict = {
-        "broker_load_id": "LD-9999",
+        "broker_load_id": "SH-9999",
         "pickup_facility": "Georgia-Pacific Consumer Products",
         "pickup_address": "2300 Enterprise Dr.",
         "pickup_city": "Atlanta",
@@ -68,7 +68,7 @@ async def test_parse_structured_load_data_with_expanded_schema():
         parsed_data = await service._parse_structured_load_data(extracted_text, api_key)
 
         # Assertions
-        assert parsed_data["broker_load_id"] == "LD-9999"
+        assert parsed_data["broker_load_id"] == "SH-9999"
 
         # Pickup asserts
         assert parsed_data["pickup_facility"] == "Georgia-Pacific Consumer Products"

@@ -6,7 +6,7 @@
 import { useDrivers, type DriverItem } from '@/lib/hooks/drivers';
 import { Skeleton } from '@/components/ui/skeleton';
 import CreateDriverDialog from '@/components/drivers/CreateDriverDialog';
-import DriverDrawer from '@/components/drivers/DriverDrawer';
+import DriverDialog from '@/components/drivers/DriverDialog';
 import { useState } from 'react';
 import {
   Table,
@@ -164,7 +164,7 @@ export default function DriversPage() {
         </p>
       )}
 
-      <DriverDrawer 
+      <DriverDialog
         driverId={selectedDriverId} 
         isOpen={drawerOpen} 
         onClose={() => setDrawerOpen(false)} 

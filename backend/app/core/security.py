@@ -10,6 +10,7 @@ Implements:
 
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
+import cachetools
 
 import bcrypt
 import jwt
@@ -22,7 +23,7 @@ from app.config import settings
 # On token revocation, we add to both the in-process cache and the DB.
 # On token validation, we check in-process cache first, then DB.
 
-_blacklisted_jtis_cache: set[str] = set()
+_blacklisted_jtis_cache = cachetools.TTLCache(maxsize=10000, ttl=604800)
 
 
 async def blacklist_token_db(jti: str, db) -> None:
@@ -30,7 +31,7 @@ async def blacklist_token_db(jti: str, db) -> None:
     from app.models.base import Base
     from sqlalchemy import text, insert
 
-    _blacklisted_jtis_cache.add(jti)
+    _blacklisted_jtis_cache[jti] = True
     try:
         await db.execute(
             text(
@@ -47,7 +48,7 @@ async def blacklist_token_db(jti: str, db) -> None:
 
 def blacklist_token(jti: str) -> None:
     """Add a JTI to the in-process blacklist cache (synchronous fallback)."""
-    _blacklisted_jtis_cache.add(jti)
+    _blacklisted_jtis_cache[jti] = True
 
 
 def is_token_blacklisted(jti: str) -> bool:
@@ -74,7 +75,7 @@ async def is_token_blacklisted_db(jti: str, db) -> bool:
                 {"jti": jti},
             )
             if result.scalar_one_or_none():
-                _blacklisted_jtis_cache.add(jti)  # Populate cache
+                _blacklisted_jtis_cache[jti] = True  # Populate cache
                 return True
     except Exception:
         # DB error (table missing, transient) — the savepoint is already

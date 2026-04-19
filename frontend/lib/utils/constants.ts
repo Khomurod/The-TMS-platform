@@ -1,7 +1,6 @@
 import type { UserRole } from "@/lib/stores/authStore";
 import {
   DollarSign,
-  FileText,
   LayoutDashboard,
   Package,
   Settings,
@@ -67,12 +66,6 @@ export const ASSET_NAV_ITEMS: SidebarNavItem[] = [
     title: "Fleet",
     href: "/fleet",
     icon: Truck,
-    roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
-  },
-  {
-    title: "Documents",
-    href: "/documents",
-    icon: FileText,
     roles: ["super_admin", "company_admin", "dispatcher", "accountant"],
   },
 ];
