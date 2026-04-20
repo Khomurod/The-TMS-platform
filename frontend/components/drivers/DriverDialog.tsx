@@ -251,7 +251,7 @@ function DriverDialogForm({
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       <div className="pt-4 flex flex-col gap-3">
-        <Button className="w-full" onClick={handleUpdate} disabled={isSubmitting}>
+        <Button className="w-full min-h-[44px] min-w-[44px]" onClick={handleUpdate} disabled={isSubmitting}>
           {isSubmitting ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
@@ -306,7 +306,7 @@ export default function DriverDialog({ driverId, isOpen, onClose }: DriverDialog
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent className="sm:max-w-md overflow-y-auto bg-background/60 backdrop-blur-xl border-l-white/10 shadow-2xl">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto bg-background/80 backdrop-blur-md border border-white/10 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle>Driver Profile</DialogTitle>
             <DialogDescription>
@@ -337,7 +337,7 @@ export default function DriverDialog({ driverId, isOpen, onClose }: DriverDialog
             <div className="pb-6">
               <Button
                 variant="destructive"
-                className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20"
+                className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/20 min-h-[44px] min-w-[44px]"
                 onClick={() => setIsConfirmOpen(true)}
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -357,11 +357,12 @@ export default function DriverDialog({ driverId, isOpen, onClose }: DriverDialog
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+            <Button variant="outline" className="min-h-[44px] min-w-[44px]" onClick={() => setIsConfirmOpen(false)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="min-h-[44px] min-w-[44px]"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
             >
