@@ -4,13 +4,6 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -312,14 +305,14 @@ export default function DriverDialog({ driverId, isOpen, onClose }: DriverDialog
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <SheetContent className="sm:max-w-md overflow-y-auto bg-background/60 backdrop-blur-xl border-l-white/10 shadow-2xl">
-          <SheetHeader>
-            <SheetTitle>Driver Profile</SheetTitle>
-            <SheetDescription>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent className="sm:max-w-md overflow-y-auto bg-background/60 backdrop-blur-xl border-l-white/10 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle>Driver Profile</DialogTitle>
+            <DialogDescription>
               View and edit driver information or compliance documents.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -352,8 +345,8 @@ export default function DriverDialog({ driverId, isOpen, onClose }: DriverDialog
               </Button>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <DialogContent className="sm:max-w-md bg-background/60 backdrop-blur-xl border-white/10 shadow-2xl rounded-2xl">
