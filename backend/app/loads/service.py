@@ -1131,7 +1131,7 @@ class LoadService:
 
         if driver_id:
             driver = (await self.db.execute(
-                select(Driver).where(Driver.id == UUID(driver_id)).where(Driver.company_id == self.company_id)
+                select(Driver).where(Driver.id == UUID(driver_id)).where(Driver.company_id == self.company_id).with_for_update()
             )).scalar_one_or_none()
             if not driver:
                 errors.append("Driver not found")

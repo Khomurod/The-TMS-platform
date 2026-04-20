@@ -67,7 +67,9 @@ async def calculate_settlement_for_trips(
 
         if pay_type == PayRateType.percentage.value:
             # Owner Operator: % of Load total_rate
-            base = Decimal(str(load.total_rate)) if load.total_rate else Decimal("0")
+            if not load.total_rate:
+                raise HTTPException(400, f"Cannot calculate percentage pay: Load {load.load_number} has no total rate set.")
+            base = Decimal(str(load.total_rate))
             trip_earning = (base * rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         elif pay_type == PayRateType.cpm.value:
             # Company Driver: Cents Per Mile
@@ -102,18 +104,51 @@ async def calculate_settlement_for_trips(
         })
 
     # Get deductions
+    from app.models.accounting import SettlementBatch, DriverSettlement, SettlementLineItem
+
     deductions_query = (
         select(CompanyDefaultDeduction)
         .where(CompanyDefaultDeduction.company_id == driver.company_id)
     )
     deductions = list((await db.execute(deductions_query)).scalars().all())
 
+    # Get start of the current week to check for double-dipping on weekly deductions
+    from datetime import date, timedelta
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+
+    # Find already applied deductions for this driver this week
+    already_applied_deductions = set()
+    applied_deductions_query = (
+        select(SettlementLineItem.description)
+        .join(DriverSettlement, SettlementLineItem.settlement_id == DriverSettlement.id)
+        .where(DriverSettlement.driver_id == driver.id)
+        .where(DriverSettlement.created_at >= start_of_week)
+        .where(SettlementLineItem.type == "deduction")
+    )
+    applied_records = (await db.execute(applied_deductions_query)).scalars().all()
+    already_applied_deductions.update(applied_records)
+
     total_deductions = Decimal("0.00")
+    applied_this_time = []
+
     for ded in deductions:
         ded_amount = Decimal(str(ded.amount))
+
         if ded.frequency.value == "per_load":
             ded_amount = ded_amount * len(trips)
+        elif ded.frequency.value == "weekly":
+            # If a weekly deduction was already applied to another settlement this week, skip it.
+            if ded.name in already_applied_deductions:
+                import logging
+                logger = logging.getLogger("safehaul.accounting")
+                logger.warning(f"Skipping weekly deduction '{ded.name}' for driver {driver.id} as it was already applied this week.")
+                continue
+
         total_deductions += ded_amount
+        applied_this_time.append(ded)
+
+    deductions = applied_this_time
 
     net_pay = total_earning - total_deductions
 
@@ -186,23 +221,36 @@ class AccountingService:
 
         # Get delivered trips for this driver in the period
         trips = await self.repo.get_driver_trips(driver_id, data.period_start, data.period_end)
-        if not trips:
+        if not trips and not getattr(data, 'custom_items', None):
             raise HTTPException(
                 status_code=400,
-                detail=f"No delivered trips found for this driver between {data.period_start} and {data.period_end}.",
+                detail=f"No delivered trips found for this driver between {data.period_start} and {data.period_end}, and no custom items were added.",
             )
 
         # Core calculation
         calc = await calculate_settlement_for_trips(driver, trips, self.db)
 
+        # Apply custom items
+        custom_accessorials = Decimal("0")
+        custom_deductions = Decimal("0")
+        if getattr(data, 'custom_items', None):
+            for item in data.custom_items:
+                if item.type == 'accessorial':
+                    custom_accessorials += item.amount
+                elif item.type == 'deduction':
+                    custom_deductions += item.amount
+
         # Calculate total accessorials from trip details
-        total_accessorials = Decimal("0")
+        total_accessorials = custom_accessorials
         for detail in calc["trip_details"]:
             load = detail["load"]
             if load.accessorials:
                 total_accessorials += sum(
                     Decimal(str(a.amount)) for a in load.accessorials
                 )
+
+        # Apply custom deductions
+        calc["deductions"] += custom_deductions
 
         # Net pay = earnings + accessorials - deductions + bonus
         net_pay = calc["earning"] + total_accessorials - calc["deductions"] + calc["bonus"]
@@ -254,6 +302,16 @@ class AccountingService:
                         description=f"{acc.type.replace('_', ' ').title()} - {load.load_number}",
                         amount=acc_amount,
                     )
+
+        # Create custom line items
+        if getattr(data, 'custom_items', None):
+            for item in data.custom_items:
+                await self.repo.add_line_item(
+                    settlement_id=settlement.id,
+                    type=item.type,
+                    description=item.description,
+                    amount=item.amount if item.type == 'accessorial' else -item.amount
+                )
 
         # Create deduction line items
         for ded in calc["deduction_items"]:
@@ -499,6 +557,16 @@ class AccountingService:
         # Get or create today's invoice batch
         today = date.today()
         batch_id_str = f"IB-{today.strftime('%Y%m%d')}"
+
+        import binascii
+        lock_key = binascii.crc32(f"invoice_batch_{batch_id_str}".encode()) & 0x7FFFFFFF
+        try:
+            dialect = self.db.bind.dialect.name if self.db.bind else "unknown"
+            if dialect == "postgresql":
+                from sqlalchemy import text
+                await self.db.execute(text(f"SELECT pg_advisory_xact_lock({lock_key})"))
+        except Exception:
+            pass
 
         batch = (await self.db.execute(
             select(InvoiceBatch)

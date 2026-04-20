@@ -44,7 +44,18 @@ export function formatDate(
   value: string | Date | null | undefined
 ): string {
   if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
+  let d: Date;
+  if (typeof value === "string") {
+    // If exact YYYY-MM-DD, parse explicitly to avoid UTC shift
+    if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      d = new Date(year, month - 1, day);
+    } else {
+      d = new Date(value);
+    }
+  } else {
+    d = value;
+  }
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -56,7 +67,17 @@ export function formatDateShort(
   value: string | Date | null | undefined
 ): string {
   if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
+  let d: Date;
+  if (typeof value === "string") {
+    if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      d = new Date(year, month - 1, day);
+    } else {
+      d = new Date(value);
+    }
+  } else {
+    d = value;
+  }
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

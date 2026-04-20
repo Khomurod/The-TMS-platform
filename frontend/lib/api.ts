@@ -32,7 +32,7 @@ const api = axios.create({
 // ── Request Interceptor — attach access token ────────────────
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("access_token");
+    const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -72,7 +72,7 @@ api.interceptors.response.use(
     const is401 = error.response?.status === 401;
     const isCorsBlocked =
       !error.response && error.message?.includes("Network Error");
-    const isAuthEndpoint = originalRequest?.url?.includes("/auth/login") || originalRequest?.url?.includes("/auth/logout");
+    const isAuthEndpoint = originalRequest?.url?.includes("/auth/login") || originalRequest?.url?.includes("/auth/logout") || originalRequest?.url?.includes("/auth/refresh");
     const shouldAttemptRefresh =
       (is401 || isCorsBlocked) &&
       !originalRequest?._retry &&
@@ -339,7 +339,7 @@ export const getSettlementDetail = async (settlementId: string) => {
   return data;
 };
 
-export const generateSettlement = async (payload: { driver_id: string; period_start: string; period_end: string }) => {
+export const generateSettlement = async (payload: { driver_id: string; period_start: string; period_end: string; custom_items?: any[] }) => {
   const { data } = await api.post('/accounting/settlements/generate', payload);
   return data;
 };

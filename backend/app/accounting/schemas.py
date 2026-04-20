@@ -9,11 +9,17 @@ from uuid import UUID
 
 # ── Settlement Schemas ───────────────────────────────────────────
 
+class CustomItem(BaseModel):
+    type: str
+    description: str
+    amount: Decimal
+
 class SettlementGenerateRequest(BaseModel):
     """POST /settlements/generate — generate draft for driver + period."""
     driver_id: str
     period_start: date
     period_end: date
+    custom_items: list[CustomItem] = []
 
 
 class SettlementLineItemResponse(BaseModel):
