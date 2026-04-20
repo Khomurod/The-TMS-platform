@@ -22,7 +22,6 @@ import { Label } from '@/components/ui/label';
 import { generateSettlement, getDrivers } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
 import { extractApiError } from '@/lib/errors';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface DriverOption {
   id: string;
@@ -103,18 +102,18 @@ export default function GenerateSettlementDialog() {
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Select value={driverId} onValueChange={(val) => setDriverId(val || '')} disabled={loadingDrivers}>
-                <SelectTrigger id="driver" className="w-full">
-                  <SelectValue placeholder="Select a driver…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {drivers.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.first_name} {d.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                className="mt-1 w-full h-9 rounded-md border border-border bg-background px-3 text-sm"
+                value={driverId}
+                onChange={(e) => setDriverId(e.target.value)}
+              >
+                <option value="">Select a driver…</option>
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.first_name} {d.last_name}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
 

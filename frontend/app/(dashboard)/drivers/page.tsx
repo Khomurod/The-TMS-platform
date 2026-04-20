@@ -51,11 +51,11 @@ function ComplianceDot({ dateStr }: { dateStr?: string }) {
 export default function DriversPage() {
   const { data, isLoading, error } = useDrivers();
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleRowClick = (id: string) => {
     setSelectedDriverId(id);
-    setDialogOpen(true);
+    setDrawerOpen(true);
   };
 
   return (
@@ -166,8 +166,8 @@ export default function DriversPage() {
 
       <DriverDialog
         driverId={selectedDriverId} 
-        isOpen={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       />
     </div>
   );
