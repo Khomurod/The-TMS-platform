@@ -339,7 +339,7 @@ export const getSettlementDetail = async (settlementId: string) => {
   return data;
 };
 
-export const generateSettlement = async (payload: { driver_id: string; period_start: string; period_end: string; custom_items?: any[] }) => {
+export const generateSettlement = async (payload: { driver_id: string; period_start: string; period_end: string; custom_items?: Array<{ type: string; description: string; amount: number }> }) => {
   const { data } = await api.post('/accounting/settlements/generate', payload);
   return data;
 };
