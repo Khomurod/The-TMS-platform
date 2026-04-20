@@ -22,6 +22,8 @@ import {
 import { ArrowLeft, FileDown, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { extractApiError } from '@/lib/errors';
+import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-500/20 text-gray-400',
@@ -44,7 +46,8 @@ function fmt$(val?: number): string {
 
 function fmtDate(val?: string): string {
   if (!val) return '—';
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const [year, month, day] = val.split('T')[0].split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function SettlementDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -60,8 +63,8 @@ export default function SettlementDetailPage({ params }: { params: Promise<{ id:
       else if (action === 'undo') await undoPostSettlement(id);
       else if (action === 'pay') await paySettlement(id);
       queryClient.invalidateQueries({ queryKey: ['settlements'] });
-    } catch {
-      // TODO: toast error
+    } catch (err) {
+      toast.error(extractApiError(err));
     } finally {
       setActionLoading('');
     }
@@ -77,8 +80,8 @@ export default function SettlementDetailPage({ params }: { params: Promise<{ id:
       a.download = `${settlement?.settlement_number ?? 'settlement'}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch {
-      // TODO: toast error
+    } catch (err) {
+      toast.error(extractApiError(err));
     } finally {
       setActionLoading('');
     }
