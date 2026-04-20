@@ -30,7 +30,14 @@ function formatCurrency(val?: number): string {
 
 function formatDate(val?: string): string {
   if (!val) return '—';
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  let d: Date;
+  if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(val)) {
+    const [year, month, day] = val.split('-').map(Number);
+    d = new Date(year, month - 1, day);
+  } else {
+    d = new Date(val);
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function AccountingPage() {
